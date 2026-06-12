@@ -33,6 +33,7 @@ body{background:#0a0a0a;min-height:100vh;color:#fff;padding:0 0 60px;}
 (function(){
   var w=parseInt(new URLSearchParams(location.search).get('w'))||1;
   document.addEventListener('DOMContentLoaded',function(){
+    // Build tab bar
     var bar=document.createElement('div');
     bar.className='week-tabs';
     [1,2,3,4].forEach(function(n){
@@ -46,8 +47,11 @@ body{background:#0a0a0a;min-height:100vh;color:#fff;padding:0 0 60px;}
       };
       bar.appendChild(b);
     });
+    // Insert after first .header or at top of body
     var h=document.querySelector('.header')||document.querySelector('.split-header');
     if(h)h.after(bar);else document.body.prepend(bar);
+
+    // Patch all wcard links to pass ?w=N
     document.querySelectorAll('a.wcard').forEach(function(a){
       var href=a.getAttribute('href');
       if(href&&!href.includes('?')){
@@ -69,10 +73,12 @@ body{background:#0a0a0a;min-height:100vh;color:#fff;padding:0 0 60px;}
   <div class="pills"><span class="pill">30s–1min Rest</span><span class="pill">3–5 Sets</span><span class="pill">Pyramid · Drop · Tempo</span></div>
 </div></div>
 <div class="content">
+  
   <div class="sec-head">Workouts</div>
+  
   <a href="mc-s2-chest-bis.html" class="wcard">
     <div class="wcard-tag">Day 1 · Chest + Biceps</div>
-    <div class="wcard-name">Chest &amp; Biceps</div>
+    <div class="wcard-name">Chest & Biceps</div>
     <div class="wcard-meta">Slight incline flies × hammer curls, flat press 5×5, high incline × alt curl, fly to press × concentration, single arm AMRAP × preacher</div>
     <div class="wcard-arrow">→</div>
   </a>
@@ -101,7 +107,7 @@ body{background:#0a0a0a;min-height:100vh;color:#fff;padding:0 0 60px;}
     <div class="wcard-arrow">→</div>
   </a>
   <a href="mc-cardio.html" class="wcard" style="margin-top:8px;">
-    <div class="wcard-tag" style="background:rgba(56,189,248,0.12);color:#38bdf8;border-color:rgba(56,189,248,0.2);">&#127939; Cardio</div>
+    <div class="wcard-tag" style="background:rgba(56,189,248,0.12);color:#38bdf8;border-color:rgba(56,189,248,0.2);">🏃 Cardio</div>
     <div class="wcard-name">Cardio Day</div>
     <div class="wcard-meta">Incline treadmill + jump rope — see cardio page</div>
     <div class="wcard-arrow" style="background:rgba(56,189,248,0.12);border-color:rgba(56,189,248,0.2);">→</div>
