@@ -1,2 +1,160 @@
-/* mc-card-actions.css — card action styles */
-.card-actions { display: flex; gap: 8px; }
+/* ═══════════════════════════════════════════════════════════════════
+   mc-card-actions.css  —  Shared workout-card action-bar styles
+   Used by: mc-split2.html, mc-split3.html, and any page that renders
+   a .exercise-card with a swipe/tap action bar.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── CARD SHELL ─────────────────────────────────────────────────── */
+.exercise-card {
+  background: #0f0f0f;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.exercise-card.done-card { opacity: .55; }
+.exercise-card.done-card .card-top { text-decoration: line-through; }
+
+/* ── TOP ROW ────────────────────────────────────────────────────── */
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .9rem 1rem .75rem;
+  cursor: pointer;
+  user-select: none;
+}
+.card-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb, 212,175,55),.15);
+  color: var(--accent, #d4af37);
+  font-size: .78rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-name { font-size: .92rem; font-weight: 600; flex: 1; }
+.card-toggle {
+  font-size: 1rem; color: #475569;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.exercise-card.expanded .card-toggle { transform: rotate(180deg); }
+
+/* ── EXPANDABLE DETAIL SECTION ──────────────────────────────────── */
+.card-detail {
+  display: none;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+  animation: slideDown .18s ease;
+}
+.exercise-card.expanded .card-detail { display: block; }
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── SET ROWS ───────────────────────────────────────────────────── */
+.set-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr 44px;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.set-row:last-of-type { border-bottom: none; }
+.set-label {
+  font-size: .7rem; color: #64748b;
+  font-weight: 700; letter-spacing: .06em;
+  min-width: 36px;
+}
+.set-input {
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: .85rem;
+  padding: .35rem .5rem;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.set-input::-webkit-inner-spin-button,
+.set-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.set-input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb, 212,175,55),.5);
+}
+.set-done-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .18s;
+}
+.set-done-btn.done {
+  background: rgba(34,197,94,.2);
+  border-color: rgba(34,197,94,.4);
+}
+
+/* ── ACTION BAR (log / replace / info) ──────────────────────────── */
+.card-actions {
+  display: flex;
+  gap: .5rem;
+  padding: .65rem 1rem;
+  border-top: 1px solid rgba(255,255,255,.05);
+}
+.action-btn {
+  flex: 1;
+  padding: .45rem;
+  border-radius: 7px;
+  font-size: .72rem; font-weight: 600;
+  letter-spacing: .03em;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.09);
+  color: #94a3b8;
+  transition: all .18s;
+  display: flex; align-items: center; justify-content: center;
+  gap: .3rem;
+}
+.action-btn:hover { background: rgba(255,255,255,.1); color: #e2e8f0; }
+.action-btn.primary-action {
+  background: rgba(var(--accent-rgb, 212,175,55),.12);
+  border-color: rgba(var(--accent-rgb, 212,175,55),.25);
+  color: var(--accent, #d4af37);
+}
+.action-btn.primary-action:hover {
+  background: rgba(var(--accent-rgb, 212,175,55),.22);
+}
+.action-btn.danger-action {
+  background: rgba(239,68,68,.08);
+  border-color: rgba(239,68,68,.2);
+  color: #f87171;
+}
+.action-btn.danger-action:hover { background: rgba(239,68,68,.15); }
+
+/* ── REST TIMER INLINE ──────────────────────────────────────────── */
+.rest-timer-bar {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .5rem 1rem;
+  background: rgba(var(--accent-rgb, 212,175,55),.06);
+  border-top: 1px solid rgba(var(--accent-rgb, 212,175,55),.15);
+  font-size: .8rem;
+}
+.rest-timer-bar .rest-countdown {
+  font-size: 1.2rem; font-weight: 800;
+  color: var(--accent, #d4af37);
+  min-width: 3ch; text-align: center;
+}
+.rest-timer-bar .rest-label { color: #64748b; flex: 1; }
+.rest-skip-btn {
+  font-size: .72rem; font-weight: 600;
+  color: #64748b; padding: .2rem .5rem;
+  border-radius: 5px; background: rgba(255,255,255,.05);
+}
+.rest-skip-btn:hover { color: #e2e8f0; }
