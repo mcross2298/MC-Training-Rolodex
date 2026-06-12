@@ -2,7 +2,7 @@
  * superset-timers.js
  * ─────────────────────────────────────────────────────────────────
  * Phase 5 — Automated Superset Timer Logic
- * Site: mcross2298.github.io/4-Weeks-to-Open-
+ * Site: mcross2298.github.io/MC-Training-Rolodex
  *
  * ROUTING RULES:
  *   Route 1  → 1 timer  — verbiage contains "after each set"

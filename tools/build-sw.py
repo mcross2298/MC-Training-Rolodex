@@ -24,7 +24,7 @@ from pathlib import Path
 # the extracted market tree with --root/--base pointing at its own deployment.
 ROOT = Path(__file__).resolve().parent.parent
 SW = ROOT / "sw.js"
-BASE = "https://mcross2298.github.io/4-Weeks-to-Open-/"
+BASE = "https://mcross2298.github.io/MC-Training-Rolodex/"
 
 START = "/* AUTOGEN:URLS START */"
 END = "/* AUTOGEN:URLS END */"
