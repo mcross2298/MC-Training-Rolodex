@@ -1,1 +1,392 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Quick Tour</title></head><body><h1>Quick Tour Overview</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Quick Tour — MC Training</title>
+<link rel="stylesheet" href="base.css"/>
+<style>
+/* ── tour-specific overrides ── */
+:root {
+  --accent:     #d4af37;
+  --accent-rgb: 212,175,55;
+}
+.tour-header {
+  background: linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
+}
+
+/* step nav */
+.step-nav {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 20px 0 8px;
+  flex-wrap: wrap;
+}
+.step-dot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .2s;
+}
+.step-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+.step-dot.done {
+  background: rgba(34,197,94,.15);
+  border-color: rgba(34,197,94,.4);
+  color: #22c55e;
+}
+
+/* step card */
+.step-card {
+  display: none;
+  animation: fadeIn .3s ease;
+}
+.step-card.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+.step-visual {
+  background: rgba(var(--accent-rgb),.08);
+  border: 1px solid rgba(var(--accent-rgb),.15);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.step-emoji { font-size: 3rem; margin-bottom: 10px; }
+.step-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.step-body {
+  font-size: .88rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.step-tip {
+  background: rgba(var(--accent-rgb),.07);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: .82rem;
+  color: var(--text);
+  margin-top: 14px;
+}
+
+/* feature pills in step */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.feature-item {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border-faint);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: .8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.feature-item-icon { font-size: 1.3rem; }
+.feature-item-name { font-weight: 600; color: var(--text); }
+.feature-item-desc { color: var(--muted); font-size: .73rem; }
+
+/* bottom nav */
+.tour-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.tour-nav .btn { flex: 1; }
+
+/* progress */
+.tour-progress-wrap {
+  margin-bottom: 8px;
+}
+.tour-progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header tour-header">
+  <div class="header-inner">
+    <div class="header-logo">🏋️ MC Training <span>· Tour</span></div>
+    <div class="header-actions">
+      <a href="index.html" class="header-back">✕ Exit Tour</a>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">🗺️</div>
+    <div>
+      <div class="hero-title">Welcome to MC Training</div>
+      <div class="hero-sub">A 5-minute tour of your personal training hub</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="tour-progress-wrap">
+    <div class="tour-progress-text">
+      <span id="stepLabel">Step 1 of 8</span>
+      <span id="stepPct">12%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="tourBar" style="width:12%"></div></div>
+  </div>
+
+  <!-- Step dots -->
+  <div class="step-nav" id="stepNav"></div>
+
+  <!-- ════ STEP 1 — Home & Navigation ════ -->
+  <div class="step-card active" data-step="1">
+    <div class="step-visual">
+      <div class="step-emoji">🏠</div>
+      <div class="step-title">Home & Navigation</div>
+      <div class="step-body">
+        The <strong>Home screen</strong> is your launch pad. Every tool is one tap away — no buried menus.
+        A persistent header links back home from any page.
+      </div>
+      <div class="step-tip">💡 Tap any header logo to return home instantly.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">📋</div><div class="feature-item-name">Programs</div><div class="feature-item-desc">MC &amp; PMC splits</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📊</div><div class="feature-item-name">Stats</div><div class="feature-item-desc">Charts &amp; records</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔥</div><div class="feature-item-name">Conditioning</div><div class="feature-item-desc">Cardio timers</div></div>
+      <div class="feature-item"><div class="feature-item-icon">⚙️</div><div class="feature-item-name">Settings</div><div class="feature-item-desc">Account &amp; prefs</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 2 — Programs ════ -->
+  <div class="step-card" data-step="2">
+    <div class="step-visual">
+      <div class="step-emoji">📋</div>
+      <div class="step-title">Training Programs</div>
+      <div class="step-body">
+        Choose between <strong>MC (Main Camp)</strong> and <strong>PMC (Performance Camp)</strong> programs.
+        Each program is broken into splits targeting specific muscle groups per session.
+      </div>
+      <div class="step-tip">💡 PMC is higher volume; MC is the standard daily driver.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">🦵</div><div class="feature-item-name">Legs</div><div class="feature-item-desc">Quad &amp; hamstring focus</div></div>
+      <div class="feature-item"><div class="feature-item-icon">💪</div><div class="feature-item-name">Push</div><div class="feature-item-desc">Chest, shoulder, tricep</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🏋️</div><div class="feature-item-name">Pull</div><div class="feature-item-desc">Back &amp; bicep</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔄</div><div class="feature-item-name">CST / Upper</div><div class="feature-item-desc">Core &amp; full upper</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 3 — Logging a Set ════ -->
+  <div class="step-card" data-step="3">
+    <div class="step-visual">
+      <div class="step-emoji">✏️</div>
+      <div class="step-title">Logging a Set</div>
+      <div class="step-body">
+        Tap an exercise card to expand it. Enter <strong>weight</strong> and <strong>reps</strong> for each set,
+        then tap the check button to mark it done. All data saves automatically to your device.
+      </div>
+      <div class="step-tip">💡 Previous session weight auto-fills so you always have a starting point.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">⚖️</div><div class="feature-item-name">Weight</div><div class="feature-item-desc">lbs or kg</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔢</div><div class="feature-item-name">Reps</div><div class="feature-item-desc">Per-set tracking</div></div>
+      <div class="feature-item"><div class="feature-item-icon">✅</div><div class="feature-item-name">Set check</div><div class="feature-item-desc">Mark complete</div></div>
+      <div class="feature-item"><div class="feature-item-icon">💾</div><div class="feature-item-name">Auto-save</div><div class="feature-item-desc">Never lose data</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 4 — Exercise Actions ════ -->
+  <div class="step-card" data-step="4">
+    <div class="step-visual">
+      <div class="step-emoji">⚡</div>
+      <div class="step-title">Exercise Actions</div>
+      <div class="step-body">
+        Inside each card you'll find three action buttons:
+        <strong>Replace</strong> swaps the exercise with an alternative,
+        <strong>Note</strong> adds a coaching cue or reminder,
+        and <strong>History</strong> shows your last 3 sessions.
+      </div>
+      <div class="step-tip">💡 Replacements are program-aware — only valid substitutes appear.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">🔄</div><div class="feature-item-name">Replace</div><div class="feature-item-desc">Swap exercise</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📝</div><div class="feature-item-name">Note</div><div class="feature-item-desc">Add cue</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📈</div><div class="feature-item-name">History</div><div class="feature-item-desc">Last 3 sessions</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🏅</div><div class="feature-item-name">PR flag</div><div class="feature-item-desc">Alerts on records</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 5 — Stats ════ -->
+  <div class="step-card" data-step="5">
+    <div class="step-visual">
+      <div class="step-emoji">📊</div>
+      <div class="step-title">Stats & Analytics</div>
+      <div class="step-body">
+        The Stats section visualises your progress over time. View <strong>volume trends</strong>,
+        <strong>personal records</strong>, <strong>frequency charts</strong>, and your
+        <strong>Year in Review</strong> (Wrapped).
+      </div>
+      <div class="step-tip">💡 Filter by exercise or muscle group to drill into the data.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">📉</div><div class="feature-item-name">Trends</div><div class="feature-item-desc">Volume over time</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🏆</div><div class="feature-item-name">PRs</div><div class="feature-item-desc">All-time records</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📅</div><div class="feature-item-name">Frequency</div><div class="feature-item-desc">Session calendar</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🎁</div><div class="feature-item-name">Wrapped</div><div class="feature-item-desc">Year in review</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 6 — Conditioning ════ -->
+  <div class="step-card" data-step="6">
+    <div class="step-visual">
+      <div class="step-emoji">🔥</div>
+      <div class="step-title">Conditioning</div>
+      <div class="step-body">
+        Hit the <strong>Conditioning</strong> section for interval timers, battle ropes,
+        and driveway drills. Set your work/rest periods and let the audio cues guide you.
+      </div>
+      <div class="step-tip">💡 Audio beeps fire even when your screen is locked (Web Audio API).</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">⏱️</div><div class="feature-item-name">Intervals</div><div class="feature-item-desc">HIIT timer</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🪢</div><div class="feature-item-name">Battle Ropes</div><div class="feature-item-desc">Rope protocol</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🏃</div><div class="feature-item-name">Driveway</div><div class="feature-item-desc">Outdoor drills</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔊</div><div class="feature-item-name">Audio cues</div><div class="feature-item-desc">Hands-free</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 7 — Data & Backup ════ -->
+  <div class="step-card" data-step="7">
+    <div class="step-visual">
+      <div class="step-emoji">☁️</div>
+      <div class="step-title">Data & Backup</div>
+      <div class="step-body">
+        Your data lives in <strong>localStorage</strong> on your device. Use
+        <strong>Export</strong> to download a JSON backup and <strong>Import</strong>
+        to restore it. No account required — your data stays yours.
+      </div>
+      <div class="step-tip">💡 Export before clearing browser data or switching devices.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">📤</div><div class="feature-item-name">Export</div><div class="feature-item-desc">Download JSON</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📥</div><div class="feature-item-name">Import</div><div class="feature-item-desc">Restore backup</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔒</div><div class="feature-item-name">Private</div><div class="feature-item-desc">No cloud needed</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📱</div><div class="feature-item-name">PWA</div><div class="feature-item-desc">Install to home</div></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 8 — You're Ready ════ -->
+  <div class="step-card" data-step="8">
+    <div class="step-visual">
+      <div class="step-emoji">🚀</div>
+      <div class="step-title">You're Ready!</div>
+      <div class="step-body">
+        That's everything you need to know. Pick a program, log your first session,
+        and start building your record. <strong>Consistency is the only cheat code.</strong>
+      </div>
+      <div class="step-tip">💡 Bookmark this page or install the PWA for instant access.</div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item"><div class="feature-item-icon">🦵</div><div class="feature-item-name">Start Legs</div><div class="feature-item-desc">MC S1 Legs</div></div>
+      <div class="feature-item"><div class="feature-item-icon">📊</div><div class="feature-item-name">View Stats</div><div class="feature-item-desc">Check progress</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🔥</div><div class="feature-item-name">Conditioning</div><div class="feature-item-desc">Warm up first</div></div>
+      <div class="feature-item"><div class="feature-item-icon">🏠</div><div class="feature-item-name">Home</div><div class="feature-item-desc">Launch pad</div></div>
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="tour-nav">
+    <button class="btn btn-secondary" id="btnPrev" onclick="tourNav(-1)" disabled>← Back</button>
+    <button class="btn btn-primary"   id="btnNext" onclick="tourNav(1)">Next →</button>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<div id="toast"></div>
+
+<script>
+const TOTAL = 8;
+let cur = 1;
+
+/* build dots */
+const nav = document.getElementById('stepNav');
+for (let i = 1; i <= TOTAL; i++) {
+  const d = document.createElement('button');
+  d.className = 'step-dot' + (i === 1 ? ' active' : '');
+  d.textContent = i;
+  d.onclick = () => goTo(i);
+  nav.appendChild(d);
+}
+
+function goTo(n) {
+  // hide old
+  document.querySelector(`.step-card[data-step="${cur}"]`).classList.remove('active');
+  const dots = nav.querySelectorAll('.step-dot');
+  dots[cur-1].classList.remove('active');
+  if (cur < n) dots[cur-1].classList.add('done');
+
+  cur = n;
+
+  // show new
+  document.querySelector(`.step-card[data-step="${cur}"]`).classList.add('active');
+  dots[cur-1].classList.remove('done');
+  dots[cur-1].classList.add('active');
+
+  // progress
+  const pct = Math.round((cur / TOTAL) * 100);
+  document.getElementById('tourBar').style.width = pct + '%';
+  document.getElementById('stepLabel').textContent = `Step ${cur} of ${TOTAL}`;
+  document.getElementById('stepPct').textContent = pct + '%';
+
+  // buttons
+  document.getElementById('btnPrev').disabled = (cur === 1);
+  const nxt = document.getElementById('btnNext');
+  if (cur === TOTAL) {
+    nxt.textContent = '🏠 Go Home';
+    nxt.onclick = () => location.href = 'index.html';
+  } else {
+    nxt.textContent = 'Next →';
+    nxt.onclick = () => tourNav(1);
+  }
+}
+
+function tourNav(dir) {
+  const next = cur + dir;
+  if (next < 1 || next > TOTAL) return;
+  goTo(next);
+}
+
+/* toast */
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

@@ -1,58 +1,69 @@
-/* mc-replace.js — Exercise replacement helper
-   Loads exercisedata.json (or cached), filters by muscle group,
-   and renders a replacement picker modal. */
+/* mc-replace.js — renders saved exercise replacements
+   Reads from localStorage key 'mcReplacements'
+   and applies them when a workout page loads.
 
-const McReplace = (() => {
-  let _cache = null;
+   Storage format:
+   {
+     "<pageId>": {
+       "<originalName>": "<replacementName>"
+     }
+   }
+*/
 
-  async function fetchData() {
-    if (_cache) return _cache;
-    const r = await fetch('exercisedata.json');
-    _cache = await r.json();
-    return _cache;
+'use strict';
+
+(function () {
+
+  const STORE_KEY = 'mcReplacements';
+
+  function _load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
+    catch { return {}; }
   }
 
-  async function getSimilar(exercise) {
-    const all = await fetchData();
-    const target = (exercise.muscle || exercise.primaryMuscle || '').toLowerCase();
-    return all.filter(e =>
-      e.name !== exercise.name &&
-      (e.muscle || e.primaryMuscle || '').toLowerCase() === target
-    ).slice(0, 12);
+  function _save(map) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(map));
   }
 
-  async function openPicker(exercise, onSelect) {
-    const similar = await getSimilar(exercise);
-    const backdropId = 'replace-backdrop';
-    document.getElementById(backdropId)?.remove();
+  /**
+   * Retrieve replacement name for an exercise on a given page.
+   * Returns null if no replacement is active.
+   */
+  function getReplacement(pageId, originalName) {
+    const map = _load();
+    return map[pageId]?.[originalName] ?? null;
+  }
 
-    const backdrop = document.createElement('div');
-    backdrop.id = backdropId;
-    backdrop.className = 'modal-backdrop open';
-    backdrop.innerHTML = `
-      <div class="modal">
-        <div class="modal-header">
-          <span class="modal-title">Replace Exercise</span>
-          <button class="modal-close" id="replace-close">✕</button>
-        </div>
-        <p class="text-muted text-sm mb-2">Similar to: <strong>${exercise.name}</strong></p>
-        <div id="replace-list" style="display:flex;flex-direction:column;gap:.5rem">
-          ${similar.map(e => `
-            <button class="btn btn-secondary" style="justify-content:flex-start;text-align:left" data-name="${e.name}">
-              <span style="flex:1">${e.name}</span>
-              <span class="badge badge-gray">${e.muscle || e.primaryMuscle || ''}</span>
-            </button>`).join('')}
-          ${similar.length === 0 ? '<p class="text-muted text-sm">No similar exercises found.</p>' : ''}
-        </div>
-      </div>`;
+  /**
+   * Set a replacement.  Pass null to remove.
+   */
+  function setReplacement(pageId, originalName, replacementName) {
+    const map = _load();
+    if (!map[pageId]) map[pageId] = {};
+    if (replacementName === null) {
+      delete map[pageId][originalName];
+    } else {
+      map[pageId][originalName] = replacementName;
+    }
+    _save(map);
+  }
 
-    document.body.appendChild(backdrop);
-    backdrop.querySelector('#replace-close').onclick = () => backdrop.remove();
-    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
-    backdrop.querySelectorAll('[data-name]').forEach(btn => {
-      btn.onclick = () => { onSelect(btn.dataset.name); backdrop.remove(); };
+  /**
+   * Apply all replacements for a page to the DOM.
+   * Looks for elements with data-ex-name attribute.
+   */
+  function applyReplacements(pageId) {
+    const map = _load()[pageId];
+    if (!map) return;
+    document.querySelectorAll('[data-ex-name]').forEach(el => {
+      const orig = el.getAttribute('data-ex-name');
+      if (map[orig]) {
+        el.textContent = map[orig];
+        el.classList.add('replaced');
+      }
     });
   }
 
-  return { openPicker, getSimilar, fetchData };
+  window.mcReplace = { getReplacement, setReplacement, applyReplacements };
+
 })();

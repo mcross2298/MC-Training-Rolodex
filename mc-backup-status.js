@@ -1,32 +1,40 @@
-/* mc-backup-status.js — tiny helper that renders a backup-freshness
-   indicator into any element with id="backup-status".  Call
-   McBackupStatus.render() after page load. */
+/* ===============================================
+   mc-backup-status.js
+   Shows a subtle backup-age indicator in the
+   header of any page that includes this script.
+   =============================================== */
 
-const McBackupStatus = (() => {
-  const KEY = 'mcLastBackup';
+'use strict';
 
-  function stamp() {
-    localStorage.setItem(KEY, Date.now().toString());
-    render();
+(function () {
+  const KEY = 'mcLastExport';
+
+  function _render() {
+    const ts = localStorage.getItem(KEY);
+    if (!ts) return;                       // never exported — silent
+
+    const age  = Date.now() - Number(ts);
+    const days = Math.floor(age / 86_400_000);
+    if (days < 7) return;                  // fresh — no warning
+
+    const el = document.createElement('div');
+    el.id = 'backupBadge';
+    el.style.cssText = [
+      'position:fixed', 'bottom:72px', 'right:12px',
+      'background:#1e293b', 'border:1px solid rgba(249,115,22,.4)',
+      'color:#fb923c', 'font-size:.72rem', 'font-weight:600',
+      'padding:6px 10px', 'border-radius:10px', 'z-index:500',
+      'cursor:pointer', 'box-shadow:0 4px 12px rgba(0,0,0,.5)'
+    ].join(';');
+    el.textContent = `⚠️ Backup ${days}d ago`;
+    el.title = 'Tap to go to Import/Export';
+    el.onclick = () => location.href = 'import.html';
+    document.body.appendChild(el);
   }
 
-  function render() {
-    const el = document.getElementById('backup-status');
-    if (!el) return;
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      el.innerHTML = '<span class="badge badge-red">No backup found</span>';
-      return;
-    }
-    const ms  = Date.now() - parseInt(raw, 10);
-    const hrs = ms / 3_600_000;
-    let cls = 'badge-green', label = 'Backed up just now';
-    if (hrs > 72)  { cls = 'badge-red';    label = `Last backup ${Math.round(hrs/24)}d ago`; }
-    else if (hrs > 24) { cls = 'badge-gold';   label = `Last backup ${Math.round(hrs)}h ago`; }
-    else if (hrs > 1)  { cls = 'badge-blue';   label = `Last backup ${Math.round(hrs)}h ago`; }
-    else if (ms  > 60_000) { label = `Last backup ${Math.round(ms/60_000)}m ago`; }
-    el.innerHTML = `<span class="badge ${cls}">${label}</span>`;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _render);
+  } else {
+    _render();
   }
-
-  return { stamp, render };
 })();

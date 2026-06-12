@@ -1,88 +1,106 @@
-/* ═══════════════════════════════════════════════════════════════════
-   mc-session.js  —  Active workout session manager
-   Tracks: active program, current day, set completions, rest timer,
-   elapsed time, and auto-save to localStorage.
-   ═══════════════════════════════════════════════════════════════════ */
+/* ===============================================
+   mc-session.js  —  Session persistence engine
+   Handles save / load / clear of workout logs
+   stored in localStorage.
+   =============================================== */
 
-const McSession = (() => {
-  const KEY = 'mcActiveSession';
+'use strict';
 
-  /* ── helpers ─────────────────────────────────────────────────── */
-  const now = () => Date.now();
-  function load() {
-    try { return JSON.parse(localStorage.getItem(KEY)); }
-    catch { return null; }
+/* ── Key helpers ─────────────────────────────── */
+const SESSION_PREFIX = 'mcSession_';
+const HISTORY_PREFIX = 'mcHistory_';
+const MAX_HISTORY    = 10;   // sessions kept per page
+
+/**
+ * Build a storage key for a given page ID + date.
+ * @param {string} pageId   e.g. 'mc-s1-legs'
+ * @param {string} [date]   ISO date string; defaults to today
+ */
+function sessionKey(pageId, date) {
+  date = date ?? new Date().toISOString().slice(0, 10);
+  return `${SESSION_PREFIX}${pageId}_${date}`;
+}
+
+/**
+ * Save the current session log for a page.
+ * @param {string} pageId
+ * @param {object} data    Plain object — will be JSON-serialised
+ */
+function saveSession(pageId, data) {
+  const key  = sessionKey(pageId);
+  const json = JSON.stringify({ ts: Date.now(), data });
+  try {
+    localStorage.setItem(key, json);
+    _pruneHistory(pageId);
+  } catch (e) {
+    console.warn('[mc-session] save failed', e);
   }
-  function save(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
-  function clear()  { localStorage.removeItem(KEY); }
+}
 
-  /* ── session lifecycle ───────────────────────────────────────── */
-  function start(programId, dayLabel, exercises) {
-    const session = {
-      programId, dayLabel,
-      startedAt: now(),
-      exercises: exercises.map(ex => ({
-        id: ex.id || ex.name,
-        name: ex.name,
-        sets: Array.from({ length: ex.sets || 3 }, () => ({
-          reps: null, weight: null, done: false
-        }))
-      })),
-      notes: '',
-      finished: false
-    };
-    save(session);
-    return session;
+/**
+ * Load today's session log for a page.
+ * Returns null if nothing saved today.
+ */
+function loadSession(pageId) {
+  const raw = localStorage.getItem(sessionKey(pageId));
+  if (!raw) return null;
+  try { return JSON.parse(raw).data; }
+  catch { return null; }
+}
+
+/**
+ * Load the most-recent saved session (any date).
+ * Useful for pre-filling weights from last workout.
+ */
+function loadLastSession(pageId) {
+  const keys = _historyKeys(pageId).sort().reverse();
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try { return JSON.parse(raw).data; }
+    catch { continue; }
   }
+  return null;
+}
 
-  function get() { return load(); }
+/**
+ * Return an array of past sessions (newest first).
+ * Each entry: { date, data }
+ */
+function listSessions(pageId) {
+  return _historyKeys(pageId)
+    .sort().reverse()
+    .map(k => {
+      const raw = localStorage.getItem(k);
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        const date   = k.replace(`${SESSION_PREFIX}${pageId}_`, '');
+        return { date, data: parsed.data, ts: parsed.ts };
+      } catch { return null; }
+    })
+    .filter(Boolean);
+}
 
-  function markSet(exerciseIndex, setIndex, data) {
-    const s = load();
-    if (!s) return;
-    Object.assign(s.exercises[exerciseIndex].sets[setIndex], data, { done: true });
-    save(s);
+/**
+ * Clear today's session (used by "Reset Workout" button).
+ */
+function clearSession(pageId) {
+  localStorage.removeItem(sessionKey(pageId));
+}
+
+/* ── Private helpers ─────────────────────────── */
+function _historyKeys(pageId) {
+  const prefix = `${SESSION_PREFIX}${pageId}_`;
+  return Object.keys(localStorage).filter(k => k.startsWith(prefix));
+}
+
+function _pruneHistory(pageId) {
+  const keys = _historyKeys(pageId).sort(); // oldest first
+  while (keys.length > MAX_HISTORY) {
+    localStorage.removeItem(keys.shift());
   }
+}
 
-  function updateSet(exerciseIndex, setIndex, field, value) {
-    const s = load();
-    if (!s) return;
-    s.exercises[exerciseIndex].sets[setIndex][field] = value;
-    save(s);
-  }
-
-  function setNotes(text) {
-    const s = load();
-    if (!s) return;
-    s.notes = text;
-    save(s);
-  }
-
-  function finish() {
-    const s = load();
-    if (!s) return null;
-    s.finished = true;
-    s.finishedAt = now();
-    s.durationMs = s.finishedAt - s.startedAt;
-    save(s);
-    return s;
-  }
-
-  function elapsedMs() {
-    const s = load();
-    return s ? now() - s.startedAt : 0;
-  }
-
-  function formatElapsed() {
-    const ms = elapsedMs();
-    const total = Math.floor(ms / 1000);
-    const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
-    const sec = total % 60;
-    return h > 0
-      ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
-      : `${m}:${String(sec).padStart(2,'0')}`;
-  }
-
-  return { start, get, markSet, updateSet, setNotes, finish, elapsedMs, formatElapsed, clear };
-})();
+/* ── Expose globally ─────────────────────────── */
+window.mcSession = { saveSession, loadSession, loadLastSession, listSessions, clearSession };

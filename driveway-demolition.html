@@ -1,1 +1,543 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Driveway Demolition</title></head><body><h1>Driveway Demolition</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Driveway Demolition — MC Training</title>
+<link rel="stylesheet" href="base.css"/>
+<style>
+:root {
+  --accent:     #f97316;
+  --accent-rgb: 249,115,22;
+}
+.site-header { background: linear-gradient(135deg,#1c0a00,#3d1a00,#7c2d00); }
+
+/* ── Workout card ─────────────────────────────── */
+.drill-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-faint);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.drill-card.active { border-color: rgba(249,115,22,.4); }
+
+.drill-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+.drill-num {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: rgba(249,115,22,.15);
+  color: #f97316;
+  font-size: .8rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.drill-info { flex: 1; min-width: 0; }
+.drill-name { font-size: .95rem; font-weight: 600; }
+.drill-desc { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+.drill-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.drill-chevron {
+  font-size: .8rem; color: var(--muted);
+  transition: transform .2s;
+}
+.drill-card.open .drill-chevron { transform: rotate(180deg); }
+
+.drill-body {
+  display: none;
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--border-faint);
+}
+.drill-card.open .drill-body { display: block; }
+
+/* ── Set log row ───────────────────────────────── */
+.set-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.set-label { font-size: .75rem; color: var(--muted); }
+.set-input {
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: .85rem;
+  text-align: center;
+  width: 100%;
+  transition: border-color .2s;
+}
+.set-input:focus { outline: none; border-color: var(--accent); }
+.set-check {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  border: 2px solid var(--border-dim);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem;
+  transition: border-color .2s, background .2s;
+  flex-shrink: 0;
+}
+.set-check.done {
+  border-color: var(--accent);
+  background: rgba(249,115,22,.15);
+  color: var(--accent);
+}
+
+/* ── Timer strip ───────────────────────────────── */
+.timer-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(249,115,22,.08);
+  border: 1px solid rgba(249,115,22,.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+.timer-display {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+}
+.timer-label { font-size: .75rem; color: var(--muted); }
+.timer-btns { display: flex; gap: 6px; margin-left: auto; }
+.timer-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: .78rem;
+  font-weight: 600;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border-dim);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .2s;
+}
+.timer-btn:hover { background: rgba(255,255,255,.12); }
+.timer-btn.go { background: var(--accent); color: #000; border-color: transparent; }
+.timer-btn.go:hover { filter: brightness(1.1); }
+
+/* ── Circuit summary ─────────────────────────── */
+.circuit-summary {
+  background: rgba(249,115,22,.06);
+  border: 1px solid rgba(249,115,22,.15);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.circuit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .85rem;
+  padding: 4px 0;
+}
+.circuit-row + .circuit-row { border-top: 1px solid var(--border-faint); }
+.circuit-val { font-weight: 600; color: var(--accent); }
+
+/* ── Finish banner ──────────────────────────── */
+#finishBanner {
+  display: none;
+  text-align: center;
+  padding: 32px 20px;
+  background: rgba(249,115,22,.1);
+  border: 1px solid rgba(249,115,22,.25);
+  border-radius: 16px;
+  margin-top: 24px;
+}
+#finishBanner.show { display: block; }
+.finish-title { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.finish-sub { font-size: .88rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="header-logo">🏋️ MC Training <span>· Driveway</span></div>
+    <div class="header-actions">
+      <a href="cat-custom.html" class="header-back">← Back</a>
+    </div>
+  </div>
+</header>
+
+<div class="page-wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">🏠</div>
+    <div>
+      <div class="hero-title">Driveway Demolition</div>
+      <div class="hero-sub">Outdoor circuit · No equipment needed</div>
+    </div>
+  </div>
+
+  <!-- Circuit overview -->
+  <div class="circuit-summary">
+    <div class="circuit-row"><span>Exercises</span><span class="circuit-val" id="totalEx">—</span></div>
+    <div class="circuit-row"><span>Completed sets</span><span class="circuit-val" id="doneSets">0</span></div>
+    <div class="circuit-row"><span>Total sets</span><span class="circuit-val" id="totalSets">—</span></div>
+    <div class="circuit-row"><span>Est. time</span><span class="circuit-val">~35 min</span></div>
+  </div>
+
+  <div id="drillList"></div>
+
+  <!-- Finish banner -->
+  <div id="finishBanner">
+    <div class="finish-title">🏠 Driveway Done!</div>
+    <div class="finish-sub">Great work. Log saved automatically.</div>
+    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <a href="cat-custom.html" class="btn btn-secondary btn-sm">← Back to Custom</a>
+      <a href="index.html" class="btn btn-primary btn-sm">🏠 Home</a>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Driveway Demolition — workout data + engine
+   ═══════════════════════════════════════════════ */
+
+const PAGE_ID = 'driveway-demolition';
+
+const DRILLS = [
+  {
+    name: 'Warm-Up Walk / Light Jog',
+    desc: 'Easy pace around the block or driveway laps',
+    sets: [
+      { label: 'Round 1', placeholder: 'min', defaultVal: '5' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Jumping Jacks',
+    desc: 'Full range, arms overhead',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps', defaultVal: '30' },
+      { label: 'Set 2', placeholder: 'reps', defaultVal: '30' },
+      { label: 'Set 3', placeholder: 'reps', defaultVal: '30' }
+    ],
+    timers: false
+  },
+  {
+    name: 'High Knees',
+    desc: 'Drive knees to hip height, fast cadence',
+    sets: [
+      { label: 'Set 1', placeholder: 'sec', defaultVal: '30' },
+      { label: 'Set 2', placeholder: 'sec', defaultVal: '30' },
+      { label: 'Set 3', placeholder: 'sec', defaultVal: '30' }
+    ],
+    timers: true
+  },
+  {
+    name: 'Bodyweight Squats',
+    desc: 'Feet shoulder-width, chest up, hip crease below knee',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps', defaultVal: '20' },
+      { label: 'Set 2', placeholder: 'reps', defaultVal: '20' },
+      { label: 'Set 3', placeholder: 'reps', defaultVal: '20' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Push-Ups',
+    desc: 'Hands just outside shoulder-width, body plank',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps', defaultVal: '15' },
+      { label: 'Set 2', placeholder: 'reps', defaultVal: '15' },
+      { label: 'Set 3', placeholder: 'reps', defaultVal: '12' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Reverse Lunges',
+    desc: 'Step back, front knee tracks over toe',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps/leg', defaultVal: '12' },
+      { label: 'Set 2', placeholder: 'reps/leg', defaultVal: '12' },
+      { label: 'Set 3', placeholder: 'reps/leg', defaultVal: '12' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Plank Hold',
+    desc: 'Forearms or straight arms, hips level',
+    sets: [
+      { label: 'Set 1', placeholder: 'sec', defaultVal: '45' },
+      { label: 'Set 2', placeholder: 'sec', defaultVal: '45' },
+      { label: 'Set 3', placeholder: 'sec', defaultVal: '45' }
+    ],
+    timers: true
+  },
+  {
+    name: 'Broad Jumps',
+    desc: 'Max horizontal distance, stick landing',
+    sets: [
+      { label: 'Set 1', placeholder: 'jumps', defaultVal: '8' },
+      { label: 'Set 2', placeholder: 'jumps', defaultVal: '8' },
+      { label: 'Set 3', placeholder: 'jumps', defaultVal: '6' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Sprint Intervals',
+    desc: 'Full effort sprint, walk back = rest',
+    sets: [
+      { label: 'Round 1', placeholder: 'sec', defaultVal: '20' },
+      { label: 'Round 2', placeholder: 'sec', defaultVal: '20' },
+      { label: 'Round 3', placeholder: 'sec', defaultVal: '20' },
+      { label: 'Round 4', placeholder: 'sec', defaultVal: '20' },
+      { label: 'Round 5', placeholder: 'sec', defaultVal: '20' }
+    ],
+    timers: true
+  },
+  {
+    name: 'Bear Crawl',
+    desc: 'Hands + feet, hips low, travel length of driveway',
+    sets: [
+      { label: 'Pass 1', placeholder: 'lengths', defaultVal: '2' },
+      { label: 'Pass 2', placeholder: 'lengths', defaultVal: '2' },
+      { label: 'Pass 3', placeholder: 'lengths', defaultVal: '2' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Step-Ups (curb or step)',
+    desc: 'Alternate legs, drive through heel',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps', defaultVal: '20' },
+      { label: 'Set 2', placeholder: 'reps', defaultVal: '20' },
+      { label: 'Set 3', placeholder: 'reps', defaultVal: '20' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Burpees',
+    desc: 'Squat thrust + jump, full extension at top',
+    sets: [
+      { label: 'Set 1', placeholder: 'reps', defaultVal: '10' },
+      { label: 'Set 2', placeholder: 'reps', defaultVal: '10' },
+      { label: 'Set 3', placeholder: 'reps', defaultVal: '8' }
+    ],
+    timers: false
+  },
+  {
+    name: 'Cool-Down Walk',
+    desc: 'Easy pace, deep breathing, full-body stretch',
+    sets: [
+      { label: 'Round 1', placeholder: 'min', defaultVal: '5' }
+    ],
+    timers: false
+  }
+];
+
+/* ── State ──────────────────────────────── */
+const state = {}; // { drillIdx: { setIdx: { val, done } } }
+const timers = {}; // { 'drill-set': intervalId }
+
+/* ── Counters ──────────────────────────── */
+const totalEx   = DRILLS.length;
+const totalSets = DRILLS.reduce((s, d) => s + d.sets.length, 0);
+document.getElementById('totalEx').textContent   = totalEx;
+document.getElementById('totalSets').textContent = totalSets;
+
+/* ── Render drills ─────────────────────── */
+function render() {
+  const list = document.getElementById('drillList');
+  list.innerHTML = '';
+
+  DRILLS.forEach((drill, di) => {
+    const card = document.createElement('div');
+    card.className = 'drill-card';
+    card.id = `dc-${di}`;
+
+    /* head */
+    const head = document.createElement('div');
+    head.className = 'drill-head';
+    head.innerHTML = `
+      <div class="drill-num">${di + 1}</div>
+      <div class="drill-info">
+        <div class="drill-name">${drill.name}</div>
+        <div class="drill-desc">${drill.desc}</div>
+        <div class="drill-meta"></div>
+      </div>
+      <div class="drill-chevron">▾</div>
+    `;
+    head.onclick = () => toggleCard(di);
+    card.appendChild(head);
+
+    /* body */
+    const body = document.createElement('div');
+    body.className = 'drill-body';
+
+    drill.sets.forEach((s, si) => {
+      const row = document.createElement('div');
+      row.className = 'set-row';
+
+      const saved = state[di]?.[si];
+      const val   = saved?.val ?? s.defaultVal;
+      const done  = saved?.done ?? false;
+
+      row.innerHTML = `
+        <span class="set-label">${s.label}</span>
+        <input class="set-input" type="number" inputmode="decimal"
+               placeholder="${s.placeholder}"
+               value="${val}"
+               onchange="updateVal(${di},${si},this.value)"/>
+        <button class="set-check ${done ? 'done' : ''}" onclick="toggleDone(${di},${si},this)">${done ? '✓' : ''}</button>
+      `;
+      body.appendChild(row);
+
+      /* timer strip */
+      if (drill.timers) {
+        const ts = document.createElement('div');
+        ts.className = 'timer-strip';
+        ts.id = `ts-${di}-${si}`;
+        ts.innerHTML = `
+          <div>
+            <div class="timer-display" id="td-${di}-${si}">${val}s</div>
+            <div class="timer-label">remaining</div>
+          </div>
+          <div class="timer-btns">
+            <button class="timer-btn go" onclick="startTimer(${di},${si})">▶ Start</button>
+            <button class="timer-btn" onclick="resetTimer(${di},${si})">↺</button>
+          </div>
+        `;
+        body.appendChild(ts);
+      }
+    });
+
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+}
+
+function toggleCard(di) {
+  const card = document.getElementById(`dc-${di}`);
+  card.classList.toggle('open');
+}
+
+/* ── Set logic ──────────────────────────── */
+function updateVal(di, si, v) {
+  if (!state[di]) state[di] = {};
+  if (!state[di][si]) state[di][si] = {};
+  state[di][si].val = v;
+  // update timer display
+  const td = document.getElementById(`td-${di}-${si}`);
+  if (td) td.textContent = v + 's';
+  autosave();
+}
+
+function toggleDone(di, si, btn) {
+  if (!state[di]) state[di] = {};
+  if (!state[di][si]) state[di][si] = {};
+  state[di][si].done = !state[di][si].done;
+  btn.classList.toggle('done');
+  btn.textContent = state[di][si].done ? '✓' : '';
+  updateProgress();
+  autosave();
+}
+
+function updateProgress() {
+  let done = 0;
+  Object.values(state).forEach(d => Object.values(d).forEach(s => { if (s.done) done++; }));
+  document.getElementById('doneSets').textContent = done;
+  if (done >= totalSets) showFinish();
+}
+
+/* ── Timers ─────────────────────────────── */
+function startTimer(di, si) {
+  const key = `${di}-${si}`;
+  if (timers[key]) return; // already running
+
+  const inp = document.querySelector(`#dc-${di} .drill-body .set-row:nth-child(${si*2+1}) input`);
+  let secs = parseInt(state[di]?.[si]?.val || DRILLS[di].sets[si].defaultVal || 30);
+  const td  = document.getElementById(`td-${di}-${si}`);
+
+  timers[key] = setInterval(() => {
+    secs--;
+    if (td) td.textContent = secs + 's';
+    if (secs <= 0) {
+      clearInterval(timers[key]);
+      delete timers[key];
+      _beep();
+    }
+  }, 1000);
+}
+
+function resetTimer(di, si) {
+  const key = `${di}-${si}`;
+  clearInterval(timers[key]);
+  delete timers[key];
+  const val = state[di]?.[si]?.val || DRILLS[di].sets[si].defaultVal || 30;
+  const td  = document.getElementById(`td-${di}-${si}`);
+  if (td) td.textContent = val + 's';
+}
+
+function _beep() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.setValueAtTime(.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .3);
+    osc.start(); osc.stop(ctx.currentTime + .3);
+  } catch(e) {}
+}
+
+/* ── Persist ────────────────────────────── */
+const SAVE_KEY = `mcWorkout_${PAGE_ID}`;
+
+function autosave() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), state }));
+}
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const { state: s } = JSON.parse(raw);
+    Object.assign(state, s);
+  } catch(e) {}
+}
+
+function showFinish() {
+  document.getElementById('finishBanner').classList.add('show');
+  showToast('Driveway complete! 🏠', 'success');
+}
+
+/* ── Toast ──────────────────────────────── */
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = type;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ── Init ───────────────────────────────── */
+loadSaved();
+render();
+updateProgress();
+</script>
+</body>
+</html>
