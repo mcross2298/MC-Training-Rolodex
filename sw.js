@@ -3,7 +3,7 @@
    Strategy: Cache-first for assets, network-first for data.
    ═══════════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'mc-training-v4';
+const CACHE_NAME = 'mc-training-v5';
 // Paths are relative to the SW scope so the app works on GitHub project
 // pages (served under /MC-Training-Rolodex/), not just a domain root.
 const STATIC_ASSETS = [

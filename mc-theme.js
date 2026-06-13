@@ -22,10 +22,6 @@
     mc:    '#d4af37',   // Mike Cross' Favorites — gold (brand default)
     bobw:  '#14b8a6',   // Best of Both Worlds — teal
     ie:    '#f97316',   // Iron & Engine — orange
-    stndr: '#1D9E75',   // STNDR — green
-    pump:  '#D85A30',   // Daily Pump — deep orange
-    gainz: '#378ADD',   // Daily Gainz — blue
-    psu:   '#639922',   // PSU Football — olive
     cond:  '#E24B4A'    // Conditioning — red
   };
   var DEFAULT = PALETTE.mc;
