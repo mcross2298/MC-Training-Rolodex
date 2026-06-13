@@ -1,0 +1,232 @@
+/* mc-summary.css — live Workout Summary */
+
+/* ── FINISH WORKOUT RECAP SHEET ──────────────────────────────────── */
+.fw-recap-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);
+  z-index:80;display:none;align-items:flex-end;
+}
+.fw-recap-overlay.open{display:flex;}
+.fw-recap-sheet{
+  width:100%;max-height:92vh;overflow-y:auto;
+  background:#0d0d0d;
+  border-radius:22px 22px 0 0;
+  border-top:1px solid rgba(255,255,255,0.1);
+  padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+  animation:recapSlideUp 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes recapSlideUp{
+  from{transform:translateY(100%);}
+  to{transform:translateY(0);}
+}
+
+/* drag handle */
+.fw-recap-handle{
+  width:36px;height:4px;border-radius:2px;
+  background:rgba(255,255,255,0.15);
+  margin:0 auto 22px;
+}
+
+/* header */
+.fw-recap-header{text-align:center;margin-bottom:22px;}
+.fw-recap-badge{font-size:36px;margin-bottom:10px;line-height:1;}
+.fw-recap-title{
+  font-size:22px;font-weight:900;color:#fff;
+  letter-spacing:-0.02em;margin-bottom:4px;
+}
+.fw-recap-sub{font-size:13px;color:#475569;letter-spacing:0.02em;}
+
+/* hero timer */
+.fw-recap-hero{
+  text-align:center;
+  padding:18px 0 16px;
+  border-top:1px solid rgba(255,255,255,0.06);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  margin-bottom:18px;
+}
+.fw-recap-hero-time{
+  font-size:52px;font-weight:900;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:1;
+}
+.fw-recap-hero-label{
+  font-size:11px;font-weight:800;letter-spacing:0.18em;
+  text-transform:uppercase;color:#475569;margin-top:6px;
+}
+
+/* 3 stat tiles */
+.fw-recap-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;margin-bottom:22px;
+}
+.fw-recap-stat{
+  border-radius:12px;padding:14px 8px;text-align:center;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.07);
+}
+.fw-recap-stat-val{
+  font-size:20px;font-weight:900;letter-spacing:-0.02em;
+  line-height:1;margin-bottom:5px;
+}
+.fw-recap-stat-label{
+  font-size:10px;font-weight:800;letter-spacing:0.12em;
+  text-transform:uppercase;color:#475569;
+}
+
+/* per-exercise rows */
+.fw-recap-rows{
+  border-radius:14px;overflow:hidden;
+  border:1px solid rgba(255,255,255,0.07);
+  margin-bottom:22px;
+}
+.fw-recap-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  background:rgba(255,255,255,0.02);
+}
+.fw-recap-row:last-child{border-bottom:none;}
+.fw-recap-row.fw-recap-done .fw-recap-row-name{
+  text-decoration:line-through;opacity:0.55;
+}
+.fw-recap-row-ico{font-size:16px;flex-shrink:0;width:22px;text-align:center;}
+.fw-recap-row-name{
+  flex:1;font-size:13px;font-weight:600;
+  color:#e2e8f0;line-height:1.3;
+}
+.fw-recap-row-sets{
+  font-size:12px;font-weight:800;text-align:right;flex-shrink:0;
+}
+
+/* actions */
+.fw-recap-actions{display:flex;gap:10px;}
+.fw-recap-cancel{
+  flex:1;padding:14px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;color:#64748b;
+  font-size:14px;font-weight:700;
+  cursor:pointer;font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.fw-recap-save{
+  flex:2;padding:14px;
+  border:none;border-radius:14px;
+  color:#000;font-size:15px;font-weight:900;
+  cursor:pointer;font-family:inherit;letter-spacing:0.02em;
+  -webkit-tap-highlight-color:transparent;
+}
+.fw-recap-save:active{opacity:0.85;transform:scale(0.98);}
+
+/* ── STAT BAR (sticky top — timer + sets counter) ─────────────────── */
+.prog-bar-wrap.mcs-stat{
+  height:46px;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  background:rgba(10,10,10,0.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding:0;
+}
+.mcs-stat-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px 5px;
+}
+.mcs-timer-wrap{display:flex;align-items:baseline;gap:5px;}
+.mcs-timer{
+  font-size:15px;font-weight:900;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:0.02em;
+}
+.mcs-timer-label{
+  font-size:10px;font-weight:700;color:#475569;
+  letter-spacing:0.1em;text-transform:uppercase;
+}
+.mcs-sets-wrap{display:flex;align-items:baseline;gap:4px;text-align:right;}
+.mcs-sets-live{
+  font-size:15px;font-weight:900;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.01em;
+}
+.mcs-sets-label{
+  font-size:10px;font-weight:700;color:#475569;
+  letter-spacing:0.1em;text-transform:uppercase;
+}
+/* Thin progress fill sits at the very bottom of the stat bar */
+.prog-bar-wrap.mcs-stat .prog-bar-fill{
+  height:3px;width:0;
+  background:linear-gradient(90deg,#22d3ee,#a78bfa);
+  transition:width 0.4s ease;border-radius:0;margin:0;
+}
+
+/* Push page content below the 46px stat bar AND the back-link, which is
+   relocated to top:54px (≈30px tall → bottom ≈84px) to sit under the bar.
+   74px only cleared the bar, so the pill overlapped the eyebrow/title. */
+body.mcs-stat-active .header{padding-top:94px;}
+body.mcs-stat-active .hero{padding-top:94px;}
+body.mcs-stat-active .back-link{top:54px;}
+
+/* ── SUMMARY CARD VISIBILITY (hidden by default, toggled open) ────── */
+body.mcs-stat-active .sum-section,
+body.mcs-stat-active .summary-section{
+  display:none;
+}
+body.mcs-stat-active .sum-section.mcs-open,
+body.mcs-stat-active .summary-section.mcs-open{
+  display:block;
+}
+
+/* ── SUMMARY BUTTON ACTIVE STATE ─────────────────────────────────── */
+.mcs-sumbtn{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;
+  padding:9px 12px;border-radius:10px;
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);
+  color:#cbd5e1;font-family:inherit;font-size:12px;font-weight:800;letter-spacing:0.03em;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;
+  transition:all 0.15s;
+}
+.mcs-sumbtn:active{transform:scale(0.96);background:rgba(255,255,255,0.12);}
+.mcs-sumbtn.mcs-btn-open{
+  background:rgba(var(--accent-rgb,212,175,55),0.15);
+  border-color:rgba(var(--accent-rgb,212,175,55),0.4);
+  color:var(--accent,#d4af37);
+}
+
+/* ── IN-CARD PROGRESS BAR ────────────────────────────────────────── */
+.mcs-progress{margin-bottom:16px;}
+.mcs-progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.mcs-progress-label{font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;}
+.mcs-progress-pct{font-size:14px;font-weight:900;color:#34d399;letter-spacing:-0.01em;}
+.mcs-progress-track{height:8px;border-radius:5px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.mcs-progress-fill{height:100%;width:0;border-radius:5px;
+  background:linear-gradient(90deg,#22d3ee,#34d399);transition:width 0.35s ease;}
+.sum-section.mcs-complete .mcs-progress-fill{background:linear-gradient(90deg,#34d399,#a3e635);}
+.sum-section.mcs-complete .mcs-progress-pct{color:#a3e635;}
+
+/* ── COMPLETED ROW STRIKE-THROUGH ────────────────────────────────── */
+.mcs-row-done .sum-nm,.mcs-row-done .sum-name{text-decoration:line-through;opacity:0.6;}
+.mcs-row-done .sum-ico,.mcs-row-done .sum-icon{filter:grayscale(1);opacity:0.55;}
+
+/* ── SAVED TODAY READOUT ─────────────────────────────────────────── */
+.mcs-today{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);
+  font-size:11px;font-weight:700;letter-spacing:0.02em;color:#34d399;}
+
+/* ── AUTO-BUILT SUMMARY CARD ─────────────────────────────────────── */
+.sum-section.mcs-auto{margin:28px 16px 96px;}
+
+/* ── PATH-B GENERATED CARD STYLES ───────────────────────────────── */
+.sum-section .sum-hd{font-size:11px;font-weight:900;letter-spacing:0.2em;
+  text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.sum-section .sum-card{border-radius:14px;padding:16px;margin-bottom:32px;}
+.sum-section .sum-sub{font-size:11px;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;margin:12px 0;opacity:0.85;}
+.sum-section .mcs-rows{margin-top:4px;}
+.sum-section .sum-row{display:flex;align-items:center;gap:10px;padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,0.05);}
+.sum-section .sum-row:last-of-type{border-bottom:none;}
+.sum-section .sum-ico{font-size:15px;width:22px;text-align:center;flex-shrink:0;}
+.sum-section .sum-nm{flex:1;font-size:12px;font-weight:600;color:#e2e8f0;line-height:1.3;}
+.sum-section .sum-dt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;}
+.sum-section .sum-st{font-size:11px;font-weight:800;text-align:right;}
+.sum-section .sum-rp{font-size:11px;font-weight:600;opacity:0.78;text-align:right;}
+.sum-section .sum-div{height:1px;margin:14px 0;}
+.sum-section .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.sum-section .sum-tot{border-radius:10px;padding:10px 8px;text-align:center;}
+.sum-section .sum-tv{font-size:14px;font-weight:900;letter-spacing:-0.01em;}
+.sum-section .sum-tl{font-size:11px;font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;margin-top:3px;opacity:0.75;}
