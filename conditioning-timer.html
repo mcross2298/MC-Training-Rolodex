@@ -13,6 +13,8 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
 #ivBody{flex:1;display:flex;flex-direction:column;max-width:560px;width:100%;margin:0 auto;padding:0 18px calc(20px + env(safe-area-inset-bottom));}
 .iv-missing{padding:60px 20px;text-align:center;color:#94a3b8;font-size:14px;font-weight:700;}
 .iv-missing a{color:var(--accent);}
+
+/* intro */
 #ivIntro{padding-top:10px;}
 .iv-intro-meta{font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:18px;}
 .iv-plan-row{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:#101010;
@@ -23,6 +25,8 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
   background:var(--accent);color:#fff;font-size:16px;font-weight:900;letter-spacing:0.04em;font-family:inherit;
   box-shadow:0 4px 24px rgba(var(--accent-rgb),0.35);-webkit-tap-highlight-color:transparent;}
 .iv-start:active{transform:scale(0.98);}
+
+/* run */
 #ivRun{display:none;flex:1;}
 #ivStage{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   background:#101010;border:1px solid rgba(var(--accent-rgb),0.3);border-radius:20px;
@@ -47,6 +51,8 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
   color:#e2e8f0;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .iv-btn:active{background:rgba(255,255,255,0.1);}
 #ivQuit{color:#f87171;border-color:rgba(239,68,68,0.25);}
+
+/* done */
 #ivDone{display:none;text-align:center;padding-top:40px;}
 .iv-done-ico{font-size:48px;margin-bottom:14px;}
 .iv-done-title{font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;}
@@ -58,6 +64,7 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
 .iv-home{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#e2e8f0;}
 </style>
 </head><body>
+
 <div class="iv-top">
   <button class="iv-back" id="ivBack">←</button>
   <div>
@@ -65,12 +72,14 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
     <div class="iv-tag" id="ivTag"></div>
   </div>
 </div>
+
 <div id="ivBody">
   <div id="ivIntro">
     <div class="iv-intro-meta" id="ivIntroMeta"></div>
     <div id="ivIntroPlan"></div>
     <button class="iv-start" id="ivStart">▶ Start</button>
   </div>
+
   <div id="ivRun">
     <div class="iv-dots" id="ivDots"></div>
     <div id="ivStage">
@@ -87,6 +96,7 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
       <button class="iv-btn" id="ivQuit">✕ End</button>
     </div>
   </div>
+
   <div id="ivDone">
     <div class="iv-done-ico">🏁</div>
     <div class="iv-done-title">Done. Logged.</div>
@@ -98,6 +108,7 @@ body{background:#0a0a0a;min-height:100vh;color:#e2e8f0;display:flex;flex-directi
     </div>
   </div>
 </div>
+
 <script src="conditioning-data.js"></script>
 <script src="mc-timer.js"></script>
 <script src="mc-cond.js"></script>

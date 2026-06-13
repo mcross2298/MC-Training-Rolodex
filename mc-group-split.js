@@ -21,8 +21,7 @@
 
    Safety: every card is transformed inside try/catch and only replaced if it
    parses into >= 2 named parts. Anything ambiguous is left exactly as-is, so a
-   parsing miss degrades to "no hop on that card", never a broken card. Only the
-   four STNDR pages load this file.
+   parsing miss degrades to "no hop on that card", never a broken card.
    ========================================================================== */
 (function () {
   if (window.__mcGroupSplit) return;

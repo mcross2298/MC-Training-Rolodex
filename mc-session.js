@@ -1,106 +1,189 @@
-/* ===============================================
-   mc-session.js  —  Session persistence engine
-   Handles save / load / clear of workout logs
-   stored in localStorage.
-   =============================================== */
+/* ==========================================================================
+   mc-session.js — smart mid-workout resume (Phase 1.4)
+   --------------------------------------------------------------------------
+   Persists the live session state of a workout page so a reload — including
+   the forced reload the service worker performs on every deploy — restores
+   exactly where the lifter was:
 
-'use strict';
+     • checked-off exercise cards (.ex-card/.ss-ex/.ex-item .checked)
+     • checked-off logger set rows (mc-setlog.js .mcl-ck.done)
+     • a still-running rest timer (re-armed from its wall-clock end time)
+     • the session start time (window.MCSession.startedTs — mc-summary.js
+       seeds its elapsed clock from this so duration survives reloads)
 
-/* ── Key helpers ─────────────────────────────── */
-const SESSION_PREFIX = 'mcSession_';
-const HISTORY_PREFIX = 'mcHistory_';
-const MAX_HISTORY    = 10;   // sessions kept per page
+   Storage: localStorage 'mc_session_v1' = { <pid>: {startedTs, lastTs,
+   cards:[ids], sets:[rowIds], timer:{endTs,rest,label}} }. Sessions older
+   than 12h are pruned. Synced across devices via mc-sync.js is intentionally
+   NOT done for this store — a live session is device-local by nature; the
+   cross-device "resume on your other phone" path stays mc_activity/mc-resume.
+   ========================================================================== */
+(function () {
+  if (window.__mcSession) return;
+  window.__mcSession = true;
 
-/**
- * Build a storage key for a given page ID + date.
- * @param {string} pageId   e.g. 'mc-s1-legs'
- * @param {string} [date]   ISO date string; defaults to today
- */
-function sessionKey(pageId, date) {
-  date = date ?? new Date().toISOString().slice(0, 10);
-  return `${SESSION_PREFIX}${pageId}_${date}`;
-}
+  var KEY = 'mc_session_v1';
+  var MAX_AGE = 12 * 3600 * 1000;
+  var PID = (window.MC_PID_OVERRIDE || location.pathname.split('/').pop().replace('.html', '') || 'page');
+  var CARD_SEL = '.ex-card, .ss-ex, .ex-item';
 
-/**
- * Save the current session log for a page.
- * @param {string} pageId
- * @param {object} data    Plain object — will be JSON-serialised
- */
-function saveSession(pageId, data) {
-  const key  = sessionKey(pageId);
-  const json = JSON.stringify({ ts: Date.now(), data });
-  try {
-    localStorage.setItem(key, json);
-    _pruneHistory(pageId);
-  } catch (e) {
-    console.warn('[mc-session] save failed', e);
+  function readAll() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+    catch (e) { return {}; }
   }
-}
-
-/**
- * Load today's session log for a page.
- * Returns null if nothing saved today.
- */
-function loadSession(pageId) {
-  const raw = localStorage.getItem(sessionKey(pageId));
-  if (!raw) return null;
-  try { return JSON.parse(raw).data; }
-  catch { return null; }
-}
-
-/**
- * Load the most-recent saved session (any date).
- * Useful for pre-filling weights from last workout.
- */
-function loadLastSession(pageId) {
-  const keys = _historyKeys(pageId).sort().reverse();
-  for (const k of keys) {
-    const raw = localStorage.getItem(k);
-    if (!raw) continue;
-    try { return JSON.parse(raw).data; }
-    catch { continue; }
+  function writeAll(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  function prune(s) {
+    var now = Date.now();
+    Object.keys(s).forEach(function (k) {
+      if (!s[k] || (now - (s[k].lastTs || 0)) > MAX_AGE) delete s[k];
+    });
+    return s;
   }
-  return null;
-}
 
-/**
- * Return an array of past sessions (newest first).
- * Each entry: { date, data }
- */
-function listSessions(pageId) {
-  return _historyKeys(pageId)
-    .sort().reverse()
-    .map(k => {
-      const raw = localStorage.getItem(k);
-      if (!raw) return null;
-      try {
-        const parsed = JSON.parse(raw);
-        const date   = k.replace(`${SESSION_PREFIX}${pageId}_`, '');
-        return { date, data: parsed.data, ts: parsed.ts };
-      } catch { return null; }
-    })
-    .filter(Boolean);
-}
-
-/**
- * Clear today's session (used by "Reset Workout" button).
- */
-function clearSession(pageId) {
-  localStorage.removeItem(sessionKey(pageId));
-}
-
-/* ── Private helpers ─────────────────────────── */
-function _historyKeys(pageId) {
-  const prefix = `${SESSION_PREFIX}${pageId}_`;
-  return Object.keys(localStorage).filter(k => k.startsWith(prefix));
-}
-
-function _pruneHistory(pageId) {
-  const keys = _historyKeys(pageId).sort(); // oldest first
-  while (keys.length > MAX_HISTORY) {
-    localStorage.removeItem(keys.shift());
+  // stable per-card key: data-id when present, else DOM position
+  function cardKey(card, all) {
+    return card.dataset.id || ('i' + Array.prototype.indexOf.call(all, card));
   }
-}
 
-/* ── Expose globally ─────────────────────────── */
-window.mcSession = { saveSession, loadSession, loadLastSession, listSessions, clearSession };
+  function capture() {
+    var all = document.querySelectorAll(CARD_SEL);
+    var cards = [];
+    Array.prototype.forEach.call(all, function (c) {
+      if (c.classList.contains('checked')) cards.push(cardKey(c, all));
+    });
+    var sets = [];
+    Array.prototype.forEach.call(document.querySelectorAll('.mcl-ck.done'), function (ck) {
+      var row = ck.closest('.mcl-row');
+      if (row && row.id) sets.push(row.id);
+    });
+    return { cards: cards, sets: sets };
+  }
+
+  var session = null;        // live state for this PID
+  var saveT = null;
+
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(function () {
+      var snap = capture();
+      var hasTimer = session && session.timer && session.timer.endTs > Date.now();
+      if (!snap.cards.length && !snap.sets.length && !hasTimer) {
+        // nothing in progress — drop any stale record for this page
+        var s0 = prune(readAll());
+        if (s0[PID]) { delete s0[PID]; writeAll(s0); }
+        return;
+      }
+      if (!session) session = { startedTs: Date.now() };
+      session.cards = snap.cards;
+      session.sets = snap.sets;
+      session.lastTs = Date.now();
+      var s = prune(readAll());
+      s[PID] = session;
+      writeAll(s);
+    }, 200);
+  }
+
+  // ---- restore ------------------------------------------------------------
+  function restoreCards() {
+    if (!session || !session.cards || !session.cards.length) return;
+    var all = document.querySelectorAll(CARD_SEL);
+    Array.prototype.forEach.call(all, function (c) {
+      if (session.cards.indexOf(cardKey(c, all)) !== -1) c.classList.add('checked');
+    });
+  }
+  function restoreSets() {
+    if (!session || !session.sets || !session.sets.length) return true;
+    var done = true;
+    session.sets.forEach(function (rowId) {
+      var row = document.getElementById(rowId);
+      if (!row) { done = false; return; }
+      var ck = row.querySelector('.mcl-ck');
+      if (ck && !ck.classList.contains('done')) {
+        ck.classList.add('done'); ck.textContent = '✓';
+        row.classList.add('done-row');
+      }
+    });
+    return done;
+  }
+  function restoreTimer() {
+    if (!session || !session.timer) return;
+    var remain = Math.round((session.timer.endTs - Date.now()) / 1000);
+    if (remain <= 0 || typeof TMR === 'undefined') { session.timer = null; return; }
+    try {
+      if (typeof buildTimerFloat === 'function') buildTimerFloat();
+      if (TMR.setTime) TMR.setTime(remain, session.timer.label || 'REST');
+    } catch (e) {}
+  }
+
+  // ---- record running rest timers (wall-clock, survives reload) -----------
+  function wrapTimers() {
+    if (typeof TMR === 'undefined') return;
+    var oStart = TMR.start, oSetTime = TMR.setTime, oStop = TMR.stop;
+    if (oStart) TMR.start = function (el, secs, name) {
+      noteTimer(secs, name);
+      return oStart.call(TMR, el, secs, name);
+    };
+    if (oSetTime) TMR.setTime = function (secs, label) {
+      if (!TMR.__mcsRestoring) noteTimer(secs, label);
+      return oSetTime.call(TMR, secs, label);
+    };
+    if (oStop) TMR.stop = function () {
+      if (session && session.timer) { session.timer = null; save(); }
+      return oStop.call(TMR);
+    };
+  }
+  function noteTimer(secs, label) {
+    if (!secs || secs <= 0) return;
+    if (!session) session = { startedTs: Date.now() };
+    session.timer = { endTs: Date.now() + secs * 1000, rest: secs, label: label || 'REST' };
+    save();
+  }
+
+  // ---- init ----------------------------------------------------------------
+  function init() {
+    if (!document.querySelector(CARD_SEL)) return;   // not a workout page
+
+    var s = prune(readAll());
+    session = s[PID] || null;
+    window.MCSession = { startedTs: session ? session.startedTs : 0 };
+
+    wrapTimers();
+
+    if (session) {
+      restoreCards();
+      // logger rows render asynchronously (mc-setlog retries up to ~2.6s)
+      var tries = 0;
+      (function tryRestore() {
+        if (restoreSets() || ++tries > 12) return;
+        setTimeout(tryRestore, 400);
+      })();
+      if (typeof TMR !== 'undefined') TMR.__mcsRestoring = true;
+      restoreTimer();
+      if (typeof TMR !== 'undefined') TMR.__mcsRestoring = false;
+    }
+
+    // event-driven capture: any check/uncheck (cards or set rows) persists
+    var mo = new MutationObserver(save);
+    mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('pagehide', function () {
+      clearTimeout(saveT);
+      // synchronous final write
+      var snap = capture();
+      if (!snap.cards.length && !snap.sets.length) return;
+      if (!session) session = { startedTs: Date.now() };
+      session.cards = snap.cards; session.sets = snap.sets; session.lastTs = Date.now();
+      var st = prune(readAll()); st[PID] = session; writeAll(st);
+    });
+
+    // finishing a workout ends the session — stop resuming it
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('fw-confirm')) {
+        var st = readAll();
+        if (st[PID]) { delete st[PID]; writeAll(st); }
+        session = null;
+      }
+    }, true);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();

@@ -1,40 +1,48 @@
-/* ===============================================
-   mc-backup-status.js
-   Shows a subtle backup-age indicator in the
-   header of any page that includes this script.
-   =============================================== */
-
-'use strict';
-
+/* ==========================================================================
+   mc-backup-status.js — "Backed up · 2m ago" indicator
+   --------------------------------------------------------------------------
+   Fills any #backupStatus placeholder with the live cloud-backup state from
+   mc-sync.js. Signed out → shows nothing (the app is local-only by design).
+   Requires mc-supabase.js + mc-sync.js to be loaded first.
+   ========================================================================== */
 (function () {
-  const KEY = 'mcLastExport';
+  var el = document.getElementById('backupStatus');
+  if (!el) return;
 
-  function _render() {
-    const ts = localStorage.getItem(KEY);
-    if (!ts) return;                       // never exported — silent
-
-    const age  = Date.now() - Number(ts);
-    const days = Math.floor(age / 86_400_000);
-    if (days < 7) return;                  // fresh — no warning
-
-    const el = document.createElement('div');
-    el.id = 'backupBadge';
-    el.style.cssText = [
-      'position:fixed', 'bottom:72px', 'right:12px',
-      'background:#1e293b', 'border:1px solid rgba(249,115,22,.4)',
-      'color:#fb923c', 'font-size:.72rem', 'font-weight:600',
-      'padding:6px 10px', 'border-radius:10px', 'z-index:500',
-      'cursor:pointer', 'box-shadow:0 4px 12px rgba(0,0,0,.5)'
-    ].join(';');
-    el.textContent = `⚠️ Backup ${days}d ago`;
-    el.title = 'Tap to go to Import/Export';
-    el.onclick = () => location.href = 'import.html';
-    document.body.appendChild(el);
+  function ago(ts) {
+    var s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 60) return 'just now';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    var h = Math.round(m / 60);
+    if (h < 24) return h + 'h ago';
+    return Math.round(h / 24) + 'd ago';
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _render);
-  } else {
-    _render();
+  function render() {
+    if (!window.MC_SYNC || !MC_SYNC.status) return;
+    var st = MC_SYNC.status();
+    if (!st.signedIn) { el.style.display = 'none'; return; }
+    var txt, color;
+    if (st.pending > 0) {
+      txt = '☁️ Backing up…';
+      color = '#94a3b8';
+    } else if (st.lastPush || st.lastPull) {
+      txt = '☁️ Backed up · ' + ago(Math.max(st.lastPush, st.lastPull));
+      color = '#34d399';
+    } else {
+      txt = '☁️ Sync ready';
+      color = '#94a3b8';
+    }
+    el.style.display = 'block';
+    el.style.cssText += ';display:block;text-align:center;font-size:11px;font-weight:700;'
+      + 'letter-spacing:0.04em;padding:6px 0;color:' + color + ';';
+    el.textContent = txt;
   }
+
+  render();
+  setInterval(render, 15000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') render();
+  });
 })();

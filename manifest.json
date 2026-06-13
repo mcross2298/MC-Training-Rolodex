@@ -1,20 +1,24 @@
 {
   "name": "Mike Cross Training",
   "short_name": "MC Training",
-  "description": "Workout programs — STNDR, PMC, Daily Pump, Daily Gainz, and more",
+  "description": "Workout programs, conditioning and custom builders \u2014 strength training in your pocket",
   "start_url": "./dashboard.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
-  "categories": ["health", "fitness", "sports"],
+  "categories": [
+    "health",
+    "fitness",
+    "sports"
+  ],
   "icons": [
     {
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "screenshots": [],
