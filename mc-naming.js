@@ -41,10 +41,6 @@
     if (/^mc-/.test(pageId))  return 'mc';
     if (/^ss-/.test(pageId) || /^cat-strength/.test(pageId)) return 'ss';
     if (/^bobw-/.test(pageId)) return 'bobw';
-    if (/^stndr-/.test(pageId)) return 'stndr';
-    if (/^pump-/.test(pageId)) return 'pump';
-    if (/^gainz-/.test(pageId)) return 'gainz';
-    if (/^psu-/.test(pageId)) return 'psu';
     return null;
   }
 
