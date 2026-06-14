@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MC Training</title>
+<link rel="stylesheet" href="base.css?v=65"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MC Training"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<!-- Load the shared nav module on the hub too. It renders no second nav here
+     (build() bails when a native .tab-bar exists), but its PWA cold-launch
+     guard must run on the dashboard so the launch is "claimed" (mc_launched
+     session flag set) at the true entry point. Without this, the flag was only
+     set on the first sub-page that loaded mc-nav.js, so the first navigation
+     off the dashboard was mis-read as a stale cold-launch and bounced straight
+     back — the "click Programs, it reverts to dashboard, works on 2nd try" bug. -->
+<script src="mc-nav.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0a0a0a;
+  --surface:#111;
+  --surface2:#161616;
+  --border:rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.1);
+  --gold:#d4af37;
+  --gold-dim:rgba(212,175,55,0.15);
+  --gold-glow:rgba(212,175,55,0.25);
+  --text:#fff;
+  --muted:#9ca3af;
+  --muted2:#64748b;
+  --tab-h:64px;
+}
+body{background:var(--bg);min-height:100vh;color:var(--text);padding-bottom:var(--tab-h);}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:calc(100vh - var(--tab-h));padding-bottom:24px;}
+.screen.active{display:block;}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 18px 12px;
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(to bottom, var(--bg) 80%, transparent);
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.avatar{
+  width:42px;height:42px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#d4af37,#8a6a10);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;color:#000;letter-spacing:0.5px;
+  border:1.5px solid rgba(212,175,55,0.4);
+}
+.topbar-title{font-size:19px;font-weight:900;color:var(--text);letter-spacing:-0.02em;}
+.topbar-sub{font-size:12px;color:var(--muted2);margin-top:1px;}
+.topbar-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+
+/* ── SECTION HEADERS ── */
+.sec-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;margin-bottom:12px;
+}
+.sec-title{font-size:20px;font-weight:900;letter-spacing:-0.02em;color:var(--text);}
+.sec-link{font-size:13px;color:var(--gold);font-weight:700;cursor:pointer;letter-spacing:0.02em;}
+
+/* ── HERO CARD ── */
+.hero-wrap{padding:0 18px;margin-bottom:28px;}
+
+.hero-empty{
+  border-radius:18px;border:1.5px dashed rgba(255,255,255,0.1);
+  padding:36px 20px;text-align:center;cursor:pointer;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  background:var(--surface);
+}
+.hero-empty:active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);}
+.hero-empty-icon{font-size:30px;margin-bottom:12px;}
+.hero-empty-title{font-size:16px;font-weight:900;color:var(--text);margin-bottom:6px;letter-spacing:-0.01em;}
+.hero-empty-sub{font-size:13px;color:var(--muted2);}
+.hero-empty-btn{
+  display:inline-block;margin-top:16px;padding:10px 24px;
+  background:var(--gold);color:#000;border-radius:10px;
+  font-size:13px;font-weight:900;letter-spacing:0.03em;
+}
+
+.hero-card{
+  border-radius:18px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#0a1628,#020b18);
+  border:1px solid rgba(212,175,55,0.25);
+  box-shadow:0 4px 20px rgba(212,175,55,0.15);
+  cursor:pointer;display:none;
+  transition:box-shadow 0.15s;
+}
+.hero-card:active{box-shadow:0 0 0 2px var(--gold),0 0 24px var(--gold-glow);}
+.hero-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 20% 50%,rgba(212,175,55,0.08) 0%,transparent 60%);
+}
+.hero-inner{padding:22px 20px 20px;position:relative;}
+.hero-top-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.hero-badge{
+  background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);
+  border-radius:20px;padding:4px 12px;
+  font-size:11px;font-weight:800;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;
+}
+.hero-ring{
+  width:56px;height:56px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,0.08);
+  border-top-color:var(--gold);border-right-color:var(--gold);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  transition:border-top-color 0.3s,border-right-color 0.3s;
+}
+.hero-ring-num{font-size:17px;font-weight:900;color:var(--gold);line-height:1;}
+.hero-ring-lbl{font-size:11px;color:var(--muted2);font-weight:700;letter-spacing:0.08em;}
+.hero-name{font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--text);line-height:1.2;margin-bottom:6px;}
+.hero-desc{font-size:13px;color:var(--muted2);line-height:1.5;margin-bottom:14px;}
+.hero-phases{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
+.phase-pill{
+  padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;
+  border:1.5px solid rgba(255,255,255,0.1);color:var(--muted2);
+  background:rgba(255,255,255,0.04);
+}
+.phase-pill.active{background:var(--gold);color:#000;border-color:var(--gold);}
+.hero-tap{font-size:11px;color:var(--muted2);font-weight:600;letter-spacing:0.04em;margin-top:10px;}
+
+/* ── TOOLS GRID ── */
+.tools-wrap{padding:0 18px;margin-bottom:28px;}
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.tool-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:16px;padding:16px 14px;cursor:pointer;
+  transition:border-color 0.15s,box-shadow 0.15s;
+  text-decoration:none;color:inherit;display:block;
+}
+.tool-card:active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 12px var(--gold-dim);}
+.tool-icon-wrap{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--surface2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;margin-bottom:10px;
+}
+.tool-card.gold .tool-icon-wrap{
+  background:rgba(212,175,55,0.08);border-color:rgba(212,175,55,0.2);
+}
+.tool-name{font-size:14px;font-weight:800;color:var(--text);margin-bottom:3px;letter-spacing:-0.01em;}
+.tool-sub{font-size:11px;color:var(--muted2);line-height:1.4;}
+
+/* ── OFFLINE / UPDATE BANNERS ── */
+.offline-bar{display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);
+  border-radius:10px;padding:8px 14px;margin:0 18px 16px;font-size:12px;font-weight:700;
+  color:#f87171;text-align:center;letter-spacing:0.04em;}
+.offline-bar.show{display:block;}
+.sw-update{display:none;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);
+  border-radius:10px;padding:8px 14px;margin:0 18px 16px;font-size:12px;font-weight:700;
+  color:#34d399;text-align:center;cursor:pointer;letter-spacing:0.04em;}
+.sw-update.show{display:block;}
+
+/* ── PROGRAMS SCREEN (mirrors index.html) ── */
+.prog-screen-inner{max-width:680px;margin:0 auto;padding:0 18px;}
+.prog-header{text-align:center;margin-bottom:28px;padding-top:8px;}
+.prog-eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#a78bfa;text-transform:uppercase;margin-bottom:8px;}
+.prog-title{font-size:30px;font-weight:900;color:var(--text);letter-spacing:-0.02em;line-height:1.1;}
+.prog-sub{font-size:13px;color:var(--muted);margin-top:6px;}
+
+/* Reuse exact cat-card styles from index.html */
+.cat-card{display:block;text-decoration:none;color:inherit;border-radius:18px;padding:15px 18px;margin-bottom:11px;position:relative;overflow:hidden;transition:box-shadow 0.15s;border:1px solid rgba(255,255,255,0.06);}
+.cat-card:active{box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);opacity:0.9;}
+.cat-card.faint{background:linear-gradient(135deg,#7f1d1d,#0a0000);box-shadow:0 4px 20px rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);border-top:3px solid #E24B4A;}
+.cat-card.pmc{background:linear-gradient(135deg,#1e0a3c,#0d0618);box-shadow:0 4px 20px rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.3);border-top:3px solid #7F77DD;}
+.cat-card.mc{background:linear-gradient(135deg,#0a1628,#020b18);box-shadow:0 4px 20px rgba(212,175,55,0.15);border-color:rgba(212,175,55,0.25);border-top:3px solid #d4af37;}
+.cat-card.ss{background:linear-gradient(135deg,#2a0710,#0d0205);box-shadow:0 4px 20px rgba(225,29,72,0.15);border-color:rgba(225,29,72,0.3);border-top:3px solid #e11d48;}
+.cat-card.ss .cat-tag{background:rgba(225,29,72,0.2);color:#fb7185;border:1px solid rgba(225,29,72,0.35);}
+.cat-card.ss .cat-designer{color:#fb7185;}
+.cat-card.bobw{background:linear-gradient(135deg,#04201c,#020b09);box-shadow:0 4px 20px rgba(20,184,166,0.15);border-color:rgba(20,184,166,0.3);border-top:3px solid #14b8a6;}
+.cat-card.bobw .cat-tag{background:rgba(20,184,166,0.18);color:#5eead4;border:1px solid rgba(20,184,166,0.35);}
+.cat-card.bobw .cat-designer{color:#5eead4;}
+.cat-card.ie{background:linear-gradient(135deg,#1a1206,#0a0a0a);box-shadow:0 4px 20px rgba(249,115,22,0.15);border-color:rgba(249,115,22,0.3);border-top:3px solid #f97316;}
+.cat-card.ie .cat-tag{background:rgba(249,115,22,0.18);color:#fdba74;border:1px solid rgba(249,115,22,0.35);}
+.cat-card.ie .cat-designer{color:#fdba74;}
+.cat-card.bonus{background:linear-gradient(135deg,#0c4a6e,#04141f);box-shadow:0 4px 20px rgba(56,189,248,0.15);border-color:rgba(56,189,248,0.3);border-top:3px solid #38bdf8;}
+.cat-card.bonus .cat-tag{background:rgba(56,189,248,0.18);color:#7dd3fc;border:1px solid rgba(56,189,248,0.35);}
+.cat-card.bonus .cat-designer{color:#7dd3fc;}
+.cat-icon{position:absolute;right:18px;top:15px;font-size:30px;opacity:0.18;}
+.cat-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:0.14em;padding:3px 9px;border-radius:5px;text-transform:uppercase;margin-bottom:8px;}
+.cat-card.faint .cat-tag{background:rgba(239,68,68,0.22);color:#fca5a5;border:1px solid rgba(239,68,68,0.45);}
+.cat-card.pmc .cat-tag{background:rgba(139,92,246,0.2);color:#c084fc;border:1px solid rgba(139,92,246,0.35);}
+.cat-card.mc .cat-tag{background:rgba(212,175,55,0.12);color:#d4af37;border:1px solid rgba(212,175,55,0.3);}
+.cat-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-0.01em;padding-right:44px;}
+.cat-meta{font-size:13px;color:#cbd5e1;line-height:1.5;padding-right:44px;
+  display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.cat-count{margin-top:7px;display:inline-block;font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+.cat-designer{margin-top:7px;font-size:11px;font-weight:700;letter-spacing:0.03em;opacity:0.8;display:flex;align-items:center;gap:5px;}
+.cat-card.faint .cat-designer{color:#fca5a5;}
+.cat-card.pmc .cat-designer{color:#c084fc;}
+.cat-card.mc .cat-designer{color:#d4af37;}
+
+
+/* ── Strength & Supersets — flagship elite card ── */
+.cat-card.ss{border-top-width:3px;animation:ssEdge 4.2s ease-in-out infinite;}
+@keyframes ssEdge{
+  0%,100%{box-shadow:0 4px 20px rgba(225,29,72,0.15);}
+  50%{box-shadow:0 6px 30px rgba(225,29,72,0.34),0 0 0 1px rgba(225,29,72,0.18);}
+}
+/* breathing ambient glow behind the content */
+.ss-glow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 18% 0%,rgba(225,29,72,0.22) 0%,transparent 58%);
+  animation:ssGlow 4.6s ease-in-out infinite;}
+@keyframes ssGlow{0%,100%{opacity:0.55;}50%{opacity:1;}}
+.ss-sheen{position:absolute;top:0;left:-65%;width:48%;height:100%;pointer-events:none;
+  background:linear-gradient(105deg,transparent,rgba(251,113,133,0.16),transparent);
+  transform:skewX(-18deg);animation:ssSheen 6.2s ease-in-out infinite;}
+@keyframes ssSheen{0%{left:-65%;}58%,100%{left:150%;}}
+.cat-card.ss .cat-icon{animation:ssPulse 3.6s ease-in-out infinite;}
+@keyframes ssPulse{0%,100%{opacity:0.18;transform:scale(1);}50%{opacity:0.4;transform:scale(1.08) translateY(-1px);}}
+/* flagship tag — headline framing */
+.cat-card.ss .cat-tag.ss-flag{background:rgba(225,29,72,0.22);color:#fda4af;
+  border:1px solid rgba(225,29,72,0.45);box-shadow:0 0 14px rgba(225,29,72,0.2);}
+@media (prefers-reduced-motion: reduce){
+  .cat-card.ss,.ss-glow,.ss-sheen,.cat-card.ss .cat-icon{animation:none;}
+  .ss-sheen{display:none;}
+  .ss-glow{opacity:0.7;}
+}
+
+/* ── Tier labels — frame Flagship as the headline, Influencer as secondary ── */
+.tier-label{display:flex;align-items:center;gap:10px;margin:0 0 12px;
+  font-size:11px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);}
+.tier-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
+.tier-label.flag{color:var(--gold);}
+.tier-label.influencer{margin-top:24px;}
+
+/* ── Influencer tier — compact cards. 1-col on phones (keeps a readable
+      one-line description), 2-col grid on wider screens to cut vertical space ── */
+.influencer-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+@media (min-width:560px){.influencer-grid{grid-template-columns:1fr 1fr;}}
+.influencer-grid .cat-card{margin-bottom:0;padding:13px 16px;border-radius:14px;}
+.influencer-grid .cat-icon{font-size:26px;right:14px;top:13px;}
+.influencer-grid .cat-tag{font-size:10px;padding:2px 7px;margin-bottom:6px;letter-spacing:0.1em;}
+.influencer-grid .cat-name{font-size:17px;margin-bottom:3px;padding-right:34px;}
+.influencer-grid .cat-meta{font-size:12px;line-height:1.45;padding-right:8px;
+  display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.influencer-grid .cat-count{margin-top:6px;}
+.influencer-grid .cat-designer{margin-top:5px;}
+
+/* Exercise library link */
+.lib-link{display:flex;align-items:center;gap:12px;background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.22);border-radius:14px;padding:14px 16px;text-decoration:none;color:#e2e8f0;margin-bottom:20px;}
+.lib-link:active{background:rgba(212,175,55,0.12);}
+.lib-name{font-size:14px;font-weight:900;color:#fbbf24;}
+.lib-sub{font-size:11px;color:var(--muted2);font-weight:600;margin-top:2px;}
+
+/* ── BOTTOM TAB BAR ── */
+.tab-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:var(--tab-h);
+  background:rgba(10,10,10,0.96);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;z-index:50;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;
+  font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+  color:var(--muted2);transition:color 0.15s;
+}
+.tab.active{color:var(--gold);}
+.tab-icon{font-size:20px;line-height:1;}
+
+/* ── PROGRAM SELECT SHEET ── */
+.ps-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:none;align-items:flex-end;z-index:60;
+}
+.ps-overlay.open{display:flex;}
+.ps-sheet{
+  width:100%;background:#0e0e0e;
+  border-top:1px solid rgba(255,255,255,0.1);
+  border-radius:24px 24px 0 0;
+  padding:20px 18px calc(40px + env(safe-area-inset-bottom));
+  max-height:85vh;overflow-y:auto;
+}
+.ps-handle{width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;}
+.ps-title{font-size:18px;font-weight:900;margin-bottom:3px;letter-spacing:-0.01em;}
+.ps-sub{font-size:13px;color:var(--muted2);margin-bottom:18px;}
+.ps-card{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
+  margin-bottom:8px;cursor:pointer;
+  background:var(--surface);transition:all 0.15s;
+  position:relative;
+}
+.ps-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;background:var(--prog-color,var(--gold));}
+.ps-card:active{background:var(--surface2);}
+.ps-card.sel{border-color:var(--prog-color,var(--gold));background:var(--surface2);}
+.ps-icon{font-size:22px;width:38px;text-align:center;flex-shrink:0;}
+.ps-info{flex:1;min-width:0;}
+.ps-name{font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ps-meta{font-size:11px;color:var(--muted2);margin-top:2px;}
+.ps-check{
+  width:22px;height:22px;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.12);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:11px;font-weight:900;
+  transition:all 0.15s;
+}
+.ps-card.sel .ps-check{background:var(--prog-color,var(--gold));border-color:var(--prog-color,var(--gold));color:#000;}
+.ps-confirm{
+  width:100%;padding:14px;background:var(--gold);border:none;
+  border-radius:14px;color:#000;font-size:15px;font-weight:900;
+  cursor:pointer;font-family:inherit;letter-spacing:0.03em;margin-top:12px;
+}
+.ps-confirm:active{opacity:0.85;}
+
+/* ── Conditioning tab (Phase 1) — accent colors applied inline by JS ── */
+.cond-sub{margin-bottom:26px;}
+.cond-sub-head{display:flex;align-items:center;gap:10px;margin:18px 0 12px;}
+.cond-sub-icon{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+}
+.cond-sub-name{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.cond-sub-blurb{font-size:12px;color:var(--muted);margin-top:2px;}
+.cond-card{
+  display:block;text-decoration:none;color:inherit;position:relative;
+  border-radius:16px;padding:16px 18px;margin-bottom:11px;overflow:hidden;
+  background:var(--surface);border:1px solid rgba(255,255,255,0.08);
+  transition:transform 0.15s;
+}
+.cond-card:active{transform:scale(0.985);}
+.cond-tag{font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#E24B4A;margin-bottom:6px;}
+.cond-name{font-size:17px;font-weight:900;color:var(--text);margin-bottom:5px;padding-right:28px;}
+.cond-meta{font-size:12px;color:var(--muted);line-height:1.5;}
+.cond-stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.cond-stat{font-size:11px;font-weight:700;color:#cbd5e1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:4px 10px;}
+.cond-arrow{position:absolute;right:16px;top:16px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);}
+.cond-ex-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.cond-ex-item{font-size:12px;font-weight:700;color:#cbd5e1;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 12px;}
+
+/* ── Custom Workouts section (Build Your Own) ── */
+.custom-section{margin-bottom:28px;}
+.custom-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.custom-section-title{display:flex;align-items:center;gap:10px;}
+.custom-section-icon{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);}
+.custom-section-name{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.custom-section-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.custom-build-btn-sm{font-size:12px;font-weight:800;color:var(--gold);letter-spacing:0.02em;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;}
+
+/* Empty state */
+.custom-empty{border-radius:16px;border:1.5px dashed rgba(212,175,55,0.2);padding:32px 20px;text-align:center;background:rgba(212,175,55,0.03);}
+.custom-empty-icon{font-size:28px;margin-bottom:10px;}
+.custom-empty-title{font-size:15px;font-weight:900;color:var(--text);margin-bottom:5px;}
+.custom-empty-sub{font-size:12px;color:var(--muted2);margin-bottom:18px;line-height:1.5;}
+.custom-build-btn{display:inline-block;padding:12px 24px;background:var(--gold);color:#000;border-radius:12px;font-size:13px;font-weight:900;letter-spacing:0.03em;cursor:pointer;text-decoration:none;}
+
+/* Saved workout cards */
+.custom-wk-card{
+  border-radius:16px;padding:16px;margin-bottom:10px;
+  background:linear-gradient(135deg,rgba(212,175,55,0.08),var(--surface));
+  border:1px solid rgba(212,175,55,0.2);
+  transition:transform 0.15s;
+}
+.custom-wk-card:active{transform:scale(0.985);}
+.custom-wk-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.custom-wk-name{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.custom-wk-badge{font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:rgba(212,175,55,0.12);color:var(--gold);border:1px solid rgba(212,175,55,0.3);}
+.custom-wk-meta{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.custom-wk-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.custom-wk-pill{font-size:11px;font-weight:700;color:#cbd5e1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:3px 9px;}
+.custom-wk-actions{display:flex;gap:8px;}
+.custom-wk-run{flex:1;padding:11px;border-radius:11px;background:var(--gold);border:none;color:#000;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:0.02em;}
+.custom-wk-run:active{opacity:0.85;}
+.custom-wk-edit{padding:11px 16px;border-radius:11px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+.custom-wk-edit:active{border-color:var(--gold);color:var(--gold);}
+.custom-wk-del{padding:11px 14px;border-radius:11px;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);color:#f87171;font-size:13px;cursor:pointer;font-family:inherit;}
+.custom-wk-del:active{background:rgba(239,68,68,0.15);}
+</style>
+<script src="mc-theme.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     DASHBOARD SCREEN
+══════════════════════════════════════ -->
+<div class="screen active" id="scr-dashboard">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="avatar">MC</div>
+      <div>
+        <div class="topbar-title">Workout</div>
+        <div class="topbar-sub" id="todayDate"></div>
+      </div>
+    </div>
+    <div class="topbar-icon">📅</div>
+    <div id="pmUnlockBtn" onclick="if(window.MC_PM)MC_PM.unlock();" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0.15;font-size:18px;-webkit-tap-highlight-color:transparent;">🔐</div>
+  </div>
+
+  <div id="offlineBar" class="offline-bar">📵 Offline — showing cached content</div>
+  <div id="swUpdate" class="sw-update" onclick="doSwUpdate()">🔄 Update available — tap to reload</div>
+
+  <!-- Current Program -->
+  <div class="sec-header">
+    <div class="sec-title">Current Program</div>
+    <div class="sec-link" onclick="openProgSelect()">See all</div>
+  </div>
+  <div class="hero-wrap">
+
+    <div class="hero-empty" id="heroEmpty" onclick="openProgSelect()">
+      <div class="hero-empty-icon">⚡</div>
+      <div class="hero-empty-title">No active program set</div>
+      <div class="hero-empty-sub">Open any program below and tap 'Set as Active' to pin it here.</div>
+      <div class="hero-empty-btn">Choose Program</div>
+    </div>
+
+    <div class="hero-card" id="heroCard" onclick="openProgSelect()">
+      <div class="hero-glow"></div>
+      <div class="hero-inner">
+        <div class="hero-top-row">
+          <div class="hero-badge" id="heroBadge">Active</div>
+          <div class="hero-ring" id="heroRing">
+            <div class="hero-ring-num" id="heroDay">—</div>
+            <div class="hero-ring-lbl">SPLIT</div>
+          </div>
+        </div>
+        <div class="hero-name" id="heroName"></div>
+        <div class="hero-desc" id="heroDesc"></div>
+        <div class="hero-phases" id="heroPhases"></div>
+        <div class="hero-tap">Tap to change program →</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Weekly recap (filled by mc-recap.js when there's history) -->
+  <div id="recapCard"></div>
+
+  <!-- Training Tools -->
+  <div class="sec-header">
+    <div class="sec-title">Training Tools</div>
+  </div>
+  <div class="tools-wrap">
+    <div class="tools-grid">
+      <a href="exercise-library.html" class="tool-card gold">
+        <div class="tool-icon-wrap">📚</div>
+        <div class="tool-name">Exercise Library</div>
+        <div class="tool-sub" id="libCountDash">539 exercises by muscle group</div>
+      </a>
+      <a href="workout-logs.html" class="tool-card">
+        <div class="tool-icon-wrap">📊</div>
+        <div class="tool-name">Workout Logs</div>
+        <div class="tool-sub">Full logging history + PRs</div>
+      </a>
+      <a href="stats.html" class="tool-card gold">
+        <div class="tool-icon-wrap">📈</div>
+        <div class="tool-name">Stats</div>
+        <div class="tool-sub">Volume, PRs, tonnage, consistency</div>
+      </a>
+      <a href="build-workout.html" class="tool-card">
+        <div class="tool-icon-wrap">🔧</div>
+        <div class="tool-name">Build Your Own</div>
+        <div class="tool-sub">Create workouts from the library</div>
+      </a>
+      <a href="build-program.html" class="tool-card">
+        <div class="tool-icon-wrap">🧩</div>
+        <div class="tool-name">Program Builder</div>
+        <div class="tool-sub">Multi-week custom programs</div>
+      </a>
+      <a href="program-guide.html" class="tool-card gold">
+        <div class="tool-icon-wrap">📋</div>
+        <div class="tool-name">Program Guide</div>
+        <div class="tool-sub">Instructions for every program</div>
+      </a>
+      <a href="quick-tour.html" class="tool-card gold" id="quickTourCard" style="grid-column:1 / -1;">
+        <div class="tool-icon-wrap">🎬</div>
+        <div class="tool-name">Quick Tour <span id="tourBadge" style="display:none;font-size:11px;font-weight:900;letter-spacing:0.08em;color:#000;background:var(--gold);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:middle;">NEW</span></div>
+        <div class="tool-sub">3-min guided walkthrough of the whole app</div>
+      </a>
+    </div>
+  </div>
+
+  <div id="backupStatus" style="display:none;"></div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     PROGRAMS SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="scr-programs">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Programs</div>
+      <div class="topbar-sub">9 training programs</div>
+    </div>
+  </div>
+  <div class="prog-screen-inner">
+
+    <div class="tier-label flag">★ Flagship Programs</div>
+
+    <div class="prog-cards lay-stack" id="flagGrid">
+    <a href="cat-strength.html" class="cat-card ss">
+      <span class="ss-glow"></span>
+      <span class="ss-sheen"></span>
+      <span class="cat-icon">🏋️</span>
+      <div class="cat-tag ss-flag">★ Flagship · Strength · Supersets</div>
+      <div class="cat-name">Strength &amp; Supersets</div>
+      <div class="cat-meta">Heavy low-rep compounds paired with high-volume supersets and AMRAP finishers for raw strength and size.</div>
+      <div class="cat-count">6-Week Cycle · 5 Days →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>
+
+    <a href="cat-pmc.html" class="cat-card pmc">
+      <span class="pmc-glow"></span>
+      <span class="pmc-sheen"></span>
+      <span class="cat-icon">⚡</span>
+      <div class="cat-tag pmc-flag">★ Flagship · Muscle Confusion · Advanced</div>
+      <div class="cat-name">Project Muscle Confusion</div>
+      <div class="cat-meta">Constantly varied supersets, pyramids, drop sets, AMRAP and tempo work that never lets your muscles adapt.</div>
+      <div class="cat-count">7 Splits →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>
+
+    <a href="cat-mc.html" class="cat-card mc">
+      <span class="mc-glow"></span>
+      <span class="mc-sheen"></span>
+      <span class="cat-icon">👑</span>
+      <div class="cat-tag mc-flag">★ Flagship · Personal · All Styles</div>
+      <div class="cat-name">Mike Cross' Favorite Splits</div>
+      <div class="cat-meta">Mike's five personal splits spanning every major training style — the way he actually trains.</div>
+      <div class="cat-count">5 Splits →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>
+
+    <a href="cat-bobw.html" class="cat-card bobw">
+      <span class="bobw-glow"></span>
+      <span class="bobw-sheen"></span>
+      <span class="cat-icon">🌗</span>
+      <div class="cat-tag bobw-flag">★ Flagship · Lifting + Cardio</div>
+      <div class="cat-name">Best of Both Worlds</div>
+      <div class="cat-meta">Heavy resistance balanced with daily LISS and HIIT cardio, so you build muscle without losing your engine.</div>
+      <div class="cat-count">6 Body Parts · 4 Weeks →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>
+
+    <a href="cat-ie.html" class="cat-card ie">
+      <span class="ie-glow"></span>
+      <span class="ie-sheen"></span>
+      <span class="cat-icon">🔩</span>
+      <div class="cat-tag ie-flag">★ Flagship · PPL + Conditioning · Coming Soon</div>
+      <div class="cat-name">Iron &amp; Engine</div>
+      <div class="cat-meta">Push / Pull / Legs strength welded to a 3-day conditioning engine — built to make you strong and hard to kill.</div>
+      <div class="cat-count">Coming Soon →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>
+    </div><!-- /#flagGrid -->
+
+    <!-- Bonus Workouts — auto-collected standalone workouts (rendered by mc-bonus-routing.js when ≥1 exists) -->
+    <div id="bonusCardSlot"></div>
+
+    <!-- Collections — owner folders of standalone workouts (rendered by mc-collections.js) -->
+    <div id="collectionsSlot"></div>
+
+
+    <div class="tier-label influencer" id="pubTier" style="display:none;">📣 Published Programs</div>
+    <div id="pubProgList"></div>
+
+    <div class="tier-label influencer" id="customTier" style="display:none;">🧩 Your Programs</div>
+    <div id="customProgList"></div>
+    <a href="build-program.html" class="cat-card" style="border-style:dashed;text-align:center;padding:22px 16px;display:block;">
+      <span class="cat-icon">🧩</span>
+      <div class="cat-name">Build a Program</div>
+      <div class="cat-meta">Multi-week custom program with its own hero card, schedule and color rail.</div>
+      <div class="cat-count">Open Builder →</div>
+    </a>
+
+    <a href="collections.html" class="cat-card" style="border-style:dashed;text-align:center;padding:22px 16px;display:block;">
+      <span class="cat-icon">🗂️</span>
+      <div class="cat-name">Collections</div>
+      <div class="cat-meta">Group standalone workouts into folders — by goal, body part, or anything.</div>
+      <div class="cat-count">Manage Collections →</div>
+    </a>
+
+    <!-- PM Mode entry — hidden by default; program-manager.js reveals it for the owner -->
+    <a id="pmModeCard" href="#" class="cat-card" style="display:none;border-style:dashed;border-color:rgba(34,211,238,0.5);text-align:center;padding:22px 16px;">
+      <span class="cat-icon">🛠️</span>
+      <div class="cat-name">PM Mode</div>
+      <div class="cat-meta">Owner control room — rename, restyle, create, and publish your app.</div>
+      <div class="cat-count" style="color:#22d3ee;">Open Tools →</div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CONDITIONING SCREEN  (Phase 1)
+══════════════════════════════════════ -->
+<div class="screen" id="scr-conditioning">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Conditioning</div>
+      <div class="topbar-sub">Cardio · conditioning · core</div>
+    </div>
+  </div>
+  <div class="prog-screen-inner">
+    <div class="prog-header">
+      <div class="prog-eyebrow">Conditioning Corner</div>
+      <h1 class="prog-title">Burn It Out</h1>
+      <div class="prog-sub">Finish a lift with conditioning, or run it as a standalone session.</div>
+    </div>
+    <div id="condBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     BOTTOM TAB BAR
+══════════════════════════════════════ -->
+<div class="tab-bar">
+  <div class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')">
+    <div class="tab-icon">⚡</div>
+    <div>Dashboard</div>
+  </div>
+  <div class="tab" id="tab-programs" onclick="switchTab('programs')">
+    <div class="tab-icon">🏋️</div>
+    <div>Programs</div>
+  </div>
+  <div class="tab" id="tab-conditioning" onclick="switchTab('conditioning')">
+    <div class="tab-icon">🔥</div>
+    <div>Conditioning</div>
+  </div>
+  <div class="tab" id="tab-stats" onclick="location.href='stats.html'">
+    <div class="tab-icon">📈</div>
+    <div>Stats</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PROGRAM SELECT SHEET
+══════════════════════════════════════ -->
+<div class="ps-overlay" id="psOverlay" onclick="closeProgSelectOutside(event)">
+  <div class="ps-sheet">
+    <div class="ps-handle"></div>
+    <div class="ps-title">Set Active Program</div>
+    <div class="ps-sub">Pins to your dashboard hero card.</div>
+    <div id="psCards"></div>
+    <button class="ps-confirm" onclick="confirmProg()">Set as Active Program</button>
+  </div>
+</div>
+
+<script src="custom-workouts-store.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-cond.js"></script>
+<script src="mc-program-store.js"></script>
+<script src="mc-bonus-routing.js"></script>
+<script src="mc-collections.js"></script>
+<script src="mc-program-pub.js"></script>
+<script>window.MC_SUBS_NO_BUTTON=true;</script>
+<script src="mc-subs.js"></script>
+<script src="mc-live-tracker.js"></script>
+<script src="mc-resume.js"></script>
+<script src="mc-chart.js"></script>
+<script src="mc-recap.js"></script>
+<script src="mc-pm-data.js"></script>
+<script>
+// ── DATE ──
+const d=new Date();
+document.getElementById('todayDate').textContent=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+
+// ── PROGRAMS DATA ── (single source of truth: mc-pm-data.js)
+const PROGS = window.MC_PM_DATA.programs;
+
+// ── STATE ──
+const STORE='mc_active_prog';
+let activeProg=null;
+let tempSel=null;
+
+// built-in programs + the user's custom programs (mc-program-store.js) + the
+// owner-published programs (mc-program-pub.js), mapped into the same card
+// shape so hero/select/theming need no special cases. A published program the
+// user also has locally only appears once, as their own custom copy.
+function allProgs(){
+  let customs=[],pubs=[];
+  try{
+    if(window.MCPrograms) customs=MCPrograms.getAll().map(p=>MCPrograms.asProgCard(p));
+    if(window.MCPub){
+      const mine=new Set(customs.map(c=>c.cprogId));
+      pubs=MCPub.getAll().filter(p=>!mine.has(p.id)).map(p=>MCPub.asProgCard(p));
+    }
+  }catch(e){}
+  return PROGS.concat(customs,pubs);
+}
+
+function loadState(){
+  try{
+    const s=localStorage.getItem(STORE);
+    if(!s)return;
+    activeProg=JSON.parse(s);
+    // a pinned custom program may have been edited since — re-resolve it
+    if(activeProg&&activeProg.cprogId&&window.MCPrograms){
+      const cur=MCPrograms.get(activeProg.cprogId);
+      if(cur){activeProg=MCPrograms.asProgCard(cur);localStorage.setItem(STORE,JSON.stringify(activeProg));}
+      else{activeProg=null;localStorage.removeItem(STORE);}
+    }
+    // a pinned published program may have been re-published since — re-resolve
+    // from the mirror, but keep the stored card if the mirror is still cold
+    if(activeProg&&activeProg.pubId&&window.MCPub){
+      const pub=MCPub.get(activeProg.pubId);
+      if(pub){activeProg=MCPub.asProgCard(pub);localStorage.setItem(STORE,JSON.stringify(activeProg));}
+    }
+    renderHero();
+  }catch(e){}
+}
+
+// ── TABS ──
+function switchTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('scr-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── HERO ──
+function renderHero(){
+  const empty=document.getElementById('heroEmpty');
+  const card=document.getElementById('heroCard');
+  if(!activeProg){empty.style.display='block';card.style.display='none';return;}
+  empty.style.display='none';
+  card.style.display='block';
+  card.style.borderColor=activeProg.color+'44';
+  card.style.boxShadow='0 8px 28px '+activeProg.color+'22';
+  document.getElementById('heroName').textContent=activeProg.name;
+  document.getElementById('heroDesc').textContent=activeProg.desc;
+  document.getElementById('heroDay').textContent=activeProg.splits.length;
+  const ring=document.getElementById('heroRing');
+  ring.style.borderTopColor=activeProg.color;
+  ring.style.borderRightColor=activeProg.color;
+  // Phases
+  const ph=document.getElementById('heroPhases');
+  ph.innerHTML=activeProg.splits.slice(0,4).map((s,i)=>
+    `<div class="phase-pill${i===0?' active':''}">${s}</div>`
+  ).join('');
+}
+
+// ── CUSTOM PROGRAMS (Programs tab list) ──
+function renderCustomPrograms(){
+  const tier=document.getElementById('customTier');
+  const list=document.getElementById('customProgList');
+  if(!tier||!list||!window.MCPrograms)return;
+  const progs=MCPrograms.getAll();
+  tier.style.display=progs.length?'':'none';
+  list.innerHTML=progs.map(p=>{
+    const col=p.color||'#34d399';
+    const pub=window.MCPub&&MCPub.isPublished(p.id);
+    return `<a href="cat-custom.html?prog=${p.id}" class="cat-card" style="border-color:${col}55;background:linear-gradient(135deg,${col}14,var(--surface));">
+      <span class="cat-icon">${p.icon||'🧩'}</span>
+      <div class="cat-tag" style="color:${col};">Custom · ${p.weeks} Weeks${pub?' · 📣 Published':''}</div>
+      <div class="cat-name">${esc(p.name)}</div>
+      <div class="cat-meta">${p.days.map(d=>esc(d.name)).join(' · ')}</div>
+      <div class="cat-count">${p.days.length} Days →</div>
+      <div class="cat-designer">✍️ Designed by you</div>
+    </a>`;
+  }).join('');
+}
+
+// ── PUBLISHED PROGRAMS (Programs tab list) ──
+// Owner-published programs from Supabase (mc-program-pub.js mirror). Ones the
+// user also has locally stay under "Your Programs" with a 📣 badge instead.
+function renderPublishedPrograms(){
+  const tier=document.getElementById('pubTier');
+  const list=document.getElementById('pubProgList');
+  if(!tier||!list||!window.MCPub)return;
+  const mine=new Set(window.MCPrograms?MCPrograms.getAll().map(p=>p.id):[]);
+  const progs=MCPub.getAll().filter(p=>!mine.has(p.id));
+  tier.style.display=progs.length?'':'none';
+  list.innerHTML=progs.map(p=>{
+    const col=p.color||'#34d399';
+    return `<a href="cat-custom.html?pub=${p.id}" class="cat-card" style="border-color:${col}55;background:linear-gradient(135deg,${col}14,var(--surface));">
+      <span class="cat-icon">${p.icon||'📣'}</span>
+      <div class="cat-tag" style="color:${col};">Published · ${p.weeks} Weeks</div>
+      <div class="cat-name">${esc(p.name)}</div>
+      <div class="cat-meta">${p.days.map(d=>esc(d.name)).join(' · ')}</div>
+      <div class="cat-count">${p.days.length} Days →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>`;
+  }).join('');
+}
+
+// ── PROGRAM SELECT ──
+function buildProgCards(){
+  const wrap=document.getElementById('psCards');
+  wrap.innerHTML='';
+  allProgs().forEach(p=>{
+    const d=document.createElement('div');
+    d.className='ps-card'+(activeProg&&activeProg.id===p.id?' sel':'');
+    d.id='psc-'+p.id;
+    d.style.setProperty('--prog-color',p.color);
+    d.innerHTML=`<div class="ps-icon">${p.icon}</div><div class="ps-info"><div class="ps-name">${p.name}</div><div class="ps-meta">${p.meta}</div></div><div class="ps-check" id="pschk-${p.id}">${activeProg&&activeProg.id===p.id?'✓':''}</div>`;
+    d.onclick=()=>selectProg(p.id);
+    wrap.appendChild(d);
+  });
+  tempSel=activeProg?activeProg.id:null;
+}
+
+function openProgSelect(){
+  buildProgCards();
+  document.getElementById('psOverlay').classList.add('open');
+}
+
+function closeProgSelectOutside(e){
+  if(e.target===document.getElementById('psOverlay'))
+    document.getElementById('psOverlay').classList.remove('open');
+}
+
+function selectProg(id){
+  tempSel=id;
+  allProgs().forEach(p=>{
+    const c=document.getElementById('psc-'+p.id);
+    const ch=document.getElementById('pschk-'+p.id);
+    if(c){c.classList.toggle('sel',p.id===id);}
+    if(ch){ch.textContent=p.id===id?'✓':'';}
+  });
+}
+
+function confirmProg(){
+  if(!tempSel)return;
+  activeProg=allProgs().find(p=>p.id===tempSel);
+  try{localStorage.setItem(STORE,JSON.stringify(activeProg));}catch(e){}
+  document.getElementById('psOverlay').classList.remove('open');
+  renderHero();
+  // shift the chrome accent to the newly pinned program (mc-theme.js)
+  try{document.dispatchEvent(new CustomEvent('mc:program-changed'));}catch(e){}
+}
+
+// ── OFFLINE ──
+window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
+if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
+
+// ── SW ── registration + reliable auto-update handled by mc-sw-update.js
+// (loaded near the end of body). It defines window.doSwUpdate for the banner.
+
+// ── CUSTOM WORKOUTS ──
+function renderCustomSection() {
+  var workouts = (typeof CustomWorkouts !== 'undefined') ? CustomWorkouts.getAll() : [];
+  var html = '<div class="custom-section">'
+    + '<div class="custom-section-head">'
+    + '<div class="custom-section-title">'
+    + '<div class="custom-section-icon">⚡</div>'
+    + '<div><div class="custom-section-name">My Custom Workouts</div>'
+    + '<div class="custom-section-sub">Your saved conditioning circuits</div></div>'
+    + '</div>'
+    + (workouts.length ? '<button class="custom-build-btn-sm" onclick="location.href=\'custom-workout-builder.html\'">+ Build New</button>' : '')
+    + '</div>';
+
+  if (!workouts.length) {
+    html += '<div class="custom-empty">'
+      + '<div class="custom-empty-icon">🏗️</div>'
+      + '<div class="custom-empty-title">No custom workouts yet</div>'
+      + '<div class="custom-empty-sub">Build a workout from the exercise library — pick movements, set reps or time targets, then run it anytime.</div>'
+      + '<a href="custom-workout-builder.html" class="custom-build-btn">+ Build Your Own Conditioning Workout</a>'
+      + '</div>';
+  } else {
+    workouts.forEach(function (w) {
+      var exCount = w.exercises ? w.exercises.length : 0;
+      var repCount = w.exercises ? w.exercises.filter(function(e){return e.mode==='reps';}).length : 0;
+      var timeCount = exCount - repCount;
+      var metaParts = [exCount + ' exercise' + (exCount===1?'':'s')];
+      if (repCount)  metaParts.push(repCount  + ' rep-based');
+      if (timeCount) metaParts.push(timeCount + ' timed');
+      if (w.restSecs > 0) metaParts.push(w.restSecs + 's rest');
+
+      var pills = (w.exercises||[]).slice(0,4).map(function(e){
+        return '<span class="custom-wk-pill">' + esc(e.name.split('—')[0].trim()) + '</span>';
+      }).join('') + (exCount > 4 ? '<span class="custom-wk-pill">+' + (exCount-4) + ' more</span>' : '');
+
+      html += '<div class="custom-wk-card">'
+        + '<div class="custom-wk-card-top">'
+        + '<div class="custom-wk-name">' + esc(w.name) + '</div>'
+        + '<div class="custom-wk-badge">Custom</div>'
+        + '</div>'
+        + '<div class="custom-wk-meta">' + esc(metaParts.join(' · ')) + (w.lastRun ? ' · Last run ' + w.lastRun : '') + '</div>'
+        + '<div class="custom-wk-pills">' + pills + '</div>'
+        + '<div class="custom-wk-actions">'
+        + '<button class="custom-wk-run" onclick="location.href=\'custom-workout-runner.html?id=' + esc(w.id) + '\'">▶ Run Workout</button>'
+        + '<button class="custom-wk-edit" onclick="location.href=\'custom-workout-builder.html?edit=' + esc(w.id) + '\'">Edit</button>'
+        + '<button class="custom-wk-del" onclick="deleteCustomWorkout(\'' + esc(w.id) + '\')">🗑</button>'
+        + '</div>'
+        + '</div>';
+    });
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function deleteCustomWorkout(id) {
+  if (!confirm('Delete this workout? This cannot be undone.')) return;
+  if (typeof CustomWorkouts !== 'undefined') CustomWorkouts.remove(id);
+  renderConditioning();
+}
+
+// ── CONDITIONING TAB ──
+function hexA(hex,a){
+  var h=hex.replace('#','');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+var condSubTab='workouts';
+function setCondSubTab(t){ condSubTab=t; renderConditioning(); }
+function renderCondLib(q){ var el=document.getElementById('condLib'); if(el&&window.MCSubs) el.innerHTML=MCSubs.libGroupsHTML(q,false); }
+function renderConditioning(){
+  var body=document.getElementById('condBody');
+  if(!body||typeof CONDITIONING==='undefined'){return;}
+  var tgBtn=function(id,label){return '<button onclick="setCondSubTab(\''+id+'\')" style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;letter-spacing:0.02em;'+(condSubTab===id?'background:#E24B4A;color:#fff;':'background:transparent;color:#94a3b8;')+'">'+label+'</button>';};
+  var toggle='<div style="display:flex;gap:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:13px;padding:4px;margin-bottom:18px;">'+tgBtn('workouts','🔥 Workouts')+tgBtn('exercises','🏃 Exercises')+'</div>';
+
+  var html='';
+  if(condSubTab==='workouts'){
+    html += renderCustomSection();
+    CONDITIONING.subcategories.forEach(function(sub){
+      if(sub.type!=='routines') return;
+      var col=sub.color||'#E24B4A';
+      html+='<div class="cond-sub"><div class="cond-sub-head">'
+        +'<div class="cond-sub-icon" style="background:'+hexA(col,0.14)+';border-color:'+hexA(col,0.4)+'">'+(sub.icon||'🔥')+'</div>'
+        +'<div><div class="cond-sub-name">'+esc(sub.name)+'</div>'
+        +(sub.blurb?'<div class="cond-sub-blurb">'+esc(sub.blurb)+'</div>':'')+'</div></div>';
+      (sub.routines||[]).forEach(function(r){
+        html+='<a href="'+r.href+'" class="cond-card" style="background:linear-gradient(135deg,'+hexA(col,0.12)+','+'var(--surface));border-color:'+hexA(col,0.33)+'">'
+            +'<div class="cond-arrow" style="background:'+hexA(col,0.2)+';border-color:'+hexA(col,0.33)+'">→</div>'
+            +(r.tag?'<div class="cond-tag" style="color:'+col+'">'+esc(r.tag)+'</div>':'')
+            +'<div class="cond-name">'+esc(r.name)+'</div>'
+            +(r.meta?'<div class="cond-meta">'+esc(r.meta)+'</div>':'')
+            +((r.stats&&r.stats.length)?'<div class="cond-stats">'+r.stats.map(function(s){return '<span class="cond-stat">'+esc(s)+'</span>';}).join('')+'</div>':'')
+            +'</a>';
+      });
+      html+='</div>';
+    });
+  } else {
+    html='<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:12px;">Cardio &amp; conditioning exercise library. On any conditioning workout, tap <b style="color:#fed7aa;">🔁 Swap</b> to live-replace a movement with one of these.</div>'
+      +'<input placeholder="Search exercises…" oninput="renderCondLib(this.value)" style="width:100%;padding:11px 13px;border-radius:11px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#f1f5f9;font-size:14px;font-family:inherit;outline:none;margin-bottom:14px;">'
+      +'<div id="condLib">'+(window.MCSubs?MCSubs.libGroupsHTML('',false):'')+'</div>';
+  }
+  body.innerHTML=toggle+html;
+}
+
+// ── QUICK TOUR — show a "NEW" badge until the tour has been completed ──
+(function(){
+  try{
+    if(!localStorage.getItem('mc_tour_done_v1')){
+      var b=document.getElementById('tourBadge');
+      if(b) b.style.display='inline-block';
+    }
+  }catch(e){}
+})();
+
+// ── INIT ──
+// Clear any stale "smart back" target when landing on the hub, so a guide
+// page opened later never inherits a back destination from a prior visit.
+try{ sessionStorage.removeItem('mc_back_to'); }catch(e){}
+loadState();
+renderConditioning();
+renderCustomPrograms();
+renderPublishedPrograms();
+if(window.MC_BONUS) MC_BONUS.renderDashboardCard();
+if(window.MC_COLLECTIONS) MC_COLLECTIONS.renderDashboardCards();
+// re-render when mc-program-pub.js pulls fresh published programs
+document.addEventListener('mc:published-programs',()=>{renderPublishedPrograms();renderCustomPrograms();loadState();});
+// honor ?tab= deep-link from the global bottom nav (mc-nav.js)
+(function(){var t=new URLSearchParams(location.search).get('tab');if(t&&document.getElementById('scr-'+t))switchTab(t);})();
+</script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-backup-status.js"></script>
+<script src="mc-account.js"></script>
+<script src="mc-biometric.js"></script>
+<script src="program-overrides.js"></script>
+<script src="mc-layout.js"></script>
+<script src="program-manager.js"></script>
+<script>
+// Trigger PM unlock immediately after scripts load if ?pm=1 is in URL
+(function(){
+  if(/[?&]pm=1/.test(location.search)){
+    history.replaceState(null,'',location.pathname+location.hash);
+    if(window.MC_PM) MC_PM.unlock();
+  }
+})();
+</script>
+<script src="mc-sw-update.js?v=45"></script>
+<!-- Live exercise-library count: sourced from the shared catalog so it never drifts -->
+<script src="exercise-catalog.js"></script>
+<script>
+(function(){
+  if(!window.EXERCISES)return;
+  var skip={Cardio:1,Core:1}; // cardio/core live under the Conditioning tab
+  var n=EXERCISES.filter(function(e){return !skip[e.muscle];}).length;
+  var dash=document.getElementById('libCountDash');
+  if(dash)dash.textContent=n+' exercises by muscle group';
+  var el=document.getElementById('libCount');
+  if(el)el.textContent=n+' exercises · search by muscle group · save replacements';
+})();
+</script>
+</body>
+</html>
