@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Boxing Routine</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:210px;color:#e2e8f0;}
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:52px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:23px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+.content{max-width:680px;margin:16px auto 0;padding:0 16px;}
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+.sec-head{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#fdba74;text-transform:uppercase;margin:14px 0 8px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(249,115,22,0.4),transparent);}
+
+.pstep{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:11px 12px;margin-bottom:9px;box-shadow:0 8px 26px rgba(0,0,0,0.4);transition:border-color .2s,opacity .2s;}
+.pstep.locked{border-color:rgba(248,250,252,0.12);opacity:0.5;pointer-events:none;}
+.pstep.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);opacity:1;}
+.pstep.done{border-color:rgba(52,211,153,0.8);box-shadow:0 6px 22px rgba(16,185,129,0.18);opacity:0.92;}
+.pstep-top{display:flex;align-items:center;gap:12px;}
+.pstep-stepnum{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;font-size:12px;font-weight:900;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(220,38,38,0.4);}
+.pstep.done .pstep-stepnum{background:linear-gradient(135deg,#34d399,#059669);}
+.pstep-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.pstep-main{flex:1;min-width:0;}
+.pstep-name{font-size:14px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pstep-target{font-size:11.5px;color:#94a3b8;font-weight:700;margin-top:2px;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;letter-spacing:0.06em;padding:4px 9px;border-radius:8px;white-space:nowrap;text-transform:uppercase;flex-shrink:0;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.work{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;animation:badgePulse 1s ease-in-out infinite;}
+.badge.rest{background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.14);color:#94a3b8;border:1px solid rgba(148,163,184,0.22);}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.78;}}
+
+/* interval runner */
+.rn-wrap{margin-top:12px;}
+.rn-roundline{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.rn-move{font-size:13px;font-weight:900;color:#fdba74;letter-spacing:0.02em;}
+.rn-disp{font-size:46px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:0.95;text-align:center;margin:4px 0 2px;}
+.rn-disp.work{color:#f87171;}.rn-disp.rest{color:#38bdf8;}.rn-disp.done{color:#34d399;}
+.rn-phaselabel{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:#64748b;margin-bottom:8px;}
+.rn-ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.rn-ctrl{padding:9px 16px;border-radius:11px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.rn-ctrl.go{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.rn-ctrl.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.rn-ctrl.skip{background:rgba(14,165,233,0.14);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3);}
+.rn-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center;}
+.rn-chip{font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:#64748b;}
+.rn-chip.done{border-color:rgba(52,211,153,0.45);background:rgba(52,211,153,0.12);color:#6ee7b7;}
+.rn-chip.current{border-color:#f87171;background:rgba(220,38,38,0.18);color:#fff;}
+
+/* embedded countdown / count-up */
+.cd-box{background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px;margin-top:10px;text-align:center;}
+.cd-mini-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#64748b;text-transform:uppercase;margin-bottom:8px;}
+.cd-disp{font-size:38px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;}
+.cd-disp.running{color:#fb923c;}.cd-disp.done{color:#34d399;}
+.cd-prog{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin:11px 0 12px;}
+.cd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:3px;transition:width 0.25s linear;}
+.cd-prog-fill.done{background:#34d399;}
+.cd-btns{display:flex;gap:8px;justify-content:center;}
+.cd-btn{padding:8px 16px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.cd-btn.go{background:rgba(52,211,153,0.16);color:#34d399;border:1px solid rgba(52,211,153,0.35);}
+.cd-btn.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.cd-btn.ghost{background:transparent;color:#64748b;border:1px solid rgba(255,255,255,0.12);}
+
+.log-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;}
+.log-row label{font-size:11px;color:#94a3b8;font-weight:700;}
+.log-input{width:104px;padding:9px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:22px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.log-input:focus{border-color:#f97316;}
+.pstep-complete{width:100%;margin-top:12px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;letter-spacing:0.03em;font-family:inherit;background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.pstep-complete:active{transform:scale(0.99);}
+.pstep-complete:disabled{background:rgba(255,255,255,0.05);color:#475569;cursor:not-allowed;}
+
+.done-banner{display:none;background:linear-gradient(135deg,#34d399,#059669);border-radius:16px;padding:18px;text-align:center;margin-bottom:16px;box-shadow:0 8px 30px rgba(16,185,129,0.4);}
+.done-banner.show{display:block;}
+.done-banner .db-t{font-size:20px;font-weight:900;color:#06281d;}
+.done-banner .db-s{font-size:13px;font-weight:700;color:#06281d;opacity:0.85;margin-top:4px;}
+
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#fdba74;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:#64748b;transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:360px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=65"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">🥊 Not for the Faint of Heart</div>
+      <div class="title">Boxing Routine</div>
+      <div><span class="schedule">Live · 3 Phases · ~48–55 min</span></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="intro-warn"><strong>3 rounds jump rope + heavy bag → conditioning circuit → AMRAP sit-ups + run.</strong> Timed blocks run automated interval timers; the finishers use a count-up clock. Complete each card in order.</div>
+    <div class="done-banner" id="doneBanner">
+      <div class="db-t">🏆 Rounds Complete</div>
+      <div class="db-s">Every phase logged. Check your totals below.</div>
+    </div>
+    <div id="timelineMount"></div>
+  </div>
+</div>
+
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title"><span id="sumTitleText">📊 Summary</span> · <span id="sumStep">Step 0 / 0</span></div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qMin">0</div><div class="sum-quick-l">Active Min</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qReps">0</div><div class="sum-quick-l">Total Reps</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">⏱️</span><span class="sum-line-nm">Active Time (all timed work)</span><span class="sum-line-v" id="dMin">0:00</span></div>
+      <div class="sum-line"><span class="sum-line-ico">💪</span><span class="sum-line-nm">Circuit Reps (push-ups + burpees + jacks)</span><span class="sum-line-v" id="dCircuit">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🔥</span><span class="sum-line-nm">Sit-Ups (AMRAP)</span><span class="sum-line-v" id="dSit">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🏃</span><span class="sum-line-nm">Run</span><span class="sum-line-v" id="dRun">— <small>mi</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">✅</span><span class="sum-line-nm">Steps Complete</span><span class="sum-line-v" id="dSteps">0 <small>/ 0</small></span></div>
+      <button class="sum-reset" onclick="resetAll()">↺ Reset Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function fmt(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function buzz(p){
+  try{ if(navigator.vibrate) navigator.vibrate(p||[200,100,200]); }catch(e){}
+  try{ var ctx=new (window.AudioContext||window.webkitAudioContext)();[0,0.18,0.36].forEach(function(t,i){var o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=i===2?880:660;g.gain.setValueAtTime(0.32,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);});}catch(e){}
+}
+function Countdown(totalSec,hooks){ this.total=totalSec;this.remaining=totalSec;this.running=false;this.endAt=0;this.iv=null;this.onTick=hooks.onTick||function(){};this.onDone=hooks.onDone||function(){}; }
+Countdown.prototype.start=function(){ if(this.running||this.remaining<=0)return;this.running=true;this.endAt=Date.now()+this.remaining*1000;var s=this;this.iv=setInterval(function(){s._tick();},200);this._tick(); };
+Countdown.prototype._tick=function(){ this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.onTick(this.remaining,this.total,this.running);if(this.remaining<=0){this._clear();this.running=false;this.onDone();} };
+Countdown.prototype._clear=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} };
+Countdown.prototype.pause=function(){ if(!this.running)return;this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.running=false;this._clear();this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.reset=function(){ this._clear();this.running=false;this.remaining=this.total;this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.elapsed=function(){ return this.total-this.remaining; };
+/* count-up stopwatch */
+function CountUp(onTick){ this.elapsed=0;this.running=false;this.startAt=0;this.iv=null;this.onTick=onTick||function(){}; }
+CountUp.prototype.toggle=function(){ if(this.running){ this.elapsed+=Date.now()-this.startAt;this.running=false;if(this.iv){clearInterval(this.iv);this.iv=null;} } else { this.startAt=Date.now();this.running=true;var s=this;this.iv=setInterval(function(){s.onTick(s.now());},200); } this.onTick(this.now()); };
+CountUp.prototype.now=function(){ return (this.elapsed+(this.running?Date.now()-this.startAt:0))/1000; };
+CountUp.prototype.reset=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} this.elapsed=0;this.running=false;this.onTick(0); };
+
+var P1='Phase 1 · Cardio + Heavy Bag', P2='Phase 2 · Conditioning Circuit', P3='Phase 3 · Finishers';
+
+/* ── ENGINE ── */
+var BOX={
+  steps:[], activeIdx:0, complete:false,
+  build:function(){
+    this.steps=[
+      {key:'jr',phase:P1,type:'interval',icon:'🪢',name:'Jump Rope',rounds:3,work:180,rest:30},
+      {key:'hb',phase:P1,type:'interval',icon:'🥊',name:'Heavy Bag',rounds:3,work:180,rest:30},
+      {key:'pu',phase:P2,type:'timed',icon:'💪',name:'Push-Ups',sec:180,logReps:true,note:'Max reps in 3 min'},
+      {key:'bp',phase:P2,type:'timed',icon:'💀',name:'Burpees',sec:180,logReps:true,note:'Max reps in 3 min'},
+      {key:'jj',phase:P2,type:'timed',icon:'⭐',name:'Jumping Jacks',sec:180,logReps:true,note:'Max reps in 3 min'},
+      {key:'sb',phase:P2,type:'timed',icon:'🥷',name:'Shadow Boxing',sec:180,logReps:false,note:'Jabs, crosses, hooks'},
+      {key:'wl',phase:P2,type:'timed',icon:'🦆',name:'Walk the Line',sec:180,logReps:false,note:'Shadow boxing + duck unders'},
+      {key:'su',phase:P3,type:'countup',icon:'🔥',name:'Sit-Ups (AMRAP)',unit:'reps',note:'Go until you cannot move'},
+      {key:'run',phase:P3,type:'countup',icon:'🏃',name:'Run',unit:'mi',note:'1–2 miles · steady cool-down pace'}
+    ];
+    this.steps.forEach(function(s,i){ s.idx=i; s.done=false; s.loggedReps=0; s.loggedSec=0; s.dist=null;
+      if(s.type==='interval'){ s.iround=0; s.iphase='idle'; s.itimer=null; s.ielapsed=0; }
+      if(s.type==='timed'){ s.timer=null; }
+      if(s.type==='countup'){ s.up=null; }
+    });
+    this.activeIdx=0; this.complete=false;
+  },
+  render:function(){
+    var html='', lastPhase=null;
+    this.steps.forEach(function(st){
+      if(st.phase!==lastPhase){ html+='<div class="sec-head">'+st.phase+'</div>'; lastPhase=st.phase; }
+      html+=BOX.stepHTML(st);
+    });
+    document.getElementById('timelineMount').innerHTML=html;
+    this.steps.forEach(function(st){
+      if(st.type==='timed') BOX.wireTimed(st);
+      if(st.type==='countup') BOX.wireCountup(st);
+    });
+    this.refreshStates();
+  },
+  stepHTML:function(st){
+    var n=st.idx+1, inner, target;
+    if(st.type==='interval'){
+      target=st.rounds+' rounds · 3:00 work / 0:30 rest';
+      inner='<div class="rn-wrap" id="rn-'+st.key+'">'+
+        '<div class="rn-roundline"><span class="rn-move" id="rnmove-'+st.key+'">Ready · Round 1 / '+st.rounds+'</span>'+
+        '<span class="badge idle" id="rnphase-'+st.key+'">Idle</span></div>'+
+        '<div class="rn-disp" id="rndisp-'+st.key+'">'+fmt(st.work)+'</div>'+
+        '<div class="rn-phaselabel" id="rnlabel-'+st.key+'">Press start</div>'+
+        '<div class="rn-ctrls"><button class="rn-ctrl go" id="rngo-'+st.key+'" onclick="BOX.ivStartOrPause(\''+st.key+'\')">▶ Start</button>'+
+        '<button class="rn-ctrl skip" onclick="BOX.ivSkip(\''+st.key+'\')">⤳ Skip</button></div>'+
+        '<div class="rn-chips" id="rnchips-'+st.key+'"></div></div>';
+    } else if(st.type==='timed'){
+      target='3:00'+(st.logReps?' · max reps':'')+' · '+st.note;
+      inner='<div class="cd-box"><div class="cd-mini-label">⏱️ 3-Minute Round</div>'+
+        '<div class="cd-disp" id="cd-disp-'+st.key+'">'+fmt(st.sec)+'</div>'+
+        '<div class="cd-prog"><div class="cd-prog-fill" id="cd-fill-'+st.key+'"></div></div>'+
+        '<div class="cd-btns"><button class="cd-btn go" id="cd-go-'+st.key+'" onclick="BOX.tdToggle(\''+st.key+'\')">▶ Start</button>'+
+        '<button class="cd-btn ghost" onclick="BOX.tdReset(\''+st.key+'\')">↺ Reset</button></div></div>'+
+        (st.logReps?'<div class="log-row"><label>Reps:</label><input class="log-input" id="log-'+st.key+'" type="number" inputmode="numeric" placeholder="reps" oninput="updateSummary()" onfocus="this.select()"></div>':'')+
+        '<button class="pstep-complete" id="done-'+st.key+'" onclick="BOX.completeTimed(\''+st.key+'\')" disabled>✓ Round Complete</button>';
+    } else {
+      target='Count-up timer · log your '+(st.unit==='mi'?'distance':'reps');
+      inner='<div class="cd-box"><div class="cd-mini-label">⏱️ Count-Up</div>'+
+        '<div class="cd-disp" id="cu-disp-'+st.key+'">0:00</div>'+
+        '<div class="cd-btns"><button class="cd-btn go" id="cu-go-'+st.key+'" onclick="BOX.cuToggle(\''+st.key+'\')">▶ Start</button>'+
+        '<button class="cd-btn ghost" onclick="BOX.cuReset(\''+st.key+'\')">↺ Reset</button></div></div>'+
+        '<div class="log-row"><label>'+(st.unit==='mi'?'Distance:':'Reps:')+'</label><input class="log-input" id="log-'+st.key+'" type="number" inputmode="'+(st.unit==='mi'?'decimal':'numeric')+'" placeholder="'+st.unit+'" oninput="updateSummary()" onfocus="this.select()"><label>'+st.unit+'</label></div>'+
+        '<button class="pstep-complete" id="done-'+st.key+'" onclick="BOX.completeCountup(\''+st.key+'\')" disabled>✓ Complete</button>';
+    }
+    return '<div class="pstep locked" id="step-'+st.key+'">'+
+      '<div class="pstep-top"><div class="pstep-stepnum">'+n+'</div><div class="pstep-ico">'+st.icon+'</div>'+
+      '<div class="pstep-main"><div class="pstep-name">'+st.name+'</div><div class="pstep-target">'+target+'</div></div>'+
+      '<span class="badge idle" id="badge-'+st.key+'">Locked</span></div>'+inner+'</div>';
+  },
+
+  /* interval runner (jump rope / heavy bag) */
+  ivStartOrPause:function(key){
+    var st=this._k(key); if(this.steps[this.activeIdx]!==st)return;
+    if(st.iphase==='idle'){ st.iround=0; this._ivWork(st); }
+    else if(st.itimer&&st.itimer.running){ st.itimer.pause(); var g=document.getElementById('rngo-'+key);if(g){g.textContent='▶ Resume';g.className='rn-ctrl go';} }
+    else if(st.itimer){ st.itimer.start(); var g2=document.getElementById('rngo-'+key);if(g2){g2.textContent='⏸ Pause';g2.className='rn-ctrl pause';} }
+  },
+  _ivUI:function(st){
+    var disp=document.getElementById('rndisp-'+st.key),badge=document.getElementById('rnphase-'+st.key),label=document.getElementById('rnlabel-'+st.key),move=document.getElementById('rnmove-'+st.key),go=document.getElementById('rngo-'+st.key);
+    disp.className='rn-disp '+(st.iphase==='idle'?'':st.iphase);
+    if(st.iphase==='work'){ badge.className='badge work';badge.textContent='🔥 Round '+(st.iround+1);label.textContent='WORK — 3 minutes';move.textContent='Round '+(st.iround+1)+' / '+st.rounds;if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(st.iphase==='rest'){ badge.className='badge rest';badge.textContent='💧 Rest';label.textContent='REST — 30 seconds';move.textContent='Round '+(st.iround+1)+' / '+st.rounds+' done';if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(st.iphase==='done'){ badge.className='badge green';badge.textContent='✓ Done';label.textContent='ALL ROUNDS DONE';move.textContent=st.rounds+' rounds complete';disp.textContent='✓'; }
+    this._ivChips(st);
+  },
+  _ivChips:function(st){ var host=document.getElementById('rnchips-'+st.key);if(!host)return;var h='';for(var i=0;i<st.rounds;i++){var cls='rn-chip';if(st.iphase!=='idle'&&i<st.iround)cls+=' done';else if(st.iphase==='done')cls+=' done';else if(st.iphase!=='idle'&&i===st.iround)cls+=' current';h+='<span class="'+cls+'">R'+(i+1)+'</span>';}host.innerHTML=h; },
+  _ivWork:function(st){
+    st.iphase='work'; this._ivUI(st); buzz([300]); var self=this;
+    st.itimer=new Countdown(st.work,{ onTick:function(rem){ document.getElementById('rndisp-'+st.key).textContent=fmt(rem); st.ielapsed=st.iround*(st.work+st.rest)+(st.work-rem); updateSummary(); }, onDone:function(){ buzz([200,100,200,100,400]); self._ivRest(st); } });
+    st.itimer.start();
+  },
+  _ivRest:function(st){
+    st.iphase='rest'; this._ivUI(st); var self=this;
+    st.itimer=new Countdown(st.rest,{ onTick:function(rem){ document.getElementById('rndisp-'+st.key).textContent=fmt(rem); st.ielapsed=st.iround*(st.work+st.rest)+st.work+(st.rest-rem); updateSummary(); }, onDone:function(){ buzz([300]); st.iround++; if(st.iround>=st.rounds)self._ivFinish(st); else self._ivWork(st); } });
+    st.itimer.start();
+  },
+  _ivFinish:function(st){ st.iphase='done'; st.itimer=null; st.ielapsed=st.rounds*(st.work+st.rest); this._ivUI(st); buzz([200,100,200,100,500]); st.done=true; this.advance(); updateSummary(); },
+  ivSkip:function(key){ var st=this._k(key); if(this.steps[this.activeIdx]!==st)return; if(st.iphase==='work'){ if(st.itimer)st.itimer.pause(); this._ivRest(st); } else if(st.iphase==='rest'){ if(st.itimer)st.itimer.pause(); st.iround++; if(st.iround>=st.rounds)this._ivFinish(st); else this._ivWork(st); } },
+
+  /* timed circuit */
+  wireTimed:function(st){
+    st.timer=new Countdown(st.sec,{
+      onTick:function(rem,total,running){ var d=document.getElementById('cd-disp-'+st.key),f=document.getElementById('cd-fill-'+st.key); if(d){d.textContent=fmt(rem);d.className='cd-disp'+(running?' running':'')+(rem<=0?' done':'');} if(f){f.style.width=Math.round(((total-rem)/total)*100)+'%';} updateSummary(); },
+      onDone:function(){ buzz([200,100,200,100,400]); var d=document.getElementById('cd-disp-'+st.key),f=document.getElementById('cd-fill-'+st.key); if(d){d.textContent='TIME';d.className='cd-disp done';} if(f){f.className='cd-prog-fill done';f.style.width='100%';} }
+    });
+  },
+  tdToggle:function(key){ var st=this._k(key); if(this.steps[this.activeIdx]!==st||!st.timer)return; var go=document.getElementById('cd-go-'+key); if(st.timer.running){st.timer.pause();if(go){go.textContent='▶ Resume';go.className='cd-btn go';}} else {st.timer.start();if(go){go.textContent='⏸ Pause';go.className='cd-btn pause';}} },
+  tdReset:function(key){ var st=this._k(key); if(!st.timer)return; st.timer.reset(); var go=document.getElementById('cd-go-'+key);if(go){go.textContent='▶ Start';go.className='cd-btn go';} updateSummary(); },
+  completeTimed:function(key){
+    var st=this._k(key); if(!st||st.done||this.steps[this.activeIdx]!==st)return;
+    if(st.timer){ st.timer.pause(); st.loggedSec=st.timer.elapsed()>0?st.timer.elapsed():st.sec; } else st.loggedSec=st.sec;
+    if(st.logReps){ var inp=document.getElementById('log-'+key); var v=inp?parseInt(inp.value,10):NaN; st.loggedReps=isNaN(v)?0:v; if(inp)inp.disabled=true; }
+    st.done=true; buzz([200]); this.advance(); updateSummary();
+  },
+
+  /* count-up finishers */
+  wireCountup:function(st){ st.up=new CountUp(function(sec){ var d=document.getElementById('cu-disp-'+st.key); if(d)d.textContent=fmt(sec); updateSummary(); }); },
+  cuToggle:function(key){ var st=this._k(key); if(this.steps[this.activeIdx]!==st||!st.up)return; st.up.toggle(); var go=document.getElementById('cu-go-'+key); if(go){ if(st.up.running){go.textContent='⏸ Pause';go.className='cd-btn pause';}else{go.textContent='▶ Resume';go.className='cd-btn go';} } var d=document.getElementById('cu-disp-'+key); if(d)d.className='cd-disp'+(st.up.running?' running':''); },
+  cuReset:function(key){ var st=this._k(key); if(!st.up)return; st.up.reset(); var go=document.getElementById('cu-go-'+key);if(go){go.textContent='▶ Start';go.className='cd-btn go';} updateSummary(); },
+  completeCountup:function(key){
+    var st=this._k(key); if(!st||st.done||this.steps[this.activeIdx]!==st)return;
+    if(st.up){ st.up.running&&st.up.toggle(); st.loggedSec=st.up.now(); }
+    var inp=document.getElementById('log-'+key); var v=inp?parseFloat(inp.value):NaN;
+    if(st.unit==='mi') st.dist=isNaN(v)?null:v; else st.loggedReps=isNaN(v)?0:v;
+    if(inp)inp.disabled=true;
+    st.done=true; buzz([200]); this.advance(); updateSummary();
+  },
+
+  advance:function(){ var ni=this.activeIdx; while(ni<this.steps.length&&this.steps[ni].done)ni++; this.activeIdx=ni; this.refreshStates(); if(ni<this.steps.length)this.scrollTo(this.steps[ni].key); else this.finish(); },
+  finish:function(){ this.complete=true; document.getElementById('doneBanner').classList.add('show'); document.getElementById('sumTitleText').textContent='🏆 Complete'; buzz([200,100,200,100,500]); updateSummary(); },
+  refreshStates:function(){
+    var self=this;
+    this.steps.forEach(function(st,i){
+      var card=document.getElementById('step-'+st.key); if(!card)return;
+      var state=st.done?'done':((i===self.activeIdx&&!self.complete)?'active':'locked');
+      card.className='pstep '+state;
+      var btn=document.getElementById('done-'+st.key); if(btn)btn.disabled=(state!=='active');
+      var badge=document.getElementById('badge-'+st.key);
+      if(badge){ if(st.done){badge.className='badge green';badge.textContent='✓ Done';}else if(state==='active'){badge.className='badge crimson';badge.textContent='● Active';}else{badge.className='badge idle';badge.textContent='Locked';} }
+    });
+  },
+  scrollTo:function(key){ try{var el=document.getElementById('step-'+key);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} },
+  _k:function(key){ for(var i=0;i<this.steps.length;i++)if(this.steps[i].key===key)return this.steps[i]; return null; },
+  stepsDone:function(){ return this.steps.filter(function(s){return s.done;}).length; },
+  activeSeconds:function(){
+    var s=0; this.steps.forEach(function(st){
+      if(st.type==='interval') s+=st.ielapsed||0;
+      else if(st.type==='timed'){ if(st.done)s+=st.loggedSec; else if(st.timer&&st.timer.running)s+=st.timer.elapsed(); }
+      else if(st.type==='countup'){ if(st.up)s+=st.up.now(); }
+    });
+    return s;
+  },
+  circuitReps:function(){ var r=0,self=this; ['pu','bp','jj'].forEach(function(k){var st=self._k(k); if(st.done)r+=st.loggedReps; else {var inp=document.getElementById('log-'+k); if(inp&&inp.value!=='')r+=parseInt(inp.value,10)||0;}}); return r; },
+  sitReps:function(){ var st=this._k('su'); if(st.done)return st.loggedReps; var inp=document.getElementById('log-su'); return inp&&inp.value!==''?parseInt(inp.value,10)||0:0; },
+  runDist:function(){ var st=this._k('run'); if(st.done)return st.dist; var inp=document.getElementById('log-run'); return inp&&inp.value!==''?parseFloat(inp.value):null; }
+};
+
+function fmtClock(sec){ var m=Math.floor(sec/60),s=Math.round(sec)%60; return m+':'+String(s).padStart(2,'0'); }
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+function updateSummary(){
+  if(!BOX.steps.length) return;
+  var sec=BOX.activeSeconds(), circuit=BOX.circuitReps(), sit=BOX.sitReps(), dist=BOX.runDist();
+  var totalReps=circuit+sit;
+  document.getElementById('qMin').textContent=(sec/60).toFixed(1);
+  document.getElementById('qReps').textContent=totalReps;
+  document.getElementById('dMin').textContent=fmtClock(sec);
+  document.getElementById('dCircuit').innerHTML=circuit+' <small>reps</small>';
+  document.getElementById('dSit').innerHTML=sit+' <small>reps</small>';
+  document.getElementById('dRun').innerHTML=(dist!=null?dist:'—')+' <small>mi</small>';
+  var done=BOX.stepsDone(), total=BOX.steps.length;
+  document.getElementById('dSteps').innerHTML=done+' <small>/ '+total+'</small>';
+  document.getElementById('sumStep').textContent='Step '+(BOX.complete?total:Math.min(BOX.activeIdx+1,total))+' / '+total;
+  var fill=document.getElementById('progFill'); if(fill)fill.style.width=Math.round((done/total)*100)+'%';
+}
+function resetAll(){
+  if(!confirm('Reset the whole routine? All timers and logged reps will clear.')) return;
+  BOX.steps.forEach(function(st){ if(st.itimer)st.itimer.pause(); if(st.timer)st.timer.pause(); if(st.up)st.up.reset(); });
+  BOX.build(); BOX.render(); updateSummary();
+  document.getElementById('doneBanner').classList.remove('show');
+  document.getElementById('sumTitleText').textContent='📊 Summary';
+}
+setInterval(updateSummary,1000);
+
+BOX.build(); BOX.render(); updateSummary();
+</script>
+<script src="mc-nav.js"></script>
+<script src="conditioning-elite.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>
