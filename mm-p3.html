@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>The Modality Matrix — Phase 3: Cable &amp; Plate-Loaded</title>
+<style>
+.header{background:linear-gradient(135deg,#04231a,#0a0a0a);}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="mc-card-actions.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+<link rel="stylesheet" href="mc-summary.css"/>
+<link rel="stylesheet" href="mc-setlog.css"/>
+<style>
+.app{min-height:100vh;}
+.schedule{display:inline-block;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--accent);font-weight:700;}
+.hint{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;text-align:center;opacity:0.6;}
+
+/* ── Week selector ── */
+.week-selector{display:flex;gap:6px;padding:14px 16px;background:#0a0a0a;border-bottom:1px solid rgba(255,255,255,0.05);position:sticky;top:0;z-index:20;}
+.wtab{flex:1;padding:8px 4px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#475569;font-size:11px;font-weight:800;letter-spacing:0.08em;text-align:center;cursor:pointer;transition:all 0.15s;line-height:1.3;}
+.wtab:active{transform:scale(0.97);}
+.wtab.active{background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.4);color:#60a5fa;}
+.wtab .wt-label{display:block;font-size:9px;font-weight:700;color:#334155;letter-spacing:0.1em;text-transform:uppercase;margin-top:2px;}
+.wtab.active .wt-label{color:#10b981;opacity:0.8;}
+
+/* ── Day accordion ── */
+.day-card.open{border-color:rgba(var(--day-rgb),0.4);box-shadow:0 4px 24px rgba(var(--day-rgb),0.12),0 0 0 1px rgba(var(--day-rgb),0.1);}
+.day-header{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;transition:background 0.15s;}
+.day-card.open .day-header{background:rgba(var(--day-rgb),0.06);}
+.day-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:#fff;}
+.day-info{flex:1;}
+.day-session{font-weight:800;font-size:14px;color:#e2e8f0;letter-spacing:-0.01em;}
+.day-meta{font-size:11px;color:#475569;margin-top:2px;}
+.day-toggle{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.05);color:#475569;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);transition:all 0.2s;}
+.day-card.open .day-toggle{color:#fff;}
+
+/* ── Exercises ── */
+.exercises{padding:4px 12px 14px;border-top:1px solid rgba(var(--day-rgb),0.08);display:none;}
+.day-card.open .exercises{display:block;}
+
+/* ── Rest & Conditioning day cards ── */
+.rest-card{background:rgba(255,255,255,0.015);border:1px dashed rgba(255,255,255,0.08);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.rest-label{font-weight:800;font-size:13px;color:#334155;letter-spacing:0.06em;}
+.rest-sub{font-size:11px;color:#1e293b;margin-top:2px;}
+.cond-day-card{background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:14px;padding:0;margin-bottom:10px;overflow:hidden;transition:border-color 0.15s;}
+.cond-day-card .day-header{cursor:pointer;}
+.cond-day-card.open{border-color:rgba(217,119,6,0.4);}
+.cond-day-card.open .day-header{background:rgba(217,119,6,0.06);}
+.cond-day-card .exercises{border-top:1px solid rgba(217,119,6,0.1);}
+.cond-link-row{display:flex;align-items:center;gap:12px;padding:14px 4px;border-radius:10px;text-decoration:none;color:#fbbf24;font-weight:700;font-size:13px;transition:background 0.15s;}
+.cond-link-row:hover{background:rgba(217,119,6,0.08);}
+.cond-activity{display:flex;align-items:flex-start;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(217,119,6,0.08);}
+.cond-activity:last-child{border-bottom:none;}
+.cond-act-icon{font-size:16px;margin-top:1px;flex-shrink:0;}
+.cond-act-name{font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:2px;}
+.cond-act-desc{font-size:11px;color:#92400e;}
+
+/* ── Tag banners ── */
+.ex-tag{font-size:11px;font-weight:900;letter-spacing:0.14em;padding:5px 14px;text-transform:uppercase;position:relative;}
+.ex-tag.superset{background:rgba(251,191,36,0.12);color:#fbbf24;border-bottom:1px solid rgba(251,191,36,0.15);}
+.ex-tag.triset{background:rgba(168,85,247,0.12);color:#c084fc;border-bottom:1px solid rgba(168,85,247,0.15);}
+.ex-tag.cluster{background:rgba(34,211,238,0.1);color:#22d3ee;border-bottom:1px solid rgba(34,211,238,0.15);}
+.ex-tag.drop{background:rgba(244,63,94,0.1);color:#fb7185;border-bottom:1px solid rgba(244,63,94,0.15);}
+.ex-tag.finisher{background:rgba(251,146,60,0.1);color:#fb923c;border-bottom:1px solid rgba(251,146,60,0.15);}
+.ex-tag.tut{background:rgba(6,182,212,0.1);color:#22d3ee;border-bottom:1px solid rgba(6,182,212,0.15);}
+
+/* ── Exercise card (a-card style, matches arnold-legacy) ── */
+.a-card{margin-bottom:2px;padding:12px 0 10px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.a-card:last-child{border-bottom:none;padding-bottom:4px;}
+.a-card.is-ss{margin-left:6px;border-left:3px solid rgba(168,85,247,0.45);padding-left:10px;}
+.a-card.is-tri{margin-left:6px;border-left:3px solid rgba(245,158,11,0.45);padding-left:10px;}
+.a-card.is-cluster{border-left:3px solid rgba(34,211,238,0.45);padding-left:10px;margin-left:6px;}
+.a-card.is-drop{border-left:3px solid rgba(244,63,94,0.45);padding-left:10px;margin-left:6px;}
+.a-top{display:flex;gap:10px;margin-bottom:8px;}
+.a-idx{min-width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#475569;flex-shrink:0;margin-top:1px;}
+.a-head{flex:1;min-width:0;}
+.a-name{font-size:14px;font-weight:800;color:#e2e8f0;line-height:1.3;margin-bottom:4px;}
+.a-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.a-pill{font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.05em;text-transform:uppercase;}
+.a-pill.grp{background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);}
+.a-pill.grp.triset{background:rgba(168,85,247,0.12);color:#c084fc;border-color:rgba(168,85,247,0.2);}
+.a-pill.grp.cluster{background:rgba(34,211,238,0.1);color:#22d3ee;border-color:rgba(34,211,238,0.2);}
+.a-pill.grp.drop{background:rgba(244,63,94,0.1);color:#fb7185;border-color:rgba(244,63,94,0.2);}
+.a-pill.grp.finisher{background:rgba(251,146,60,0.1);color:#fb923c;border-color:rgba(251,146,60,0.2);}
+.a-pill.tempo{background:rgba(6,182,212,0.08);color:#22d3ee;border:1px solid rgba(6,182,212,0.18);}
+.a-reps{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;padding-left:32px;}
+.a-leg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.a-legtag{font-size:9px;font-weight:900;color:#475569;letter-spacing:0.08em;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;margin-right:2px;}
+.a-rep{font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#e2e8f0;}
+.a-rep.live{background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.25);color:#60a5fa;}
+.a-rep.special{background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.25);color:#fb7185;}
+.a-sep{color:#334155;font-size:11px;font-weight:600;padding:0 1px;}
+.a-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:6px;padding-left:32px;}
+.a-cell .k{font-size:10px;font-weight:800;color:#475569;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:2px;}
+.a-cell .v{font-size:12px;font-weight:700;color:#94a3b8;}
+.a-timerbar{padding-left:32px;}
+.a-notes{font-size:11px;color:#475569;font-style:italic;margin-top:5px;padding-left:32px;line-height:1.45;}
+.editable{cursor:text;border-bottom:1px dashed rgba(59,130,246,0.4);padding-bottom:1px;display:inline-block;color:#e2e8f0;}
+
+/* ── Week theme badge ── */
+.week-theme-bar{background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.wtb-icon{font-size:16px;flex-shrink:0;}
+.wtb-text{font-size:12px;color:#93c5fd;font-weight:700;line-height:1.4;}
+.wtb-label{font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#10b981;margin-bottom:2px;}
+
+/* ── SAND LIGHT MODE (Phase 7) ─────────────────────────────────────────── */
+html[data-theme="light"] .week-selector{background:#f5f2ec;}
+html[data-theme="light"] .wtab{background:rgba(28,26,23,0.04);border-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .wtab.active{background:rgba(16,185,129,0.14);border-color:rgba(16,185,129,0.4);color:#047857;}
+html[data-theme="light"] .wtab.active .wt-label{color:#047857;}
+html[data-theme="light"] .day-session{color:#1c1a17;}
+html[data-theme="light"] .day-toggle{background:rgba(28,26,23,0.05);border-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .day-card.open .day-toggle{color:#1c1a17;}
+html[data-theme="light"] .rest-card{background:rgba(28,26,23,0.02);border-color:rgba(28,26,23,0.12);}
+html[data-theme="light"] .cond-link-row,
+html[data-theme="light"] .cond-act-name{color:#8a6d1a;}
+
+html[data-theme="light"] .ex-tag.superset{color:#92700c;}
+html[data-theme="light"] .ex-tag.triset{color:#7c3aed;}
+html[data-theme="light"] .ex-tag.cluster{color:#0e7490;}
+html[data-theme="light"] .ex-tag.drop{color:#be123c;}
+html[data-theme="light"] .ex-tag.finisher{color:#c2410c;}
+html[data-theme="light"] .ex-tag.tut{color:#0e7490;}
+
+html[data-theme="light"] .a-idx{background:rgba(28,26,23,0.05);border-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .a-name{color:#1c1a17;}
+html[data-theme="light"] .a-pill.grp{color:#92700c;}
+html[data-theme="light"] .a-pill.grp.triset{color:#7c3aed;}
+html[data-theme="light"] .a-pill.grp.cluster{color:#0e7490;}
+html[data-theme="light"] .a-pill.grp.drop{color:#be123c;}
+html[data-theme="light"] .a-pill.grp.finisher{color:#c2410c;}
+html[data-theme="light"] .a-pill.tempo{color:#0e7490;}
+html[data-theme="light"] .a-legtag{background:rgba(28,26,23,0.06);}
+html[data-theme="light"] .a-rep{background:rgba(28,26,23,0.05);border-color:rgba(28,26,23,0.1);color:#1c1a17;}
+html[data-theme="light"] .a-rep.live{color:#1d4ed8;}
+html[data-theme="light"] .a-rep.special{color:#be123c;}
+html[data-theme="light"] .a-cell .v{color:#6b6459;}
+html[data-theme="light"] .editable{color:#1c1a17;}
+
+html[data-theme="light"] .wtb-text{color:#1c1a17;}
+html[data-theme="light"] .wtb-label{color:#047857;}
+</style>
+</head>
+<body>
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app" id="app"></div>
+<script src="mc-timer.js"></script>
+<script src="mm-data.js"></script>
+<script src="mm-engine.js"></script>
+<script>MM.init('p3');</script>
+
+<div style="max-width:680px;margin:0 auto;" id="programSummary"></div>
+<script>MM.renderSummary();</script>
+
+<script src="mc-finish.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-biometric.js"></script>
+<script src="program-overrides.js"></script>
+<script src="mc-card-actions.js"></script>
+<script src="program-manager.js"></script>
+<script src="mc-live-tracker.js"></script>
+<script src="mc-nav.js"></script>
+<script src="mc-summary.js"></script>
+<script src="mc-setlog.js"></script>
+<script src="mc-session.js"></script>
+<script src="mc-suggest.js"></script>
+<script src="mc-chart.js"></script>
+<script src="mc-exercise-trends.js"></script>
+<script src="mc-cues-data.js"></script>
+<script src="mc-cues.js"></script>
+<script src="mc-group-split.js"></script>
+<script src="mc-superset-hop.js"></script>
+<script src="mc-sw-update.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+<script src="mc-cond-suggest.js"></script>
+</body>
+</html>

@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1E2022" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mike's Cookbook" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<title>Quick Tour · Mike's Cookbook</title>
+<link rel="stylesheet" href="cookbook.css" />
+<style>
+/* ── Quick Tour — uses the cookbook design system (cream cards on slate,
+      terracotta accent, serif headings). Mirrors the MC Training tour
+      structure for cross-app continuity; restyled to the cookbook palette. ── */
+*{box-sizing:border-box;}
+body{background:var(--bg);min-height:100vh;color:var(--on-dark);padding-bottom:92px;overflow-x:hidden;}
+
+/* TOP BAR */
+.qt-top{display:flex;align-items:center;gap:12px;padding:18px 16px 12px;position:sticky;top:0;z-index:20;
+  background:linear-gradient(to bottom,var(--bg) 80%,transparent);}
+.qt-back{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:var(--bg-elev);border:1px solid var(--line-dark);color:var(--accent);font-size:17px;text-decoration:none;}
+.qt-top-info{flex:1;min-width:0;}
+.qt-top-title{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:-0.01em;color:var(--on-dark);}
+.qt-top-sub{font-size:12px;color:var(--on-dark-dim);margin-top:1px;}
+.qt-skip{font-size:12px;font-weight:700;color:var(--on-dark-dim);text-decoration:none;letter-spacing:0.04em;padding:8px;}
+
+/* PROGRESS */
+.qt-prog-wrap{padding:2px 16px 14px;}
+.qt-prog-track{height:5px;border-radius:3px;background:var(--line-dark);overflow:hidden;}
+.qt-prog-fill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--sage),var(--accent));transition:width 0.35s var(--ease-out);}
+.qt-prog-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--on-dark-dim);}
+.qt-prog-meta .pm-step{color:var(--accent);}
+
+/* EXEC SUMMARY DRILL-IN */
+.qt-exec-wrap{padding:0 16px;}
+.qt-exec{display:flex;align-items:center;gap:11px;text-decoration:none;max-width:560px;margin:0 auto 16px;padding:12px 14px;
+  background:var(--bg-elev);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:14px;}
+.qt-exec:active{background:rgba(var(--accent-rgb),0.12);}
+.qt-exec-ico{font-size:20px;flex-shrink:0;}
+.qt-exec-body{flex:1;min-width:0;}
+.qt-exec-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+.qt-exec-nm{font-size:13px;font-weight:600;color:var(--on-dark);margin-top:1px;line-height:1.35;}
+.qt-exec-arrow{color:var(--accent);font-size:16px;flex-shrink:0;}
+
+/* DECK / SLIDE */
+.qt-deck{max-width:560px;margin:0 auto;padding:0 16px;}
+.qt-slide{display:none;animation:qtIn 0.34s var(--ease-out);}
+.qt-slide.active{display:block;}
+@keyframes qtIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){.qt-slide{animation:none;}.qt-prog-fill{transition:none;}}
+
+.qt-eyebrow{font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.qt-title{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:-0.01em;line-height:1.15;margin-bottom:6px;color:var(--on-dark);}
+.qt-tagline{font-size:13.5px;color:var(--on-dark-dim);line-height:1.55;margin-bottom:18px;}
+
+/* SCENE */
+.qt-scene{position:relative;border-radius:18px;overflow:hidden;margin-bottom:18px;
+  background:linear-gradient(135deg,var(--surface),var(--surface-2));
+  border:1px solid rgba(var(--accent-rgb),0.25);box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  aspect-ratio:16/10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+.qt-scene-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 30% 28%,var(--scene-glow,rgba(var(--accent-rgb),0.16)) 0%,transparent 62%);}
+.qt-scene-glyph{font-size:54px;line-height:1;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.25));}
+.qt-scene-cap{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:0.01em;max-width:84%;line-height:1.45;font-family:var(--sans);}
+.qt-scene-clip{position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-dim);
+  background:rgba(255,255,255,0.6);border:1px solid var(--line);border-radius:20px;padding:4px 10px;}
+.qt-scene-clip .dot{width:7px;height:7px;border-radius:50%;background:#d1495b;box-shadow:0 0 8px #d1495b;animation:qtRec 1.6s ease-in-out infinite;}
+@keyframes qtRec{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.qt-scene-play{position:absolute;right:12px;bottom:12px;width:40px;height:40px;border-radius:50%;
+  background:rgba(var(--accent-rgb),0.16);border:1.5px solid rgba(var(--accent-rgb),0.5);
+  display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--accent);}
+
+/* NARRATION (cream card) */
+.qt-narr{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;margin-bottom:16px;position:relative;}
+.qt-narr::before{content:'👩‍🍳 IN THE KITCHEN';position:absolute;top:-9px;left:14px;font-size:9px;font-weight:800;letter-spacing:0.1em;color:var(--accent);background:var(--bg);padding:0 7px;}
+.qt-narr p{font-size:14px;line-height:1.6;color:var(--ink);margin:0;}
+
+/* STEPS */
+.qt-steps-lbl{font-size:11px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--on-dark-dim);margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+.qt-steps-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line-dark),transparent);}
+.qt-steps{list-style:none;display:flex;flex-direction:column;gap:8px;margin:0 0 18px;padding:0;}
+.qt-step{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 13px;}
+.qt-step-n{flex-shrink:0;width:22px;height:22px;border-radius:7px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);
+  color:var(--accent);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.qt-step-tx{font-size:13px;line-height:1.5;color:var(--ink);}
+.qt-step-tx b{color:var(--ink);font-weight:700;}
+.qt-step-tx .tap{color:var(--accent);font-weight:700;}
+
+/* PRO TIP (sage) */
+.qt-tip{display:flex;gap:10px;align-items:flex-start;background:rgba(var(--sage-rgb),0.14);border:1px solid rgba(var(--sage-rgb),0.4);border-radius:12px;padding:12px 13px;margin-bottom:18px;}
+.qt-tip-ico{font-size:16px;flex-shrink:0;line-height:1.4;}
+.qt-tip-tx{font-size:12.5px;line-height:1.55;color:var(--on-dark);}
+.qt-tip-tx b{color:var(--sage);font-weight:700;}
+
+/* INLINE CTA */
+.qt-try{display:flex;align-items:center;gap:10px;text-decoration:none;background:var(--bg-elev);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:14px;padding:13px 15px;margin-bottom:8px;}
+.qt-try:active{background:rgba(var(--accent-rgb),0.14);}
+.qt-try-ico{font-size:19px;}
+.qt-try-body{flex:1;min-width:0;}
+.qt-try-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+.qt-try-nm{font-size:13.5px;font-weight:600;color:var(--on-dark);margin-top:1px;}
+.qt-try-arrow{color:var(--accent);font-size:16px;flex-shrink:0;}
+
+/* FINISH */
+.qt-finish-list{list-style:none;display:flex;flex-direction:column;gap:9px;margin:0 0 18px;padding:0;}
+.qt-finish-list li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5;color:var(--on-dark);}
+.qt-finish-list .chk{color:var(--accent);font-weight:800;flex-shrink:0;}
+.qt-finish-cta{display:block;width:100%;text-align:center;text-decoration:none;padding:15px;border-radius:14px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;letter-spacing:0.02em;margin-top:6px;}
+.qt-finish-cta:active{opacity:0.88;}
+
+/* CONTROLS */
+.qt-controls{position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(30,32,34,0.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--line-dark);display:flex;align-items:center;gap:12px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+.qt-nav-btn{flex:1;height:50px;border-radius:13px;border:1px solid var(--line-dark);background:var(--bg-elev);color:var(--on-dark);
+  font-size:14px;font-weight:700;letter-spacing:0.02em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;}
+.qt-nav-btn:active{transform:scale(0.98);}
+.qt-nav-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);flex:1.4;}
+.qt-nav-btn:disabled{opacity:0.34;cursor:not-allowed;}
+
+/* DOTS */
+.qt-dots{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;padding:4px 0 22px;}
+.qt-dot{width:8px;height:8px;border-radius:50%;background:var(--line-dark);cursor:pointer;transition:all 0.2s;border:none;padding:0;}
+.qt-dot.active{background:var(--accent);width:22px;border-radius:4px;}
+.qt-dot.seen{background:rgba(var(--accent-rgb),0.5);}
+</style>
+</head>
+<body>
+
+<div class="qt-top">
+  <a href="index.html" class="qt-back" aria-label="Back to home">←</a>
+  <div class="qt-top-info">
+    <div class="qt-top-title">Quick Tour</div>
+    <div class="qt-top-sub">Find your way around in ~3 minutes</div>
+  </div>
+  <a href="index.html" class="qt-skip" id="skipLink">Skip</a>
+</div>
+
+<div class="qt-prog-wrap">
+  <div class="qt-prog-track"><div class="qt-prog-fill" id="progFill"></div></div>
+  <div class="qt-prog-meta">
+    <span class="pm-step" id="pmStep">Step 1</span>
+    <span id="pmTotal"></span>
+  </div>
+</div>
+
+<div class="qt-exec-wrap">
+  <a class="qt-exec" href="quick-tour-overview.html">
+    <div class="qt-exec-ico">📖</div>
+    <div class="qt-exec-body">
+      <div class="qt-exec-lbl">Prefer to read?</div>
+      <div class="qt-exec-nm">Executive Summary — the whole cookbook, one page</div>
+    </div>
+    <div class="qt-exec-arrow">→</div>
+  </a>
+</div>
+
+<div class="qt-deck" id="deck"><!-- slides injected here --></div>
+
+<div class="qt-dots" id="dots"></div>
+
+<div class="qt-controls">
+  <button class="qt-nav-btn" id="prevBtn" onclick="go(-1)">← Back</button>
+  <button class="qt-nav-btn primary" id="nextBtn" onclick="go(1)">Next →</button>
+</div>
+
+<script>
+/* ============================================================================
+   Mike's Cookbook — Quick Tour
+   A balanced slide tour: each module = a visual summary + step-by-step actions.
+   Self-contained, vanilla JS (no build step). Same engine shape as the MC
+   Training tour for cross-app continuity; restyled to the cookbook palette.
+   ========================================================================== */
+var SLIDES = [
+  {
+    eyebrow:'Welcome',
+    title:"Welcome to Mike's Cookbook",
+    tagline:"Heirloom hand-me-downs meet performance plates — whole-food, low-carb cooking on a two-meals-a-day rhythm, in an app built for the kitchen. This short tour gets you cooking with zero guesswork.",
+    scene:{glyph:'🍳',caption:'144 recipes · serving scaling · macros · smart grocery lists',glow:'rgba(200,122,83,0.18)'},
+    narration:"Welcome in. Everything lives one or two taps from Home — browse recipes, scale a dish to any serving count, see the macros, plan your week, and even track what you eat. Swipe or tap Next and I'll walk you through it.",
+    steps:[
+      {tx:"Use <span class='tap'>Next →</span> / <b>← Back</b> below, the dots, or swipe left/right."},
+      {tx:"Tap any <span class='tap'>Open it</span> card to jump straight into the real screen and try it live."},
+      {tx:"Hit <b>Skip</b> anytime — relaunch this tour from the <b>Quick Tour</b> card on Home whenever you like."}
+    ]
+  },
+  {
+    eyebrow:'Module 1 · Home base',
+    title:"The Home hub",
+    tagline:"Home is the hub; every feature is a spoke. There's no bottom tab bar — you open a screen, and a “‹ Home” arrow always brings you back.",
+    scene:{glyph:'🏠',caption:'This Week hero · Categories · Recipes · Macro Tracker · Favorites',glow:'rgba(200,122,83,0.16)'},
+    narration:"Start at Home. Up top, the This Week card — your meal planner. Below, the Browse modules: Categories, Recipes, Macro Tracker, Mike's Favorites, your saved Favorites, and Add Recipe. Tap any module to drill in; the “‹ Home” arrow in the corner brings you straight back. You can't get lost.",
+    steps:[
+      {tx:"<b>Top — This Week:</b> your weekly meal planner and combined grocery list."},
+      {tx:"<b>Browse modules:</b> Categories · Recipes · Macro Tracker · Mike's Favorites · Favorites · Add Recipe."},
+      {tx:"Every spoke has a <span class='tap'>‹ Home</span> arrow — one tap back to the hub."},
+      {tx:"<b>🏋️ Workout app:</b> the icon next to search opens 4 Weeks to Open — one sign-in works in both."}
+    ],
+    tip:"On the recipe and collection pages, a floating <b>🏠 Home</b> button does the same job. Every Sunday and Monday, a <b>Past 7 Days</b> card sums up your week — active days, meals cooked, tracker goal days, how many of your planned meals actually got cooked, and, signed in with the workout app linked, how many workouts you finished that week too — right on Home, dismissible per week. Trained today (or mid-streak), the <b>Today</b> card also picks up a real status badge — “🏋️ Trained today” or a streak count — pulled straight from your workout log, even on a day with no meals planned yet."
+  },
+  {
+    eyebrow:'Module 2 · Find a dish',
+    title:"Browse & pick a recipe",
+    tagline:"Two ways in: browse by dish type under Categories, or open the Recipes screen for collections, your own library, and live search.",
+    scene:{glyph:'📖',caption:'5 live collections · 9 categories · search by name, tag or ingredient',glow:'rgba(217,160,91,0.18)'},
+    narration:"Tap Recipes to see the collections — Two Meals a Day, Chipotle Copycats, High-Protein Meal Prep, Desserts and Salsas are all live, with Kelli Cross' heirlooms and a Carnivore set on the way. Open a collection to see its recipes; the bigger ones (High-Protein Meal Prep, Desserts) add a sub-tab bar — Chicken, Beef & Steak, Seafood and the like — so you can narrow in before you scroll. Use the search box to filter by name, tag, or ingredient. Prefer to shop by dish type? Categories sorts everything into nine buckets: Breakfast, Salads, Soups, Casseroles, Skillets, Grilled, Sandwiches, Desserts and Salsas & Dips. Tap any recipe card to open it.",
+    steps:[
+      {tx:"From Home, tap <span class='tap'>📖 Recipes</span> for collections + your library, or <span class='tap'>🍽️ Categories</span> to browse by dish type."},
+      {tx:"Open a <b>collection</b> (e.g. Two Meals a Day) to see every recipe in it."},
+      {tx:"In a larger collection, tap a <b>sub-tab</b> (e.g. Chicken, Seafood) to narrow the grid further."},
+      {tx:"Use the <b>search box</b> to filter by name, tag, or ingredient."},
+      {tx:"Tap a <b>recipe card</b> to open its full detail page."},
+      {tx:"Arriving from the workout app's Nutrition tab? A <b>🎯 “Fits your day”</b> banner tops this screen with recipes that fit your remaining calories, best protein first — ✕ dismisses it. Logged a heavy leg day? The banner leans carb-forward automatically, to help you replenish."}
+    ],
+    cta:{ico:'📖',label:'Try it now',name:'Browse the Two Meals a Day collection',href:'collection.html?c=two-meals-a-day'}
+  },
+  {
+    eyebrow:'Module 3 · ⭐ Core skill',
+    title:"Scale any recipe to your servings",
+    tagline:"Cooking for one or feeding six? The serving stepper rescales every ingredient quantity on the fly — from 1 up to 12.",
+    scene:{glyph:'🔢',caption:'Serving stepper − / + → ingredients rescale · macros stay per-serving',glow:'rgba(200,122,83,0.16)'},
+    narration:"Open any recipe and look at the header: a serving stepper. Recipes are authored at 2 and 4 servings exactly; tap minus or plus and any other count — anywhere from 1 to 12 — is scaled live from the recipe's native amounts. Every ingredient quantity updates instantly. Macros are listed per single serving, so those stay constant no matter how many you're cooking for.",
+    steps:[
+      {tx:"Open a recipe, then find the <b>serving stepper</b> in the header."},
+      {tx:"Tap <span class='tap'>−</span> / <span class='tap'>+</span> to set your serving count (1–12)."},
+      {tx:"Every <b>ingredient quantity rescales instantly</b> — grocery and recipe tabs included."},
+      {tx:"Your check-off progress is saved <b>per serving count</b>, so each keeps its own list."}
+    ],
+    tip:"Macros are shown <b>per serving</b> and don't change with the count — scale freely without losing your numbers.",
+    cta:{ico:'🔢',label:'Try it now',name:'Open a recipe and scale the servings',href:'recipe.html?id=jalapeno-chicken-bake'}
+  },
+  {
+    eyebrow:'Module 4 · Read the recipe',
+    title:"Macros, Grocery & Recipe tabs",
+    tagline:"Every recipe page has three swipeable tabs — toggle between the macro overview, a clean grocery list, and the step-by-step method.",
+    scene:{glyph:'📊',caption:'Overview & Macros · Grocery · Recipe — three swipeable tabs',glow:'rgba(125,140,119,0.18)'},
+    narration:"At the top of every recipe, three tabs. Overview & Macros shows the dish summary with its calories and protein, fat and carb breakdown per serving — your macro view. Grocery gives you a clean shopping list grouped by aisle: Meat, Dairy, Produce, Pantry — just the items, no fiddly exact amounts, because you buy standard packages. Recipe is the full method, step by step, with the prep notes for each ingredient. Swipe or tap to switch.",
+    steps:[
+      {tx:"Tap <span class='tap'>Overview &amp; Macros</span> for the dish summary + per-serving macro breakdown."},
+      {tx:"Tap <span class='tap'>Grocery</span> for a clean, aisle-grouped shopping list (Meat · Dairy · Produce · Pantry)."},
+      {tx:"Tap <span class='tap'>Recipe</span> for the numbered method with per-ingredient prep notes."},
+      {tx:"<b>Swipe</b> left/right to move between the three tabs."},
+      {tx:"On the Recipe tab, tap <span class='tap'>▸ Start Cooking</span> for <b>Cooking Mode</b> — a full-screen, one-step-at-a-time view with big text, the screen kept awake, and a <span class='tap'>🎙️</span> button for opt-in voice control: say <b>“next step”</b>, <b>“previous step”</b>, or <b>“read ingredients”</b> to hear the list read aloud, hands free."}
+    ],
+    tip:"Check items off as you shop or cook — your progress is saved on your device, per recipe and serving count."
+  },
+  {
+    eyebrow:'Module 5 · Plan the week',
+    title:"This Week planner & grocery list",
+    tagline:"Pick the meals you're making this week and the planner merges every recipe into one smart grocery list.",
+    scene:{glyph:'🗓️',caption:'Add meals → one combined, aisle-grouped grocery list',glow:'rgba(200,122,83,0.16)'},
+    narration:"From Home, open This Week. Add the recipes you plan to cook, and the planner does the math: it combines all their ingredients into a single grocery list, grouped by aisle and de-duplicated, so you shop once for the whole week. Check items off as you go. It's the fastest path from “what's for dinner” to a full cart.",
+    steps:[
+      {tx:"From Home, tap the <span class='tap'>This Week</span> hero card."},
+      {tx:"<b>Add meals</b> from your recipes to build the week's plan."},
+      {tx:"Open the <b>combined grocery list</b> — every recipe merged into one, by aisle."},
+      {tx:"Check items off as you shop; the plan remembers what's done."}
+    ],
+    cta:{ico:'🗓️',label:'Try it now',name:'Open the weekly planner',href:'index.html#planner'}
+  },
+  {
+    eyebrow:'Module 6 · Let the app plan',
+    title:"Smart Week: auto-suggest 5 meals",
+    tagline:"Don't want to pick five recipes by hand? Smart Week finds a combo whose ingredients overlap, so perishables get used up instead of going bad in the back of the fridge.",
+    scene:{glyph:'✨',caption:'Tap Smart Week → 5-meal combo with shared ingredients previewed',glow:'rgba(200,122,83,0.16)'},
+    narration:"Inside This Week, tap the ✨ Smart Week button. It scans your recipes and greedily builds a 5-meal combo that shares the most Produce, Meat and Dairy — the perishable stuff — weighting those higher than pantry staples. You get a preview: the 5 recipe cards, plus the ingredients they share. Don't love the pick? Shuffle to another combo. Happy with it? One tap adds all 5 to This Week, unassigned, ready for you to place on a day.",
+    steps:[
+      {tx:"Open <b>This Week</b>, then tap <span class='tap'>✨ Smart Week</span>."},
+      {tx:"Review the <b>5-meal combo</b> and the ingredients it shares across recipes."},
+      {tx:"Tap <span class='tap'>🔀 Try another combo</span> to shuffle, or <span class='tap'>＋ Add these 5</span> to accept it."},
+      {tx:"Accepted meals land in This Week <b>unassigned</b> — drag them onto a day whenever you like."}
+    ],
+    tip:"Smart Week skips recipes already in your plan first, so it complements what you've picked rather than duplicating it. Signed in with the workout app linked, Smart Week also learns your real training days from your logged workout history and leans higher-protein on those days, lighter on the rest — no schedule to set up, it just picks up the pattern."
+  },
+  {
+    eyebrow:'Module 7 · Match your schedule',
+    title:"Time Check: build the week around your bandwidth",
+    tagline:"Some days you have an hour to cook, some days you don't. Time Check is a precursor to Smart Week — tell it how each day looks and it generates the whole week to match.",
+    scene:{glyph:'⏱️',caption:'Quick (<30 min) · Standard (~1 hr) · No rush — one per day',glow:'rgba(125,140,119,0.18)'},
+    narration:"Beside Smart Week sits ⏱️ Time Check. Pick which meal slots you want filled (same scope picker as Smart Week, so a no-lunch household can skip it), then assign each day of the week Quick (under 30 minutes), Standard (about an hour), or No rush — no time limit. Tap Generate my week and Time Check builds a full day-by-day grid, pulling each day's meals from that day's time budget first — regenerate any single slot, then tap Set Weekly Meal Plan to commit it, exactly like Smart Week's own preview. Your day assignments are remembered for next time.",
+    steps:[
+      {tx:"Open <b>This Week</b>, then tap <span class='tap'>⏱️ Time Check</span>."},
+      {tx:"Choose which meal slots to fill, then set each day to <b>Quick</b>, <b>Standard</b>, or <b>No rush</b>."},
+      {tx:"Tap <span class='tap'>Generate my week</span> to preview the day-by-day grid, regenerating any slot you want to change."},
+      {tx:"Tap <span class='tap'>Set Weekly Meal Plan</span> to commit it to This Week."}
+    ]
+  },
+  {
+    eyebrow:'Module 8 · Track your intake',
+    title:"The Macro Tracker",
+    tagline:"Beyond the recipes, a full day tracker — log what you eat by the hour and watch your calories and macros against your goals.",
+    scene:{glyph:'📊',caption:'Daily kcal · P/F/C · food search + barcode scan',glow:'rgba(125,140,119,0.18)'},
+    narration:"Tap Macro Tracker on Home. Set your goals, then log food across the day: search a big food database, or tap the barcode icon and scan a label — the scanner detects the code and pulls the food's nutrition in automatically, no typing. Your daily totals for calories, protein, fat and carbs build up against your targets as you go. You can even log a cookbook recipe straight into your day. Sign in from the 👤 button on Home and your tracker follows you across devices — and reconciles with the same account in the 4 Weeks to Open workout app, if you use both.",
+    steps:[
+      {tx:"From Home, tap <span class='tap'>📊 Macro Tracker</span>."},
+      {tx:"Set your <b>calorie & macro goals</b>, then start logging by the hour."},
+      {tx:"Tap <span class='tap'>Search food database</span>, or the <span class='tap'>▦ barcode</span> icon to scan a label."},
+      {tx:"The scanner <b>auto-detects the barcode</b> and fills in the food's nutrition for you."},
+      {tx:"Optional: tap the <span class='tap'>👤 account</span> icon on Home to sign in and sync your tracker across devices."},
+      {tx:"Prefer not to sign in? The same 👤 sheet has <b>Export data</b> / <b>Import data</b> — a manual backup file you can save anywhere and restore from."}
+    ],
+    tip:"No barcode match, or offline? It drops you into <b>manual entry</b> so you can log it anyway. Never sign in? Everything keeps working exactly as before, fully offline on this device — just export a backup file every so often for safekeeping.",
+    cta:{ico:'📊',label:'Try it now',name:'Open the Macro Tracker',href:'index.html#tracker'}
+  },
+  {
+    eyebrow:'Module 9 · Dial it in',
+    title:"Nutrition facts & favorite foods",
+    tagline:"Every food opens a tappable facts sheet — switch grams and ounces, key in your exact amount, and star the staples for fast logging.",
+    scene:{glyph:'🔢',caption:'Facts sheet · grams ⇄ oz toggle · keypad qty · ★ favorites',glow:'rgba(200,122,83,0.16)'},
+    narration:"Tap any food and its nutrition-facts sheet opens: the macro breakdown plus micronutrients. Toggle the unit between grams and ounces, or use the keypad to enter exactly how much you had — type 3 for three servings — and the macros recalculate live. Tap the star to save a food to your Favorites, then quick-log your everyday staples in a couple of taps instead of searching each time.",
+    steps:[
+      {tx:"Tap a food to open its <b>nutrition-facts sheet</b>."},
+      {tx:"Toggle <span class='tap'>grams</span> / <span class='tap'>oz</span>, or use the <b>keypad</b> for a custom quantity or multiple."},
+      {tx:"Macros <b>recalculate live</b> as you change the unit or amount, then tap <span class='tap'>Log Food</span>."},
+      {tx:"Tap the <span class='tap'>☆ star</span> to save a food, then quick-log it from <b>★ Favorites</b>."}
+    ]
+  },
+  {
+    eyebrow:'Module 10 · Make it yours',
+    title:"Favorites & your own recipes",
+    tagline:"Save the recipes you love, see the ones Mike swears by, and add your own — they behave like every built-in recipe.",
+    scene:{glyph:'❤',caption:"Tap ❤ to save · Mike's Favorites · Add your own recipe",glow:'rgba(255,90,110,0.16)'},
+    narration:"Two kinds of favorites. Tap the heart on any recipe to save it to your personal Favorites — that list lives on Home. Mike's Favorites is the curated shortlist of dishes Mike has actually made and loved. And Add Recipe lets you create your own or paste in a family hand-me-down; saved recipes join your library and work everywhere — search, categories, the planner, and favorites — just like the built-ins.",
+    steps:[
+      {tx:"Tap the <span class='tap'>❤</span> on any recipe to save it to your <b>Favorites</b> (find them on Home)."},
+      {tx:"Open <span class='tap'>⭐ Mike's Favorites</span> for the dishes Mike has made and loves."},
+      {tx:"Tap <span class='tap'>📝 Add Recipe</span> to create your own or save a hand-me-down."},
+      {tx:"Your recipes join the library — searchable, categorized, and plannable like the rest."}
+    ],
+    cta:{ico:'❤',label:'Try it now',name:'See your saved Favorites',href:'index.html#favorites'}
+  },
+  {
+    eyebrow:'Module 11 · Take it anywhere',
+    title:"Install & cook offline",
+    tagline:"Mike's Cookbook is a PWA — add it to your home screen and it works at the counter with zero signal.",
+    scene:{glyph:'📲',caption:'Add to Home Screen → full-screen → works offline',glow:'rgba(200,122,83,0.16)'},
+    narration:"Last thing. This app installs. From your browser's Share menu, tap Add to Home Screen — it launches full-screen like a native app, and once cached it runs offline. Flaky kitchen Wi-Fi won't stop you: your recipes, scaling, grocery lists and macros keep working. When there's an update, a small banner taps you to refresh.",
+    steps:[
+      {tx:"Open your browser's <b>Share</b> menu and tap <span class='tap'>Add to Home Screen</span>."},
+      {tx:"Launch from the icon — it opens <b>full-screen, no browser bar</b>."},
+      {tx:"Cook <b>offline</b>; tap the <b>update</b> banner whenever it appears."}
+    ],
+    tip:"Your favorites, plan, check-offs and tracker logs are saved <b>on your device</b> — private and instant."
+  },
+  {
+    eyebrow:'You’re ready',
+    title:"That’s the whole kitchen 🍽️",
+    tagline:"You can now find a recipe, scale it to any serving count, read the macros, plan your week's groceries, track what you eat, and save your own dishes. Time to cook.",
+    scene:{glyph:'🔥',caption:'Browse · Scale · Plan · Track · Save — you’ve got it all',glow:'rgba(200,122,83,0.18)'},
+    narration:"That's it — you're tour-complete. Pick a recipe, scale it to your table, build the week's grocery list, and keep your macros honest in the tracker. Replay this tour anytime from Home. Now go make something good.",
+    finish:[
+      "Browse recipes by collection, sub-tab, or dish category",
+      "Scale any recipe from 1 to 12 servings",
+      "Read per-serving macros and a clean grocery list",
+      "Plan the week into one combined shopping list",
+      "Let Smart Week or Time Check pick meals for you",
+      "Track intake with food search & barcode scan",
+      "Save favorites and add your own recipes"
+    ],
+    cta:{ico:'🍳',label:'Start cooking',name:'Go to my Cookbook',href:'index.html'},
+    last:true
+  }
+];
+
+var TOUR_KEY='mc-cookbook:tour-done';
+var idx=0, seen=new Set([0]);
+var deck=document.getElementById('deck');
+var dotsWrap=document.getElementById('dots');
+
+function sceneHTML(s){
+  return '<div class="qt-scene" style="--scene-glow:'+(s.scene.glow||'rgba(200,122,83,0.16)')+'">'
+    +'<div class="qt-scene-glow"></div>'
+    +'<div class="qt-scene-glyph">'+s.scene.glyph+'</div>'
+    +'<div class="qt-scene-cap">'+s.scene.caption+'</div>'
+    +'<div class="qt-scene-clip"><span class="dot"></span>Tour clip</div>'
+    +'<div class="qt-scene-play">▶</div>'
+    +'</div>';
+}
+
+function buildSlide(s,i){
+  var el=document.createElement('div');
+  el.className='qt-slide'+(i===0?' active':'');
+  el.id='slide-'+i;
+  var h='';
+  h+='<div class="qt-eyebrow">'+s.eyebrow+'</div>';
+  h+='<h1 class="qt-title">'+s.title+'</h1>';
+  h+='<p class="qt-tagline">'+s.tagline+'</p>';
+  h+=sceneHTML(s);
+  h+='<div class="qt-narr"><p>'+s.narration+'</p></div>';
+  if(s.steps&&s.steps.length){
+    h+='<div class="qt-steps-lbl">Step by step</div><ol class="qt-steps">';
+    s.steps.forEach(function(st,n){
+      h+='<li class="qt-step"><div class="qt-step-n">'+(n+1)+'</div><div class="qt-step-tx">'+st.tx+'</div></li>';
+    });
+    h+='</ol>';
+  }
+  if(s.finish&&s.finish.length){
+    h+='<div class="qt-steps-lbl">You can now</div><ul class="qt-finish-list">';
+    s.finish.forEach(function(f){ h+='<li><span class="chk">✓</span><span>'+f+'</span></li>'; });
+    h+='</ul>';
+  }
+  if(s.tip){
+    h+='<div class="qt-tip"><div class="qt-tip-ico">💡</div><div class="qt-tip-tx"><b>Pro tip:</b> '+s.tip+'</div></div>';
+  }
+  if(s.cta){
+    if(s.last){
+      h+='<a class="qt-finish-cta" href="'+s.cta.href+'" onclick="markDone()">'+s.cta.ico+' '+s.cta.name+' →</a>';
+    } else {
+      h+='<a class="qt-try" href="'+s.cta.href+'">'
+        +'<div class="qt-try-ico">'+s.cta.ico+'</div>'
+        +'<div class="qt-try-body"><div class="qt-try-lbl">'+s.cta.label+'</div><div class="qt-try-nm">'+s.cta.name+'</div></div>'
+        +'<div class="qt-try-arrow">→</div></a>';
+    }
+  }
+  el.innerHTML=h;
+  return el;
+}
+
+function buildDots(){
+  SLIDES.forEach(function(_,i){
+    var b=document.createElement('button');
+    b.className='qt-dot'+(i===0?' active':'');
+    b.setAttribute('aria-label','Go to step '+(i+1));
+    b.onclick=function(){ jump(i); };
+    dotsWrap.appendChild(b);
+  });
+}
+
+function render(){
+  SLIDES.forEach(function(s,i){ deck.appendChild(buildSlide(s,i)); });
+  buildDots();
+  update();
+}
+
+function update(){
+  var slides=document.querySelectorAll('.qt-slide');
+  slides.forEach(function(sl,i){ sl.classList.toggle('active',i===idx); });
+  var dn=document.querySelectorAll('.qt-dot');
+  dn.forEach(function(d,i){
+    d.classList.toggle('active',i===idx);
+    d.classList.toggle('seen',i!==idx && seen.has(i));
+  });
+  var pct=Math.round(((idx+1)/SLIDES.length)*100);
+  document.getElementById('progFill').style.width=pct+'%';
+  document.getElementById('pmStep').textContent='Step '+(idx+1);
+  document.getElementById('pmTotal').textContent=(idx+1)+' / '+SLIDES.length;
+  document.getElementById('prevBtn').disabled=(idx===0);
+  var next=document.getElementById('nextBtn');
+  if(idx===SLIDES.length-1){ next.textContent='Finish ✓'; }
+  else { next.innerHTML='Next →'; }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function go(dir){
+  if(dir>0 && idx===SLIDES.length-1){ markDone(); location.href='index.html'; return; }
+  var n=idx+dir;
+  if(n<0||n>=SLIDES.length) return;
+  idx=n; seen.add(idx); update();
+}
+function jump(i){ if(i<0||i>=SLIDES.length) return; idx=i; seen.add(i); update(); }
+function markDone(){ try{ localStorage.setItem(TOUR_KEY,'1'); }catch(e){} }
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowRight') go(1);
+  else if(e.key==='ArrowLeft') go(-1);
+});
+
+(function(){
+  var x0=null,y0=null;
+  document.addEventListener('touchstart',function(e){ var t=e.changedTouches[0]; x0=t.clientX; y0=t.clientY; },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(x0===null) return;
+    var t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0;
+    if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.4){ go(dx<0?1:-1); }
+    x0=y0=null;
+  },{passive:true});
+})();
+
+render();
+</script>
+</body>
+</html>

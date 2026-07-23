@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Full Body Pyramid</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:210px;color:#e2e8f0;}
+
+/* ── DEEP CRIMSON + DARK SLATE SHELL ───────────────────────────────── */
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:60px 20px 22px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:27px;font-weight:900;color:#fff;margin-bottom:10px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+
+.tabs-bar{background:rgba(7,10,18,0.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid rgba(248,113,113,0.18);padding:0 12px;position:sticky;top:0;z-index:8;}
+.tabs{max-width:680px;margin:0 auto;display:flex;gap:4px;}
+.tab{flex:1;padding:13px 8px;border:none;cursor:pointer;font-weight:900;font-size:12px;background:transparent;color:var(--muted);border-bottom:3px solid transparent;text-align:center;letter-spacing:0.08em;font-family:inherit;}
+.tab.active{color:#fb923c;border-bottom-color:#f97316;}
+
+.content{max-width:680px;margin:20px auto 0;padding:0 16px;}
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+
+/* ── ROUND HEADERS ── */
+.pround-head{display:flex;align-items:center;gap:12px;margin:18px 0 10px;}
+.pround-num{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;font-size:14px;font-weight:900;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(220,38,38,0.4);}
+.pround-title{font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pround-dir{font-size:11px;font-weight:800;color:#fdba74;text-transform:uppercase;letter-spacing:0.12em;margin-top:2px;}
+
+/* ── PYRAMID / REVERSE-PYRAMID SHAPE DIAGRAM ── */
+.pyr-diagram{margin:2px 0 14px;padding:14px 12px;background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.pyr-dir{font-size:10.5px;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:#fdba74;text-align:center;margin-bottom:4px;}
+.pyr-row{width:100%;display:flex;justify-content:center;}
+.pyr-bar{min-width:128px;height:26px;background:linear-gradient(90deg,#dc2626,#f97316);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 10px;box-shadow:0 2px 10px rgba(220,38,38,0.3);overflow:hidden;transition:width .3s;}
+.pyr-bar span{font-size:11.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── STEP CARDS · dark slate · high-contrast white borders ── */
+.pstep{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:13px 13px 12px;margin-bottom:10px;box-shadow:0 8px 26px rgba(0,0,0,0.4);transition:border-color .2s,opacity .2s;}
+.pstep.locked{border-color:rgba(248,250,252,0.12);opacity:0.55;}
+.pstep.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);opacity:1;}
+.pstep.done{border-color:rgba(52,211,153,0.8);box-shadow:0 6px 22px rgba(16,185,129,0.18);opacity:0.92;}
+.pstep.finisher{border-style:dashed;}
+.pstep.finisher.active{border-style:solid;border-color:#f97316;box-shadow:0 8px 36px rgba(249,115,22,0.4);}
+.pstep-top{display:flex;align-items:center;gap:12px;}
+.pstep-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.pstep-main{flex:1;min-width:0;}
+.pstep-name{font-size:15px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pstep-target{font-size:11.5px;color:#94a3b8;font-weight:700;margin-top:2px;}
+
+/* status badges */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;letter-spacing:0.06em;padding:4px 9px;border-radius:8px;white-space:nowrap;text-transform:uppercase;flex-shrink:0;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.14);color:#94a3b8;border:1px solid rgba(148,163,184,0.22);}
+
+/* rep logging */
+.rep-body{margin-top:14px;}
+.rep-stepper{display:flex;align-items:center;justify-content:center;gap:14px;}
+.rep-step-btn{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:22px;font-weight:900;cursor:pointer;font-family:inherit;}
+.rep-step-btn:active{transform:scale(0.92);}
+.rep-input{width:100px;padding:8px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:26px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.rep-input:focus{border-color:#f97316;}
+.rep-unit{text-align:center;font-size:11px;color:#94a3b8;font-weight:700;margin-top:8px;}
+
+/* embedded countdown (timed intervals) */
+.cd-box{background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:13px;margin-top:11px;text-align:center;}
+.cd-mini-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+.cd-disp{font-size:40px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;}
+.cd-disp.running{color:#fb923c;}
+.cd-disp.done{color:#34d399;}
+.cd-prog{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin:12px 0 14px;}
+.cd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:3px;transition:width 0.25s linear;}
+.cd-prog-fill.done{background:#34d399;}
+.cd-btns{display:flex;gap:8px;justify-content:center;}
+.cd-btn{padding:9px 20px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.cd-btn.go{background:rgba(52,211,153,0.16);color:#34d399;border:1px solid rgba(52,211,153,0.35);}
+.cd-btn.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.cd-btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.12);}
+
+.pstep-complete{width:100%;margin-top:14px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;letter-spacing:0.03em;font-family:inherit;background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.pstep-complete:active{transform:scale(0.99);}
+.pstep-complete:disabled{background:rgba(255,255,255,0.05);color:#475569;cursor:not-allowed;}
+.pstep.finisher .pstep-complete:not(:disabled){background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,0.4);}
+
+/* ── 2-MIN FINISHER REST OVERLAY (locks the UI) ── */
+.rest-overlay{position:fixed;inset:0;z-index:160;background:rgba(5,8,14,0.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.rest-overlay.show{display:flex;}
+.rest-panel{width:100%;max-width:440px;text-align:center;}
+.rest-kicker{font-size:12px;font-weight:900;letter-spacing:0.24em;text-transform:uppercase;color:#fdba74;margin-bottom:6px;}
+.rest-sub{font-size:13px;color:#94a3b8;font-weight:700;margin-bottom:22px;}
+.rest-time{font-size:88px;font-weight:900;color:#fb923c;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:1;margin-bottom:18px;text-shadow:0 6px 30px rgba(249,115,22,0.4);}
+.rest-track{height:26px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;overflow:hidden;margin-bottom:22px;}
+.rest-fill{height:100%;width:100%;background:linear-gradient(90deg,#dc2626,#f97316);border-radius:14px;transition:width 0.3s linear;box-shadow:0 0 20px rgba(249,115,22,0.5);}
+.rest-next{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:12px;padding:13px 16px;font-size:13px;font-weight:800;color:#fed7aa;margin-bottom:20px;line-height:1.5;}
+.rest-skip{padding:12px 28px;border-radius:11px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#cbd5e1;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+.rest-skip:active{background:rgba(255,255,255,0.12);}
+
+/* ── COMPLETION BANNER ── */
+.done-banner{display:none;background:linear-gradient(135deg,#34d399,#059669);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px;box-shadow:0 8px 30px rgba(16,185,129,0.4);}
+.done-banner.show{display:block;}
+.done-banner .db-t{font-size:20px;font-weight:900;color:#06281d;letter-spacing:-0.01em;}
+.done-banner .db-s{font-size:13px;font-weight:700;color:#06281d;opacity:0.85;margin-top:4px;}
+
+/* ── LIVE SUMMARY FOOTER ── */
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:#fdba74;display:flex;align-items:center;gap:6px;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:var(--muted);transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:360px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+/* top progress bar */
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">🔺 Full Body · Pyramid</div>
+      <div class="title">Full Body Pyramid</div>
+      <div><span class="schedule">Live Workflow Engine</span></div>
+    </div>
+  </div>
+  <div class="tabs-bar"><div class="tabs">
+    <button class="tab active" id="tabTimed" onclick="switchMode('timed')">TIMED</button>
+    <button class="tab" id="tabReps" onclick="switchMode('reps')">REPS</button>
+  </div></div>
+  <div class="content">
+    <div class="intro-warn"><strong>Climb the pyramid, then reverse it.</strong> Odd rounds run the pyramid top-to-bottom, even rounds run it bottom-to-top. Complete each card in order — the <strong>last exercise of every round is the finisher</strong> and locks in a 2-minute rest before the next round.</div>
+    <div class="done-banner" id="doneBanner">
+      <div class="db-t">🏆 Pyramid Complete</div>
+      <div class="db-s">Every round and finisher logged. Check your totals below.</div>
+    </div>
+    <div id="pyMount"></div>
+  </div>
+</div>
+
+<!-- ── 2-MINUTE FINISHER REST OVERLAY ── -->
+<div class="rest-overlay" id="restOverlay">
+  <div class="rest-panel">
+    <div class="rest-kicker">🔥 Round Complete · Rest</div>
+    <div class="rest-sub">Finisher locked in — recover before the next pyramid block.</div>
+    <div class="rest-time" id="restTime">2:00</div>
+    <div class="rest-track"><div class="rest-fill" id="restFill"></div></div>
+    <div class="rest-next" id="restNext">Next up…</div>
+    <button class="rest-skip" onclick="PY.skipRest()">Skip Rest →</button>
+  </div>
+</div>
+
+<!-- ── LIVE SUMMARY FOOTER ── -->
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title" id="sumTitle">📊 Workout Summary</div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qReps">0</div><div class="sum-quick-l">Total Reps</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qTime">0:00</div><div class="sum-quick-l">Active Time</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">🏋️</span><span class="sum-line-nm">Accumulated Reps (strength / bodyweight)</span><span class="sum-line-v" id="dReps">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">⏱️</span><span class="sum-line-nm">Active Duration (timed intervals)</span><span class="sum-line-v" id="dTime">0:00</span></div>
+      <div class="sum-line"><span class="sum-line-ico">💀</span><span class="sum-line-nm">Finisher Reps (burpees + lunges)</span><span class="sum-line-v" id="dFin">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">✅</span><span class="sum-line-nm">Steps Complete</span><span class="sum-line-v" id="dSteps">0 <small>/ 0</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🔄</span><span class="sum-line-nm">Rounds Complete</span><span class="sum-line-v" id="dRounds">0 <small>/ 0</small></span></div>
+      <button class="sum-reset" onclick="resetSession()">↺ Reset Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   FULL BODY PYRAMID — live, state-driven workflow engine
+   =================================================================== */
+
+function fmt(sec){ sec=Math.max(0,sec); var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function buzz(p){
+  try{ if(navigator.vibrate) navigator.vibrate(p||[200,100,200]); }catch(e){}
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18,0.36].forEach(function(t,i){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=i===2?880:660;
+      g.gain.setValueAtTime(0.32,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);
+    });
+  }catch(e){}
+}
+
+/* reusable embedded Countdown */
+function Countdown(totalSec,hooks){
+  this.total=totalSec;this.remaining=totalSec;this.running=false;this.endAt=0;this.iv=null;
+  this.onTick=hooks.onTick||function(){};this.onDone=hooks.onDone||function(){};
+}
+Countdown.prototype.start=function(){
+  if(this.running||this.remaining<=0)return;
+  this.running=true;this.endAt=Date.now()+this.remaining*1000;
+  var s=this;this.iv=setInterval(function(){s._tick();},200);this._tick();
+};
+Countdown.prototype._tick=function(){
+  this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));
+  this.onTick(this.remaining,this.total,this.running);
+  if(this.remaining<=0){this._clear();this.running=false;this.onDone();}
+};
+Countdown.prototype._clear=function(){if(this.iv){clearInterval(this.iv);this.iv=null;}};
+Countdown.prototype.pause=function(){
+  if(!this.running)return;
+  this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));
+  this.running=false;this._clear();this.onTick(this.remaining,this.total,false);
+};
+Countdown.prototype.reset=function(){this._clear();this.running=false;this.remaining=this.total;this.onTick(this.remaining,this.total,false);};
+Countdown.prototype.elapsed=function(){return this.total-this.remaining;};
+
+
+/* ── mode data builder ── */
+function buildMode(mode){
+  var base,dirs,nRounds;
+  // `w` = pyramid bar width (by descending position) for the shape diagram.
+  if(mode==='timed'){
+    base=[
+      {icon:'🦵',name:'Walking Lunges',type:'rep',reps:75,w:100},
+      {icon:'🪢',name:'Jump Rope',type:'timed',sec:300,w:80},
+      {icon:'⭐',name:'Jumping Jacks',type:'timed',sec:180,w:60},
+      {icon:'🏔️',name:'Mountain Climbers',type:'timed',sec:120,w:40},
+      {icon:'💀',name:'Burpees',type:'timed',sec:60,w:22}
+    ];
+    dirs=['▼ Descending','▲ Ascending','▼ Descending'];nRounds=3;
+  } else {
+    // Original pyramid order (Jump Rope widest base → Burpees narrowest peak).
+    base=[
+      {icon:'🪢',name:'Jump Rope',type:'timed',sec:180,w:100},
+      {icon:'⭐',name:'Jumping Jacks',type:'rep',reps:100,w:80},
+      {icon:'🦵',name:'Walking Lunges',type:'rep',reps:75,w:60},
+      {icon:'💪',name:'Push-ups',type:'rep',reps:50,w:40},
+      {icon:'💀',name:'Burpees',type:'rep',reps:25,w:22}
+    ];
+    dirs=['▼ Descending','▲ Ascending','▼ Descending','▲ Ascending'];nRounds=4;
+  }
+  var rounds=[];
+  for(var r=0;r<nRounds;r++){
+    var seq=(r%2===0)?base.slice():base.slice().reverse();
+    var steps=seq.map(function(s){return Object.assign({},s);});
+    // The round's existing LAST exercise IS the finisher — completing it locks
+    // in the 2-minute rest before the next round.
+    steps[steps.length-1].finisher=true;
+    rounds.push({dir:dirs[r],steps:steps});
+  }
+  return rounds;
+}
+
+/* render the pyramid / reverse-pyramid shape diagram for a round */
+function pyrDiagram(rd){
+  var ascending = rd.dir.indexOf('Ascending')>-1;
+  var dirLabel = ascending ? '▲ Reverse Pyramid · Bottom → Top' : '▼ Pyramid · Top → Bottom';
+  var rows=rd.steps.map(function(st){
+    var val = st.type==='timed'
+      ? (st.sec%60===0 ? (st.sec/60)+' min' : fmt(st.sec))
+      : st.reps+' reps';
+    return '<div class="pyr-row"><div class="pyr-bar" style="width:'+st.w+'%">'+
+      '<span>'+st.icon+' '+st.name+' · '+val+'</span></div></div>';
+  }).join('');
+  return '<div class="pyr-diagram"><div class="pyr-dir">'+dirLabel+'</div>'+rows+'</div>';
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   ENGINE
+   ════════════════════════════════════════════════════════════════ */
+var PY = {
+  mode:'timed', rounds:[], flat:[], activeIdx:0, resting:false, restTimer:null, complete:false,
+
+  build:function(mode){
+    this.mode=mode; this.complete=false;
+    this.rounds=buildMode(mode); this.flat=[];
+    var id=0, self=this;
+    this.rounds.forEach(function(rd,ri){
+      rd.steps.forEach(function(st){
+        st.id=id++; st.roundIdx=ri; st.done=false; st.loggedReps=0; st.loggedSec=0; st.timer=null;
+        self.flat.push(st);
+      });
+    });
+    this.activeIdx=0; this.resting=false; this.restTimer=null;
+    document.getElementById('doneBanner').classList.remove('show');
+    document.getElementById('sumTitle').textContent='📊 Workout Summary';
+  },
+
+  render:function(){
+    var html='';
+    this.rounds.forEach(function(rd,ri){
+      html+='<div class="pround-head"><div class="pround-num">'+(ri+1)+'</div>'+
+        '<div><div class="pround-title">Round '+(ri+1)+'</div>'+
+        '<div class="pround-dir">'+rd.dir+'</div></div></div>';
+      html+=pyrDiagram(rd);
+      rd.steps.forEach(function(st){ html+=PY.stepHTML(st); });
+    });
+    document.getElementById('pyMount').innerHTML=html;
+    this.flat.forEach(function(st){ if(st.type==='timed') PY.wireTimer(st); });
+    this.refreshStates();
+  },
+
+  stepHTML:function(st){
+    var target = st.type==='timed' ? fmt(st.sec)+' interval' : st.reps+' reps';
+    var body;
+    if(st.type==='timed'){
+      body =
+        '<div class="cd-box">'+
+          '<div class="cd-mini-label">⏱️ Interval Timer</div>'+
+          '<div class="cd-disp" id="cd-disp-'+st.id+'">'+fmt(st.sec)+'</div>'+
+          '<div class="cd-prog"><div class="cd-prog-fill" id="cd-fill-'+st.id+'"></div></div>'+
+          '<div class="cd-btns">'+
+            '<button class="cd-btn go" id="cd-go-'+st.id+'" onclick="PY.timerToggle('+st.id+')">▶ Start</button>'+
+            '<button class="cd-btn ghost" onclick="PY.timerReset('+st.id+')">↺ Reset</button>'+
+          '</div>'+
+        '</div>';
+    } else {
+      body =
+        '<div class="rep-body">'+
+          '<div class="rep-stepper">'+
+            '<button class="rep-step-btn" onclick="PY.repBump('+st.id+',-5)">−</button>'+
+            '<input class="rep-input" id="rep-inp-'+st.id+'" type="number" inputmode="numeric" placeholder="'+st.reps+'" oninput="updateSummary()" onfocus="this.select()">'+
+            '<button class="rep-step-btn" onclick="PY.repBump('+st.id+',5)">+</button>'+
+          '</div>'+
+          '<div class="rep-unit">'+(st.finisher?'max-effort finisher · ':'')+'target '+st.reps+' reps</div>'+
+        '</div>';
+    }
+    var btnLabel = st.finisher ? '✓ Complete Finisher → Rest' : '✓ Set Complete';
+    return ''+
+    '<div class="pstep'+(st.finisher?' finisher':'')+' locked" id="step-'+st.id+'">'+
+      '<div class="pstep-top">'+
+        '<div class="pstep-ico">'+st.icon+'</div>'+
+        '<div class="pstep-main">'+
+          '<div class="pstep-name">'+st.name+'</div>'+
+          '<div class="pstep-target">'+target+'</div>'+
+        '</div>'+
+        '<span class="badge idle" id="badge-'+st.id+'">Locked</span>'+
+      '</div>'+
+      body+
+      '<button class="pstep-complete" id="done-'+st.id+'" onclick="PY.completeStep('+st.id+')" disabled>'+btnLabel+'</button>'+
+    '</div>';
+  },
+
+  wireTimer:function(st){
+    st.timer=new Countdown(st.sec,{
+      onTick:function(rem,total,running){
+        var d=document.getElementById('cd-disp-'+st.id), f=document.getElementById('cd-fill-'+st.id);
+        if(d){ d.textContent=fmt(rem); d.className='cd-disp'+(running?' running':'')+(rem<=0?' done':''); }
+        if(f){ f.style.width=Math.round(((total-rem)/total)*100)+'%'; }
+        updateSummary();
+      },
+      onDone:function(){
+        buzz([200,100,200,100,400]);
+        var d=document.getElementById('cd-disp-'+st.id), f=document.getElementById('cd-fill-'+st.id);
+        if(d){ d.textContent='DONE'; d.className='cd-disp done'; }
+        if(f){ f.className='cd-prog-fill done'; f.style.width='100%'; }
+        // timed interval auto-completes when it elapses
+        if(!st.done && PY.flat[PY.activeIdx]===st && !PY.resting) PY.completeStep(st.id);
+      }
+    });
+  },
+
+  timerToggle:function(id){
+    if(this.resting) return;
+    var st=this.flat[id]; if(!st||!st.timer) return;
+    if(this.flat[this.activeIdx]!==st) return;          // only active card
+    var go=document.getElementById('cd-go-'+id);
+    if(st.timer.running){ st.timer.pause(); if(go){go.textContent='▶ Resume';go.className='cd-btn go';} }
+    else { st.timer.start(); if(go){go.textContent='⏸ Pause';go.className='cd-btn pause';} }
+  },
+  timerReset:function(id){
+    var st=this.flat[id]; if(!st||!st.timer) return;
+    st.timer.reset();
+    var go=document.getElementById('cd-go-'+id); if(go){go.textContent='▶ Start';go.className='cd-btn go';}
+    updateSummary();
+  },
+
+  repBump:function(id,n){
+    var inp=document.getElementById('rep-inp-'+id); if(!inp) return;
+    var st=this.flat[id];
+    var cur=parseInt(inp.value,10); if(isNaN(cur)) cur=st.reps;
+    inp.value=Math.max(0,cur+n);
+    updateSummary();
+  },
+
+  completeStep:function(id){
+    var st=this.flat[id];
+    if(!st || st.done || this.resting) return;
+    if(this.flat[this.activeIdx]!==st) return;          // sequential gate
+    if(st.type==='rep'){
+      var inp=document.getElementById('rep-inp-'+id);
+      var v=inp?parseInt(inp.value,10):NaN;
+      st.loggedReps=isNaN(v)?st.reps:v;
+      if(inp){ inp.value=st.loggedReps; inp.disabled=true; }
+    } else {
+      if(st.timer){ st.timer.pause(); st.loggedSec=st.timer.elapsed()>0?st.timer.elapsed():st.sec; }
+      else st.loggedSec=st.sec;
+    }
+    st.done=true;
+    buzz([200]);
+    if(st.finisher) this.handleFinisher(st);
+    else this.advance();
+    this.refreshStates();
+    updateSummary();
+  },
+
+  advance:function(){
+    var ni=this.activeIdx;
+    while(ni<this.flat.length && this.flat[ni].done) ni++;
+    this.activeIdx=ni;
+    this.refreshStates();
+    if(ni<this.flat.length) this.scrollTo(this.flat[ni].id);
+    else this.finishWorkout();
+  },
+
+  handleFinisher:function(st){
+    var nextIdx=st.id+1;
+    if(nextIdx>=this.flat.length){ this.activeIdx=this.flat.length; this.finishWorkout(); return; }
+    var next=this.flat[nextIdx];
+    this.startRest('Next up — Round '+(next.roundIdx+1)+': '+next.icon+' '+next.name);
+  },
+
+  startRest:function(preview){
+    this.resting=true;
+    document.getElementById('restNext').textContent=preview;
+    document.getElementById('restOverlay').classList.add('show');
+    var disp=document.getElementById('restTime'), fill=document.getElementById('restFill');
+    fill.style.width='100%';
+    var self=this;
+    this.restTimer=new Countdown(120,{
+      onTick:function(rem,total){
+        disp.textContent=fmt(rem);
+        fill.style.width=Math.max(0,(rem/total)*100)+'%';   // draining: full → empty
+      },
+      onDone:function(){ buzz([200,100,200,100,400]); self.endRest(); }
+    });
+    this.restTimer.start();
+    this.refreshStates();
+    updateSummary();
+  },
+  skipRest:function(){ if(this.restTimer) this.restTimer.pause(); this.endRest(); },
+  endRest:function(){
+    this.resting=false;
+    document.getElementById('restOverlay').classList.remove('show');
+    this.restTimer=null;
+    this.advance();
+    updateSummary();
+  },
+
+  finishWorkout:function(){
+    this.complete=true;
+    document.getElementById('doneBanner').classList.add('show');
+    document.getElementById('sumTitle').textContent='🏆 Workout Complete';
+    buzz([200,100,200,100,200,100,500]);
+    updateProgress();
+  },
+
+  refreshStates:function(){
+    var self=this;
+    this.flat.forEach(function(st,i){
+      var card=document.getElementById('step-'+st.id); if(!card) return;
+      var state = st.done ? 'done' : ((i===self.activeIdx && !self.resting) ? 'active' : 'locked');
+      card.className='pstep'+(st.finisher?' finisher':'')+' '+state;
+      var btn=document.getElementById('done-'+st.id);
+      if(btn) btn.disabled=(state!=='active');
+      var badge=document.getElementById('badge-'+st.id);
+      if(badge){
+        if(st.done){ badge.className='badge green'; badge.textContent='✓ Done'; }
+        else if(state==='active'){ badge.className='badge crimson'; badge.textContent=st.finisher?'🔥 Finisher':'● Active'; }
+        else { badge.className='badge idle'; badge.textContent=st.finisher?'Finisher':'Locked'; }
+      }
+    });
+  },
+
+  scrollTo:function(id){
+    try{ var el=document.getElementById('step-'+id); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+  },
+
+  // summary helpers
+  totalReps:function(){
+    var r=0; this.flat.forEach(function(st){ if(st.type==='rep'&&st.done) r+=st.loggedReps; });
+    var act=this.flat[this.activeIdx];
+    if(act && !act.done && act.type==='rep' && !this.resting){
+      var inp=document.getElementById('rep-inp-'+act.id);
+      if(inp && inp.value!=='') r+=parseInt(inp.value,10)||0;
+    }
+    return r;
+  },
+  finisherReps:function(){
+    var r=0; this.flat.forEach(function(st){ if(st.finisher&&st.done) r+=st.loggedReps; }); return r;
+  },
+  totalSeconds:function(){
+    var s=0; this.flat.forEach(function(st){
+      if(st.type!=='timed') return;
+      if(st.done) s+=st.loggedSec;
+      else if(st.timer && st.timer.running) s+=st.timer.elapsed();
+    });
+    return s;
+  },
+  roundsDone:function(){
+    var n=0;
+    this.rounds.forEach(function(rd){ if(rd.steps.every(function(s){return s.done;})) n++; });
+    return n;
+  }
+};
+
+
+/* ── live summary footer ── */
+function fmtClock(sec){ var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function updateSummary(){
+  var reps=PY.totalReps(), sec=PY.totalSeconds(), fin=PY.finisherReps();
+  document.getElementById('qReps').textContent=reps;
+  document.getElementById('qTime').textContent=fmtClock(sec);
+  document.getElementById('dReps').innerHTML=reps+' <small>reps</small>';
+  document.getElementById('dTime').textContent=fmtClock(sec);
+  document.getElementById('dFin').innerHTML=fin+' <small>reps</small>';
+  var doneSteps=PY.flat.filter(function(s){return s.done;}).length;
+  document.getElementById('dSteps').innerHTML=doneSteps+' <small>/ '+PY.flat.length+'</small>';
+  document.getElementById('dRounds').innerHTML=PY.roundsDone()+' <small>/ '+PY.rounds.length+'</small>';
+  updateProgress();
+}
+function updateProgress(){
+  var total=PY.flat.length, done=PY.flat.filter(function(s){return s.done;}).length;
+  var pct=total?Math.round((done/total)*100):0;
+  var fill=document.getElementById('progFill'); if(fill) fill.style.width=pct+'%';
+}
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+
+function switchMode(mode){
+  if(mode===PY.mode && PY.flat.length) return;
+  var inProgress=PY.flat.some(function(s){return s.done;}) || PY.activeIdx>0;
+  if(inProgress && !confirm('Switch to '+mode.toUpperCase()+' pyramid? This resets your current session.')) return;
+  document.getElementById('tabTimed').classList.toggle('active',mode==='timed');
+  document.getElementById('tabReps').classList.toggle('active',mode==='reps');
+  if(PY.restTimer) PY.restTimer.pause();
+  document.getElementById('restOverlay').classList.remove('show');
+  PY.resting=false;
+  PY.build(mode); PY.render(); updateSummary();
+}
+function resetSession(){
+  if(!confirm('Reset this pyramid session? All logged reps and timers will clear.')) return;
+  if(PY.restTimer) PY.restTimer.pause();
+  document.getElementById('restOverlay').classList.remove('show');
+  PY.resting=false;
+  PY.build(PY.mode); PY.render(); updateSummary();
+}
+
+/* keep live values fresh while timers run */
+setInterval(updateSummary,1000);
+
+/* ── BOOT ── */
+PY.build('timed');
+PY.render();
+updateSummary();
+</script>
+
+<script src="mc-nav.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>

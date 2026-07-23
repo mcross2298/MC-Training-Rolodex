@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>MC Training</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/></noscript>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="MC Training"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<!-- Load the shared nav module on the hub too. It renders no second nav here
+     (build() bails when a native .tab-bar exists), but its PWA cold-launch
+     guard must run on the dashboard so the launch is "claimed" (mc_launched
+     session flag set) at the true entry point. Without this, the flag was only
+     set on the first sub-page that loaded mc-nav.js, so the first navigation
+     off the dashboard was mis-read as a stale cold-launch and bounced straight
+     back — the "click Programs, it reverts to dashboard, works on 2nd try" bug. -->
+<script src="mc-nav.js"></script>
+<!-- beforeinstallprompt fires once per session and only reaches a listener
+     already attached, so this loads as early as possible (L2 Sub-Phase B). -->
+<script src="mc-install.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0a0a0a;
+  --surface:#111;
+  --surface2:#161616;
+  --border:rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.1);
+  --gold:#d4af37;
+  --gold-dim:rgba(212,175,55,0.15);
+  --gold-glow:rgba(212,175,55,0.25);
+  --text:#fff;
+  --muted:#9ca3af;
+  --muted2:#64748b;
+  --tab-h:64px;
+}
+body{background:var(--bg);min-height:100vh;color:var(--text);padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom));}
+
+/* ── TYPE SCALE (L1 task 1 reconciliation) ───────────────────────────────────
+   Font sizes below reference the shared base.css --fs-* scale wherever an exact
+   match exists (10→--fs-3xs, 11→--fs-2xs, 12→--fs-xs, 13→--fs-sm, 14→--fs-md,
+   15→--fs-lg, 16→--fs-xl, 18→--fs-2xl, 20→--fs-3xl, 24→--fs-title, 30→--fs-hero),
+   so the Onyx #scr-* screens (dashboard / programs / conditioning / nutrition)
+   consume the same tokens as the rest of the app — no per-page px drift.
+
+   INTENTIONAL BESPOKE EXCEPTIONS (kept as raw px on purpose — do NOT snap to the
+   scale without a design decision; each sits between two steps or is a non-body
+   glyph, and snapping would visibly shift the Onyx layout):
+     • Display / heading half-steps: 19px (.topbar-title, .sec-title,
+       .prog-rail-title), 22px (.hero-name, .wrapped-stat-num), 23px
+       (#scr-dashboard .hero-name), 26px (#scr-* .topbar-title), 28px
+       (.custom-empty-icon), 17px (.hero-ring-num, .cond-name, .cat-name).
+     • Onyx UI micro-labels below --fs-3xs (10px): 8.5px (.hero-ring-lbl),
+       9.5px (.tab labels), 10.5px (.hero-badge).
+     • Fractional body/meta half-steps: 11.5px (.rail-meta), 12.5px (.cat-meta),
+       13.5px (.ms-streak, .tool-name), 15.5px (.hero-tap CTA), 16.5px
+       (#condBody .cond-name).
+     • Emoji-glyph sizes (not text type): 22px (.ps-icon), 26px
+       (.influencer-grid .cat-icon), 28px (.custom-empty-icon).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:calc(100vh - var(--tab-h) - env(safe-area-inset-bottom));padding-bottom:24px;}
+.screen.active{display:block;}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px 8px;
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(to bottom, var(--bg) 80%, transparent);
+}
+@supports (padding: env(safe-area-inset-top)) {
+  .topbar{padding-top:calc(10px + env(safe-area-inset-top));}
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.avatar{
+  width:42px;height:42px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#d4af37,#8a6a10);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--fs-md);font-weight:900;color:#000;letter-spacing:0.5px;
+  border:1.5px solid rgba(212,175,55,0.4);
+}
+.topbar-title{font-size:19px;font-weight:900;color:var(--text);letter-spacing:-0.02em;}
+.topbar-sub{font-size:var(--fs-xs);color:var(--muted2);margin-top:1px;}
+
+/* ── Universal momentum strip ────────────────────────────────────────────────
+   Market-safe: a standalone element (NOT inside a licensed program card), so it
+   survives the Rolodex build and gives the public app a streak signal too. */
+.momentum-strip{
+  display:none;align-items:center;gap:11px;margin:0 18px 22px;
+  padding:12px 15px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(212,175,55,0.025));
+  border:1px solid rgba(212,175,55,0.22);
+}
+.momentum-strip.show{display:flex;}
+.ms-flame{font-size:var(--fs-3xl);line-height:1;filter:drop-shadow(0 0 7px rgba(212,175,55,0.55));}
+.ms-body{min-width:0;flex:1;}
+.ms-streak{font-size:var(--fs-md);font-weight:900;color:var(--text);letter-spacing:-0.01em;line-height:1.15;}
+.ms-sub{font-size:var(--fs-2xs);font-weight:700;color:var(--muted2);margin-top:2px;}
+.ms-sub.today{color:#34d399;}
+.ms-badge{
+  font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.05em;flex-shrink:0;
+  padding:5px 11px;border-radius:9px;
+  background:rgba(212,175,55,0.16);color:var(--gold);border:1px solid rgba(212,175,55,0.3);
+}
+.ms-badge.today{background:rgba(52,211,153,0.16);color:#34d399;border-color:rgba(52,211,153,0.35);}
+
+/* ── Cross-app "Today" strip (roadmap B3) — bridge-driven, market-safe ──── */
+.today-strip{
+  display:none;align-items:center;gap:11px;margin:0 18px 22px;
+  padding:12px 15px;border-radius:14px;cursor:pointer;
+  background:linear-gradient(135deg,rgba(167,139,250,0.12),rgba(167,139,250,0.025));
+  border:1px solid rgba(167,139,250,0.22);
+}
+.today-strip.show{display:flex;}
+.ts-ic{font-size:var(--fs-3xl);line-height:1;flex-shrink:0;}
+.ts-body{min-width:0;flex:1;}
+.ts-line{font-size:var(--fs-sm);font-weight:800;color:var(--text);letter-spacing:-0.01em;line-height:1.3;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ts-arr{font-size:var(--fs-lg);font-weight:800;color:#a78bfa;flex-shrink:0;}
+.topbar-icon{
+  width:36px;height:36px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-xl);
+}
+
+/* ── SECTION HEADERS ── */
+.sec-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;margin-bottom:12px;
+}
+.sec-title{font-size:var(--fs-3xl);font-weight:900;letter-spacing:-0.02em;color:var(--text);}
+.sec-link{font-size:var(--fs-sm);color:var(--gold);font-weight:700;cursor:pointer;letter-spacing:0.02em;}
+
+/* ── HERO CARD ── */
+.hero-wrap{padding:0 18px;margin-bottom:28px;}
+
+.hero-empty{
+  border-radius:18px;border:1.5px dashed rgba(255,255,255,0.1);
+  padding:36px 20px;text-align:center;cursor:pointer;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  background:var(--surface);
+}
+.hero-empty:active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);}
+.hero-empty-icon{font-size:var(--fs-hero);margin-bottom:12px;}
+.hero-empty-title{font-size:var(--fs-xl);font-weight:900;color:var(--text);margin-bottom:6px;letter-spacing:-0.01em;}
+.hero-empty-sub{font-size:var(--fs-sm);color:var(--muted2);}
+.hero-empty-btn{
+  display:inline-block;margin-top:16px;padding:10px 24px;
+  background:var(--gold);color:#000;border-radius:10px;
+  font-size:var(--fs-sm);font-weight:900;letter-spacing:0.03em;
+}
+
+.hero-card{
+  border-radius:18px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#0a1628,#020b18);
+  border:1px solid rgba(212,175,55,0.25);
+  box-shadow:0 4px 20px rgba(212,175,55,0.15);
+  cursor:pointer;display:none;
+  transition:box-shadow 0.15s;
+}
+.hero-card:active{box-shadow:0 0 0 2px var(--gold),0 0 24px var(--gold-glow);}
+.hero-glow{
+  position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 20% 50%,rgba(212,175,55,0.08) 0%,transparent 60%);
+}
+.hero-inner{padding:22px 20px 20px;position:relative;}
+.hero-top-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.hero-badge{
+  background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);
+  border-radius:20px;padding:4px 12px;
+  font-size:var(--fs-2xs);font-weight:800;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;
+}
+.hero-ring{
+  width:56px;height:56px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,0.08);
+  border-top-color:var(--gold);border-right-color:var(--gold);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  transition:border-top-color 0.3s,border-right-color 0.3s;
+}
+.hero-ring-num{font-size:17px;font-weight:900;color:var(--gold);line-height:1;}
+.hero-ring-lbl{font-size:var(--fs-2xs);color:var(--muted2);font-weight:700;letter-spacing:0.08em;}
+.hero-name{font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--text);line-height:1.2;margin-bottom:6px;overflow-wrap:break-word;word-break:break-word;}
+.hero-desc{font-size:var(--fs-sm);color:var(--muted2);line-height:1.5;margin-bottom:14px;overflow-wrap:break-word;}
+.hero-phases{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;}
+.phase-pill{
+  padding:5px 13px;border-radius:20px;font-size:var(--fs-2xs);font-weight:700;
+  border:1.5px solid rgba(255,255,255,0.1);color:var(--muted2);
+  background:rgba(255,255,255,0.04);
+}
+.phase-pill.active{background:var(--gold);color:#000;border-color:var(--gold);}
+.hero-fatigue{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.hero-fatigue-chip{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:var(--fs-3xs);font-weight:800;letter-spacing:0.04em;
+  background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);
+  color:#f87171;border-radius:20px;padding:3px 9px;
+}
+.hero-tap{font-size:var(--fs-2xs);color:var(--muted2);font-weight:600;letter-spacing:0.04em;margin-top:10px;}
+/* In-progress session: promote the muted CTA into an obvious green Resume pill
+   so getting back into a half-finished workout is one clear tap. */
+.hero-tap.resume{
+  display:inline-flex;align-items:center;margin-top:14px;
+  padding:10px 16px;border-radius:11px;
+  font-size:var(--fs-sm);font-weight:900;letter-spacing:0;color:#022c22;
+  background:linear-gradient(135deg,#34d399,#10b981);
+  box-shadow:0 4px 16px rgba(16,185,129,0.35);
+}
+
+/* ── PUSH ALERTS CHIP ── */
+.push-chip{
+  display:none;align-items:center;gap:8px;
+  margin:0 18px 14px;padding:11px 14px;
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  cursor:pointer;
+}
+.push-chip.visible{display:flex;}
+.push-chip-icon{font-size:var(--fs-2xl);line-height:1;}
+.push-chip-text{flex:1;font-size:var(--fs-sm);font-weight:700;color:var(--text);}
+.push-chip-sub{font-size:var(--fs-2xs);color:var(--muted2);font-weight:500;display:block;margin-top:1px;}
+.push-chip-btn{
+  font-size:var(--fs-xs);font-weight:800;color:var(--gold);
+  background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);
+  border-radius:8px;padding:5px 10px;white-space:nowrap;
+}
+
+/* ── MC WRAPPED CARD ── */
+.wrapped-card{
+  margin:0 18px 20px;
+  background:linear-gradient(135deg,rgba(212,175,55,0.08),rgba(30,30,40,0));
+  border:1px solid rgba(212,175,55,0.22);border-radius:20px;padding:18px 18px 16px;
+  display:none;
+}
+.wrapped-card.visible{display:block;}
+.wrapped-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.wrapped-title{font-size:var(--fs-lg);font-weight:900;color:var(--gold);letter-spacing:0.02em;flex:1;}
+.wrapped-refresh{
+  font-size:var(--fs-2xl);cursor:pointer;color:var(--muted2);
+  background:none;border:none;padding:4px;line-height:1;
+}
+.wrapped-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.wrapped-stat{
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:12px 14px;
+}
+.wrapped-stat-num{font-size:22px;font-weight:900;color:var(--text);line-height:1;}
+.wrapped-stat-lbl{font-size:var(--fs-3xs);font-weight:700;color:var(--muted2);letter-spacing:0.06em;margin-top:3px;text-transform:uppercase;}
+.wrapped-muscle{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:12px;
+}
+.wrapped-muscle-bar{
+  flex:1;height:4px;background:var(--border2);border-radius:2px;overflow:hidden;
+}
+.wrapped-muscle-fill{height:100%;background:var(--gold);border-radius:2px;transition:width 0.5s;}
+
+/* ── CLIENT ASSIGNMENT CARD (roadmap 4.5) ── */
+.client-assign-card{
+  background:linear-gradient(135deg,rgba(212,175,55,0.1),rgba(30,30,40,0));
+  border:1px solid rgba(212,175,55,0.28);border-radius:18px;margin:0 18px 16px;padding:16px 16px 14px;
+}
+.cac-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.cac-icon{font-size:var(--fs-xl);}
+.cac-title{flex:1;font-size:var(--fs-sm);font-weight:800;color:var(--gold);}
+.cac-x{background:none;border:none;color:var(--muted2);font-size:var(--fs-xl);cursor:pointer;padding:2px 6px;line-height:1;}
+.cac-body{font-size:var(--fs-sm);color:var(--text2,var(--text));line-height:1.5;margin-bottom:12px;}
+.cac-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.cac-btn{
+  flex:1;min-width:120px;padding:10px 12px;border-radius:11px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--text);font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;
+}
+.cac-btn.primary{background:var(--gold);border-color:var(--gold);color:#000;}
+
+/* ── COACH SECTION ── */
+.coach-section{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:18px;margin:0 18px 16px;overflow:hidden;
+}
+.coach-toggle{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:14px 16px;background:none;border:none;cursor:pointer;text-align:left;
+}
+.coach-icon{font-size:var(--fs-2xl);line-height:1;}
+.coach-label{flex:1;font-size:var(--fs-md);font-weight:700;color:var(--text);letter-spacing:0.01em;}
+.coach-chevron{
+  font-size:var(--fs-3xl);color:var(--muted2);font-weight:400;
+  transition:transform 0.2s;display:inline-block;
+}
+.coach-section.open .coach-chevron{transform:rotate(90deg);}
+.coach-body{display:none;padding:0 16px 16px;}
+.coach-section.open .coach-body{display:block;}
+.coach-note{
+  border-top:1px solid var(--border2);padding-top:12px;
+}
+.coach-summary{font-size:var(--fs-md);line-height:1.65;color:var(--text2,var(--text));}
+.coach-chip-label{font-size:var(--fs-3xs);font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);margin:12px 0 6px;}
+.coach-chip-row{display:flex;flex-wrap:wrap;gap:6px;}
+.coach-chip{
+  font-size:var(--fs-xs);line-height:1.4;font-weight:600;color:var(--text2,var(--text));
+  background:var(--surface2,rgba(255,255,255,0.04));border:1px solid var(--border2);
+  border-radius:10px;padding:6px 10px;
+}
+.coach-chip b{font-weight:800;}
+.coach-chip-warn{border-color:rgba(248,113,113,0.35);background:rgba(248,113,113,0.08);}
+.coach-chip-info{border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.06);}
+.coach-chip-swap{border-color:rgba(212,175,55,0.3);background:rgba(212,175,55,0.06);}
+
+/* ── TOOLS GRID ── */
+.tools-wrap{padding:0 18px;margin-bottom:28px;}
+.tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tool-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:16px;padding:12px 12px;cursor:pointer;
+  transition:border-color 0.15s,box-shadow 0.15s;
+  text-decoration:none;color:inherit;display:block;
+}
+.tool-card:active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 12px var(--gold-dim);}
+.tool-icon-wrap{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--surface2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--fs-md);margin-bottom:7px;
+}
+.tool-card.gold .tool-icon-wrap{
+  background:rgba(212,175,55,0.08);border-color:rgba(212,175,55,0.2);
+}
+.tool-name{font-size:var(--fs-sm);font-weight:800;color:var(--text);margin-bottom:3px;letter-spacing:-0.01em;}
+.tool-sub{font-size:var(--fs-2xs);color:var(--muted2);line-height:1.4;}
+
+/* ── OFFLINE / UPDATE BANNERS ── */
+.offline-bar{display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);
+  border-radius:10px;padding:8px 14px;margin:0 18px 16px;font-size:var(--fs-xs);font-weight:700;
+  color:#f87171;text-align:center;letter-spacing:0.04em;}
+.offline-bar.show{display:block;}
+.sw-update{display:none;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);
+  border-radius:10px;padding:8px 14px;margin:0 18px 16px;font-size:var(--fs-xs);font-weight:700;
+  color:#34d399;text-align:center;cursor:pointer;letter-spacing:0.04em;}
+.sw-update.show{display:block;}
+
+/* ── PROGRAMS SCREEN (mirrors index.html) ── */
+.prog-screen-inner{max-width:680px;margin:0 auto;padding:0 18px;}
+.prog-header{text-align:center;margin-bottom:28px;padding-top:8px;}
+.prog-eyebrow{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.25em;color:#a78bfa;text-transform:uppercase;margin-bottom:8px;}
+.prog-title{font-size:var(--fs-hero);font-weight:900;color:var(--text);letter-spacing:-0.02em;line-height:1.1;}
+.prog-sub{font-size:var(--fs-sm);color:var(--muted);margin-top:6px;}
+
+/* Reuse exact cat-card styles from index.html */
+.cat-card{display:block;text-decoration:none;color:inherit;border-radius:18px;padding:15px 18px;margin-bottom:11px;position:relative;overflow:hidden;transition:box-shadow 0.15s;border:1px solid rgba(255,255,255,0.06);}
+.cat-card:active{box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);opacity:0.9;}
+.cat-card:focus-visible{outline:none;box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);}
+.cat-card.faint{background:linear-gradient(135deg,#7f1d1d,#0a0000);box-shadow:0 4px 20px rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);border-top:3px solid #E24B4A;}
+.cat-card.pmc{background:linear-gradient(135deg,#1e0a3c,#0d0618);box-shadow:0 4px 20px rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.3);border-top:3px solid #7F77DD;}
+.cat-card.mc{background:linear-gradient(135deg,#0a1628,#020b18);box-shadow:0 4px 20px rgba(212,175,55,0.15);border-color:rgba(212,175,55,0.25);border-top:3px solid #d4af37;}
+.cat-card.ss{background:linear-gradient(135deg,#2a0710,#0d0205);box-shadow:0 4px 20px rgba(225,29,72,0.15);border-color:rgba(225,29,72,0.3);border-top:3px solid #e11d48;}
+.cat-card.ss .cat-tag{background:rgba(225,29,72,0.2);color:#fb7185;border:1px solid rgba(225,29,72,0.35);}
+.cat-card.ss .cat-designer{color:#fb7185;}
+.cat-card.mm{background:linear-gradient(135deg,#0d0e2e,#0a0a0a);box-shadow:0 4px 20px rgba(99,102,241,0.15);border-color:rgba(99,102,241,0.3);border-top:3px solid #6366f1;}
+.cat-card.mm .cat-tag{background:rgba(99,102,241,0.18);color:#a5b4fc;border:1px solid rgba(99,102,241,0.35);}
+.cat-card.mm .cat-designer{color:#a5b4fc;}
+.cat-card.hv{background:linear-gradient(135deg,#1a2e05,#0a0a0a);box-shadow:0 4px 20px rgba(132,204,22,0.15);border-color:rgba(132,204,22,0.3);border-top:3px solid #84cc16;}
+.cat-card.hv .cat-tag{background:rgba(132,204,22,0.18);color:#bef264;border:1px solid rgba(132,204,22,0.35);}
+.cat-card.hv .cat-designer{color:#bef264;}
+.cat-card.ks{background:linear-gradient(135deg,#1c1002,#0a0700);box-shadow:0 4px 20px rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.3);border-top:3px solid #f59e0b;}
+.cat-card.ks .cat-tag{background:rgba(245,158,11,0.18);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);}
+.cat-card.ks .cat-designer{color:#fbbf24;}
+.cat-card.bonus{background:linear-gradient(135deg,#0c4a6e,#04141f);box-shadow:0 4px 20px rgba(56,189,248,0.15);border-color:rgba(56,189,248,0.3);border-top:3px solid #38bdf8;}
+.cat-card.bonus .cat-tag{background:rgba(56,189,248,0.18);color:#7dd3fc;border:1px solid rgba(56,189,248,0.35);}
+.cat-card.bonus .cat-designer{color:#7dd3fc;}
+.cat-icon{position:absolute;right:18px;top:15px;font-size:var(--fs-hero);opacity:0.18;}
+.cat-tag{display:inline-block;font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.14em;padding:3px 9px;border-radius:5px;text-transform:uppercase;margin-bottom:8px;}
+.cat-card.faint .cat-tag{background:rgba(239,68,68,0.22);color:#fca5a5;border:1px solid rgba(239,68,68,0.45);}
+.cat-card.pmc .cat-tag{background:rgba(139,92,246,0.2);color:#c084fc;border:1px solid rgba(139,92,246,0.35);}
+.cat-card.mc .cat-tag{background:rgba(212,175,55,0.12);color:#d4af37;border:1px solid rgba(212,175,55,0.3);}
+.cat-name{font-size:var(--fs-3xl);font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-0.01em;padding-right:44px;overflow-wrap:break-word;word-break:break-word;}
+.cat-meta{font-size:var(--fs-sm);color:#cbd5e1;line-height:1.5;padding-right:44px;
+  display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.cat-count{margin-top:7px;display:inline-block;font-size:var(--fs-2xs);color:#94a3b8;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+.cat-designer{margin-top:7px;font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.03em;opacity:0.8;display:flex;align-items:center;gap:5px;}
+.cat-card.faint .cat-designer{color:#fca5a5;}
+.cat-card.pmc .cat-designer{color:#c084fc;}
+.cat-card.mc .cat-designer{color:#d4af37;}
+
+
+/* ── Strength & Supersets — flagship elite card ── */
+.cat-card.ss{border-top-width:3px;animation:ssEdge 4.2s ease-in-out infinite;}
+@keyframes ssEdge{
+  0%,100%{box-shadow:0 4px 20px rgba(225,29,72,0.15);}
+  50%{box-shadow:0 6px 30px rgba(225,29,72,0.34),0 0 0 1px rgba(225,29,72,0.18);}
+}
+/* breathing ambient glow behind the content */
+.ss-glow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 18% 0%,rgba(225,29,72,0.22) 0%,transparent 58%);
+  animation:ssGlow 4.6s ease-in-out infinite;}
+@keyframes ssGlow{0%,100%{opacity:0.55;}50%{opacity:1;}}
+.ss-sheen{position:absolute;top:0;left:-65%;width:48%;height:100%;pointer-events:none;
+  background:linear-gradient(105deg,transparent,rgba(251,113,133,0.16),transparent);
+  transform:skewX(-18deg);animation:ssSheen 6.2s ease-in-out infinite;}
+@keyframes ssSheen{0%{left:-65%;}58%,100%{left:150%;}}
+.cat-card.ss .cat-icon{animation:ssPulse 3.6s ease-in-out infinite;}
+@keyframes ssPulse{0%,100%{opacity:0.18;transform:scale(1);}50%{opacity:0.4;transform:scale(1.08) translateY(-1px);}}
+/* flagship tag — headline framing */
+.cat-card.ss .cat-tag.ss-flag{background:rgba(225,29,72,0.22);color:#fda4af;
+  border:1px solid rgba(225,29,72,0.45);box-shadow:0 0 14px rgba(225,29,72,0.2);}
+@media (prefers-reduced-motion: reduce){
+  .cat-card.ss,.ss-glow,.ss-sheen,.cat-card.ss .cat-icon{animation:none;}
+  .ss-sheen{display:none;}
+  .ss-glow{opacity:0.7;}
+}
+
+/* ── Tier labels — frame Flagship as the headline, Influencer as secondary ── */
+.tier-label{display:flex;align-items:center;gap:10px;margin:0 0 12px;
+  font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted2);}
+.tier-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
+.tier-label.flag{color:var(--gold);}
+.tier-label.influencer{margin-top:24px;}
+
+/* ── Influencer tier — compact cards. 1-col on phones (keeps a readable
+      one-line description), 2-col grid on wider screens to cut vertical space ── */
+.influencer-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+@media (min-width:560px){.influencer-grid{grid-template-columns:1fr 1fr;}}
+.influencer-grid .cat-card{margin-bottom:0;padding:13px 16px;border-radius:14px;}
+.influencer-grid .cat-icon{font-size:26px;right:14px;top:13px;}
+.influencer-grid .cat-tag{font-size:var(--fs-3xs);padding:2px 7px;margin-bottom:6px;letter-spacing:0.1em;}
+.influencer-grid .cat-name{font-size:17px;margin-bottom:3px;padding-right:34px;}
+.influencer-grid .cat-meta{font-size:var(--fs-xs);line-height:1.45;padding-right:8px;
+  display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.influencer-grid .cat-count{margin-top:6px;}
+.influencer-grid .cat-designer{margin-top:5px;}
+
+/* Exercise library link */
+.lib-link{display:flex;align-items:center;gap:12px;background:rgba(212,175,55,0.07);border:1px solid rgba(212,175,55,0.22);border-radius:14px;padding:14px 16px;text-decoration:none;color:#e2e8f0;margin-bottom:20px;}
+.lib-link:active{background:rgba(212,175,55,0.12);}
+.lib-name{font-size:var(--fs-md);font-weight:900;color:#fbbf24;}
+.lib-sub{font-size:var(--fs-2xs);color:var(--muted2);font-weight:600;margin-top:2px;}
+
+/* ── BOTTOM TAB BAR ── */
+.tab-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--tab-h) + env(safe-area-inset-bottom));
+  background:rgba(10,10,10,0.96);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;z-index:50;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tab{
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;padding:0 2px;
+  font-size:9.5px;font-weight:700;letter-spacing:0.01em;text-transform:uppercase;
+  color:var(--muted2);transition:color 0.15s;
+}
+/* 5 tabs: keep each label on one line and clipped to its column so labels
+   never run into each other on narrow phones. */
+.tab>div:last-child{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+.tab.active{color:var(--gold);}
+/* "Conditioning" — the longest of the 5 labels — clips to "CONDITION…" at
+   the ~74px column width a 390px phone gives each tab. Drop a font step on
+   narrow phones only; wider viewports (tablets) already have room. The
+   Onyx redesign block further down re-declares font-size on the equally-
+   specific `.tab>div:last-child` selector *after* this one in source order,
+   so an equal-specificity override here would silently lose the cascade —
+   nesting under `.tab-bar` raises specificity enough to win regardless of
+   where in the file that block sits. */
+@media (max-width:400px){
+  .tab-bar .tab,
+  .tab-bar .tab>div:last-child{font-size:8.5px;}
+}
+.tab-icon{font-size:var(--fs-3xl);line-height:1;}
+/* History is the one tab that's a real page navigation, not an in-shell
+   panel switch like the other four — a small mark says so at a glance. */
+#tab-stats>div:last-child:after{content:' ↗';}
+
+/* ── PROGRAM SELECT SHEET ── */
+.ps-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:none;align-items:flex-end;z-index:60;
+}
+.ps-overlay.open{display:flex;}
+.ps-sheet{
+  width:100%;background:#0e0e0e;
+  border-top:1px solid rgba(255,255,255,0.1);
+  border-radius:24px 24px 0 0;
+  padding:20px 18px calc(40px + env(safe-area-inset-bottom));
+  max-height:85vh;overflow-y:auto;
+}
+.ps-handle{width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 20px;}
+.ps-title{font-size:var(--fs-2xl);font-weight:900;margin-bottom:3px;letter-spacing:-0.01em;}
+.ps-sub{font-size:var(--fs-sm);color:var(--muted2);margin-bottom:18px;}
+.ps-card{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,0.07);
+  margin-bottom:8px;cursor:pointer;
+  background:var(--surface);transition:all 0.15s;
+  position:relative;
+}
+.ps-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0;background:var(--prog-color,var(--gold));}
+.ps-card:active{background:var(--surface2);}
+.ps-card.sel{border-color:var(--prog-color,var(--gold));background:var(--surface2);}
+.ps-icon{font-size:22px;width:38px;text-align:center;flex-shrink:0;}
+.ps-info{flex:1;min-width:0;}
+.ps-name{font-size:var(--fs-md);font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ps-meta{font-size:var(--fs-2xs);color:var(--muted2);margin-top:2px;}
+.ps-check{
+  width:22px;height:22px;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.12);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:var(--fs-2xs);font-weight:900;
+  transition:all 0.15s;
+}
+.ps-card.sel .ps-check{background:var(--prog-color,var(--gold));border-color:var(--prog-color,var(--gold));color:#000;}
+.ps-confirm{
+  width:100%;padding:14px;background:var(--gold);border:none;
+  border-radius:14px;color:#000;font-size:var(--fs-lg);font-weight:900;
+  cursor:pointer;font-family:inherit;letter-spacing:0.03em;margin-top:12px;
+}
+.ps-confirm:active{opacity:0.85;}
+
+/* ── First-run onboarding sheet (reuses .ps-* from Program Select above) ── */
+.ob-back,.ob-skip{
+  width:100%;padding:12px;background:none;border:none;
+  color:var(--muted2);font-size:var(--fs-sm);font-weight:700;
+  cursor:pointer;font-family:inherit;margin-top:4px;
+}
+.ob-back:active,.ob-skip:active{opacity:0.7;}
+/* The first step's card list (#obCards, ~9 programs) routinely exceeds the
+   sheet's 85vh scroll area, leaving "Skip for now" reachable only by
+   scrolling past the whole list — the only labeled way out of a first-run
+   sheet was effectively hidden. Pin it to the bottom of .ps-sheet's own
+   scrollport (sticky, not fixed, so it still scrolls away with the sheet
+   itself if the sheet is dismissed/replaced) with an opaque backing so
+   scrolled cards don't show through underneath it. */
+.ob-skip{
+  position:sticky;bottom:0;z-index:1;
+  background:#0e0e0e;border-top:1px solid rgba(255,255,255,0.08);
+  margin:8px -18px -40px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+  width:calc(100% + 36px);
+}
+
+/* ── Conditioning tab (Phase 1) — accent colors applied inline by JS ── */
+.cond-sub{margin-bottom:26px;}
+.cond-sub-head{display:flex;align-items:center;gap:10px;margin:18px 0 12px;}
+.cond-sub-icon{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-2xl);
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+}
+.cond-sub-name{font-size:var(--fs-xl);font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.cond-sub-blurb{font-size:var(--fs-xs);color:var(--muted);margin-top:2px;}
+.cond-card{
+  display:block;text-decoration:none;color:inherit;position:relative;
+  border-radius:16px;padding:16px 18px;margin-bottom:11px;overflow:hidden;
+  background:var(--surface);border:1px solid rgba(255,255,255,0.08);
+  transition:transform 0.15s;
+}
+.cond-card:active{transform:scale(0.985);}
+.cond-tag{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#E24B4A;margin-bottom:6px;}
+.cond-name{font-size:17px;font-weight:900;color:var(--text);margin-bottom:5px;padding-right:28px;}
+.cond-meta{font-size:var(--fs-xs);color:var(--muted);line-height:1.5;}
+.cond-stats{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.cond-stat{font-size:var(--fs-2xs);font-weight:700;color:#cbd5e1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:4px 10px;}
+.cond-arrow{position:absolute;right:16px;top:16px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);color:#fff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);}
+.cond-ex-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.cond-ex-item{font-size:var(--fs-xs);font-weight:700;color:#cbd5e1;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 12px;}
+/* ── Conditioning Corner — owner-selectable layouts (mc-layout.js) ── */
+/* compact: tighter cards, drop the description + stat pills for a dense list */
+#condBody[data-cond-layout="compact"] .cond-card{padding:11px 15px;margin-bottom:8px;}
+#condBody[data-cond-layout="compact"] .cond-meta,
+#condBody[data-cond-layout="compact"] .cond-stats{display:none;}
+#condBody[data-cond-layout="compact"] .cond-name{font-size:var(--fs-lg);margin-bottom:3px;}
+/* grid: two-up card grid within each sub-category */
+#condBody[data-cond-layout="grid"] .cond-sub{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#condBody[data-cond-layout="grid"] .cond-sub-head{grid-column:1/-1;}
+#condBody[data-cond-layout="grid"] .cond-card{margin-bottom:0;}
+#condBody[data-cond-layout="grid"] .cond-meta{display:none;}
+
+/* ── Custom Workouts section (Build Your Own) ── */
+.custom-section{margin-bottom:28px;}
+.custom-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.custom-section-title{display:flex;align-items:center;gap:10px;}
+.custom-section-icon{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-2xl);background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);}
+.custom-section-name{font-size:var(--fs-xl);font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.custom-section-sub{font-size:var(--fs-xs);color:var(--muted);margin-top:1px;}
+.custom-build-btn-sm{font-size:var(--fs-xs);font-weight:800;color:var(--gold);letter-spacing:0.02em;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;}
+
+/* Empty state */
+.custom-empty{border-radius:16px;border:1.5px dashed rgba(212,175,55,0.2);padding:32px 20px;text-align:center;background:rgba(212,175,55,0.03);}
+.custom-empty-icon{font-size:28px;margin-bottom:10px;}
+.custom-empty-title{font-size:var(--fs-lg);font-weight:900;color:var(--text);margin-bottom:5px;}
+.custom-empty-sub{font-size:var(--fs-xs);color:var(--muted2);margin-bottom:18px;line-height:1.5;}
+.custom-build-btn{display:inline-block;padding:12px 24px;background:var(--gold);color:#000;border-radius:12px;font-size:var(--fs-sm);font-weight:900;letter-spacing:0.03em;cursor:pointer;text-decoration:none;}
+
+/* Saved workout cards */
+.custom-wk-card{
+  border-radius:16px;padding:16px;margin-bottom:10px;
+  background:linear-gradient(135deg,rgba(212,175,55,0.08),var(--surface));
+  border:1px solid rgba(212,175,55,0.2);
+  transition:transform 0.15s;
+}
+.custom-wk-card:active{transform:scale(0.985);}
+.custom-wk-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.custom-wk-name{font-size:17px;font-weight:900;color:var(--text);letter-spacing:-0.01em;}
+.custom-wk-badge{font-size:var(--fs-3xs);font-weight:800;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:rgba(212,175,55,0.12);color:var(--gold);border:1px solid rgba(212,175,55,0.3);}
+.custom-wk-meta{font-size:var(--fs-xs);color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.custom-wk-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.custom-wk-pill{font-size:var(--fs-2xs);font-weight:700;color:#cbd5e1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:3px 9px;}
+.custom-wk-actions{display:flex;gap:8px;}
+.custom-wk-run{flex:1;padding:11px;border-radius:11px;background:var(--gold);border:none;color:#000;font-size:var(--fs-md);font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:0.02em;}
+.custom-wk-run:active{opacity:0.85;}
+.custom-wk-edit{padding:11px 16px;border-radius:11px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);font-size:var(--fs-sm);font-weight:800;cursor:pointer;font-family:inherit;}
+.custom-wk-edit:active{border-color:var(--gold);color:var(--gold);}
+.custom-wk-del{padding:11px 14px;border-radius:11px;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);color:#f87171;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;}
+.custom-wk-del:active{background:rgba(239,68,68,0.15);}
+
+/* ══════════════════════════════════════════════════════════════
+   ONYX — Dashboard redesign (direction 1a)
+   Per design_handoff_dashboard_onyx/README.md. Shared chrome
+   (.avatar/.topbar/.tab-bar) is restyled app-wide since this file
+   has one copy of each, reused by every screen. Everything else is
+   scoped to #scr-dashboard so other screens keep their current look.
+   ══════════════════════════════════════════════════════════════ */
+#scr-dashboard{
+  --o-gold:#e6c579;
+  --o-gold-grad:linear-gradient(135deg,#e9cb7d,#c79c4f);
+  --o-text:#f4f3f1;
+  --o-muted:#a6a6ad;
+  --o-muted-2:#8b8b92;
+  --o-faint:#7d7d84;
+  --o-surface:rgba(255,255,255,0.035);
+  --o-surface-border:rgba(255,255,255,0.07);
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-ui:'Manrope',system-ui,sans-serif;
+  background:radial-gradient(120% 60% at 50% -10%, #171612 0%, #0a0a0b 46%);
+  font-family:var(--font-ui);
+}
+
+/* Header (shared) */
+.avatar{
+  width:44px;height:44px;border-radius:14px;
+  background:linear-gradient(140deg,#e6c579,#b8934a);
+  color:#1a1409;font-family:var(--font-display),'Archivo',system-ui,sans-serif;
+  font-weight:900;font-size:var(--fs-lg);border:none;
+  box-shadow:0 6px 18px -6px rgba(216,180,99,.55);
+}
+.topbar-title{font-family:'Archivo',system-ui,sans-serif;font-weight:700;font-size:var(--fs-2xl);letter-spacing:-.01em;}
+.topbar-sub{font-family:'Manrope',system-ui,sans-serif;font-weight:600;}
+.topbar-icon{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;}
+
+/* Streak strip */
+#scr-dashboard .momentum-strip{
+  background:linear-gradient(120deg,rgba(216,180,99,.12),rgba(216,180,99,.02));
+  border:1px solid rgba(216,180,99,.2);border-radius:14px;
+}
+#scr-dashboard .ms-flame{filter:none;}
+#scr-dashboard .ms-flame svg{display:block;}
+#scr-dashboard .ms-streak{font-family:var(--font-display);font-weight:700;font-size:13.5px;color:var(--o-text);letter-spacing:0;}
+#scr-dashboard .ms-sub{font-size:var(--fs-2xs);font-weight:600;color:var(--o-muted-2);}
+#scr-dashboard .ms-badge{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.05em;color:var(--o-gold);background:rgba(216,180,99,.14);border:1px solid rgba(216,180,99,.28);border-radius:9px;}
+
+/* Section headers */
+#scr-dashboard .sec-title{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:-.01em;color:var(--o-text);}
+#scr-dashboard .sec-link{color:var(--o-gold);}
+
+/* Hero eyebrow (new) */
+#scr-dashboard .hero-eyebrow{
+  font-family:var(--font-display);font-weight:700;font-size:var(--fs-2xs);
+  letter-spacing:.18em;text-transform:uppercase;color:var(--o-muted-2);
+  margin:0 2px 10px;padding:0 18px;
+}
+
+/* Hero card */
+#scr-dashboard .hero-card{
+  border-radius:24px;
+  background:linear-gradient(158deg,#1c1a16 0%,#0e0e10 68%);
+  border:1px solid rgba(216,180,99,.24);
+  box-shadow:0 24px 50px -24px rgba(0,0,0,.85);
+  transition:box-shadow .15s;
+}
+#scr-dashboard .hero-card:active{box-shadow:0 24px 50px -24px rgba(0,0,0,.85),0 0 0 2px var(--o-gold),0 0 30px rgba(216,180,99,.55);}
+#scr-dashboard .hero-glow{background:radial-gradient(90% 70% at 15% 0%,rgba(216,180,99,.12) 0%,transparent 60%);}
+#scr-dashboard .hero-sheen{
+  position:absolute;top:0;bottom:0;left:0;width:70px;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,.14),transparent);
+  animation:oSheenSlide 6.5s ease-in-out infinite;
+}
+@keyframes oSheenSlide{
+  0%{transform:translateX(-120%) skewX(-18deg);}
+  55%,100%{transform:translateX(320%) skewX(-18deg);}
+}
+@media (prefers-reduced-motion:reduce){
+  #scr-dashboard .hero-sheen{animation:none;display:none;}
+  #scr-dashboard .hero-tap:active,#scr-dashboard .rail-card:active,#scr-dashboard .tool-card:active{transform:none;}
+}
+#scr-dashboard .hero-badge{
+  font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--o-gold);background:rgba(216,180,99,.12);
+  border:1px solid rgba(216,180,99,.3);border-radius:20px;padding:4px 11px;
+}
+#scr-dashboard .hero-name{font-family:var(--font-display);font-weight:800;font-size:23px;line-height:1.12;letter-spacing:-.02em;color:#f6f5f2;margin-bottom:5px;}
+#scr-dashboard .hero-desc{font-family:var(--font-ui);font-size:var(--fs-sm);font-weight:600;color:var(--o-muted);}
+#scr-dashboard .hero-ring{position:relative;width:56px;height:56px;flex-shrink:0;border:none;}
+#scr-dashboard .hero-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#scr-dashboard .hero-ring-num{font-family:var(--font-display);font-weight:900;font-size:var(--fs-xl);line-height:1;color:var(--o-gold);}
+#scr-dashboard .hero-ring-lbl{font-size:8.5px;font-weight:700;letter-spacing:.08em;color:var(--o-faint);}
+#scr-dashboard .phase-pill{font-size:var(--fs-2xs);font-weight:700;border-radius:20px;padding:5px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--o-muted);}
+#scr-dashboard .phase-pill.active{background:var(--o-gold);color:#0f0e0c;border-color:var(--o-gold);}
+#scr-dashboard .hero-fatigue-chip{background:rgba(248,113,113,0.12);border-color:rgba(248,113,113,0.3);}
+#scr-dashboard .hero-tap{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  width:100%;padding:14px;border-radius:15px;margin-top:14px;
+  background:var(--o-gold-grad)!important;
+  box-shadow:0 12px 26px -10px rgba(216,180,99,.65)!important;
+  font-family:var(--font-display);font-weight:800;font-size:15.5px;color:#1a1409!important;
+  transition:transform .12s ease;text-align:center;
+}
+#scr-dashboard .hero-tap::before{
+  content:'';width:0;height:0;flex-shrink:0;
+  border-style:solid;border-width:7px 0 7px 11px;
+  border-color:transparent transparent transparent #1a1409;
+}
+#scr-dashboard .hero-tap:active{transform:scale(.985);}
+#scr-dashboard .hero-empty{background:var(--o-surface);border:1.5px dashed rgba(216,180,99,.25);border-radius:18px;}
+#scr-dashboard .hero-empty-title{font-family:var(--font-display);color:var(--o-text);}
+#scr-dashboard .hero-empty-sub{color:var(--o-muted);}
+#scr-dashboard .hero-empty-btn{background:var(--o-gold-grad);color:#1a1409;}
+
+/* Programs rail (new) */
+#scr-dashboard .prog-rail-head{display:flex;align-items:baseline;justify-content:space-between;padding:0 18px;margin-bottom:14px;}
+#scr-dashboard .prog-rail-title{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:-.01em;color:var(--o-text);}
+#scr-dashboard .prog-rail-link{font-size:var(--fs-sm);font-weight:700;color:var(--o-gold);cursor:pointer;}
+#scr-dashboard .prog-rail{display:flex;gap:12px;overflow-x:auto;padding:2px 18px 4px;margin-bottom:28px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+#scr-dashboard .prog-rail::-webkit-scrollbar{display:none;}
+#scr-dashboard .rail-card{flex:0 0 156px;border-radius:18px;padding:15px;text-decoration:none;transition:transform .12s ease,box-shadow .15s;display:block;animation:flagBreathe 4.6s ease-in-out infinite;}
+#scr-dashboard .rail-card:active{transform:scale(.98);}
+#scr-dashboard .rail-card:focus-visible{outline:none;box-shadow:0 0 0 2px var(--gold),0 0 18px var(--gold-glow);}
+@keyframes flagBreathe{0%,100%{box-shadow:var(--fs-rest);}50%{box-shadow:var(--fs-peak),var(--fs-ring);}}
+@media (prefers-reduced-motion:reduce){#scr-dashboard .rail-card,#scr-programs #flagGrid .cat-card{animation:none;}}
+#scr-dashboard .rail-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:26px;}
+#scr-dashboard .rail-name{font-family:var(--font-display);font-weight:800;font-size:var(--fs-lg);color:var(--o-text);line-height:1.2;overflow-wrap:break-word;word-break:break-word;}
+#scr-dashboard .rail-meta{font-size:11.5px;color:var(--o-muted-2);margin-top:5px;line-height:1.4;}
+#scr-dashboard .rail-card.ss{background:linear-gradient(160deg,rgba(201,80,90,.16),rgba(20,20,22,.4));border:1px solid rgba(201,80,90,.28);border-top:2.5px solid #c9505a;--fs-rest:0 4px 18px rgba(201,80,90,.18);--fs-peak:0 6px 28px rgba(201,80,90,.4);--fs-ring:0 0 0 1px rgba(201,80,90,.22);}
+#scr-dashboard .rail-card.ss .rail-icon{background:rgba(201,80,90,.16);}
+#scr-dashboard .rail-card.ss:active{box-shadow:0 0 0 2px #c9505a,0 0 24px rgba(201,80,90,.55)!important;}
+#scr-dashboard .rail-card.pmc{background:linear-gradient(160deg,rgba(139,127,240,.16),rgba(20,20,22,.4));border:1px solid rgba(139,127,240,.28);border-top:2.5px solid #8b7ff0;--fs-rest:0 4px 18px rgba(139,127,240,.18);--fs-peak:0 6px 28px rgba(139,127,240,.4);--fs-ring:0 0 0 1px rgba(139,127,240,.22);}
+#scr-dashboard .rail-card.pmc .rail-icon{background:rgba(139,127,240,.16);}
+#scr-dashboard .rail-card.pmc:active{box-shadow:0 0 0 2px #8b7ff0,0 0 24px rgba(139,127,240,.55)!important;}
+#scr-dashboard .rail-card.mc{background:linear-gradient(160deg,rgba(216,180,99,.16),rgba(20,20,22,.4));border:1px solid rgba(216,180,99,.3);border-top:2.5px solid #d8b463;--fs-rest:0 4px 18px rgba(216,180,99,.18);--fs-peak:0 6px 28px rgba(216,180,99,.4);--fs-ring:0 0 0 1px rgba(216,180,99,.22);}
+#scr-dashboard .rail-card.mc .rail-icon{background:rgba(216,180,99,.16);}
+#scr-dashboard .rail-card.mc:active{box-shadow:0 0 0 2px #d8b463,0 0 24px rgba(216,180,99,.55)!important;}
+#scr-dashboard .rail-card.ks{background:linear-gradient(160deg,rgba(224,160,60,.16),rgba(20,20,22,.4));border:1px solid rgba(224,160,60,.28);border-top:2.5px solid #e0a03c;--fs-rest:0 4px 18px rgba(224,160,60,.18);--fs-peak:0 6px 28px rgba(224,160,60,.4);--fs-ring:0 0 0 1px rgba(224,160,60,.22);}
+#scr-dashboard .rail-card.ks .rail-icon{background:rgba(224,160,60,.16);}
+#scr-dashboard .rail-card.ks:active{box-shadow:0 0 0 2px #e0a03c,0 0 24px rgba(224,160,60,.55)!important;}
+#scr-dashboard .rail-card.mm{background:linear-gradient(160deg,rgba(111,119,224,.16),rgba(20,20,22,.4));border:1px solid rgba(111,119,224,.28);border-top:2.5px solid #6f77e0;--fs-rest:0 4px 18px rgba(111,119,224,.18);--fs-peak:0 6px 28px rgba(111,119,224,.4);--fs-ring:0 0 0 1px rgba(111,119,224,.22);}
+#scr-dashboard .rail-card.mm .rail-icon{background:rgba(111,119,224,.16);}
+#scr-dashboard .rail-card.mm:active{box-shadow:0 0 0 2px #6f77e0,0 0 24px rgba(111,119,224,.55)!important;}
+#scr-dashboard .rail-card.hv{background:linear-gradient(160deg,rgba(159,191,74,.16),rgba(20,20,22,.4));border:1px solid rgba(159,191,74,.28);border-top:2.5px solid #9fbf4a;--fs-rest:0 4px 18px rgba(159,191,74,.18);--fs-peak:0 6px 28px rgba(159,191,74,.4);--fs-ring:0 0 0 1px rgba(159,191,74,.22);}
+#scr-dashboard .rail-card.hv .rail-icon{background:rgba(159,191,74,.16);}
+#scr-dashboard .rail-card.hv:active{box-shadow:0 0 0 2px #9fbf4a,0 0 24px rgba(159,191,74,.55)!important;}
+
+/* Training tools */
+#scr-dashboard .tool-card{border-radius:16px;padding:14px;background:var(--o-surface);border:1px solid var(--o-surface-border);transition:transform .12s ease;}
+#scr-dashboard .tool-card:active{transform:scale(.98);box-shadow:0 0 0 2px var(--o-gold),0 0 22px rgba(216,180,99,.5);}
+#scr-dashboard .tool-icon-wrap{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);margin-bottom:9px;display:flex;align-items:center;justify-content:center;font-size:inherit;}
+#scr-dashboard .tool-card.gold .tool-icon-wrap{background:rgba(216,180,99,.1);border-color:rgba(216,180,99,.2);}
+#scr-dashboard .tool-name{font-family:var(--font-display);font-weight:700;font-size:13.5px;color:var(--o-text);}
+#scr-dashboard .tool-sub{font-size:var(--fs-2xs);color:var(--o-faint);margin-top:2px;}
+
+/* Light-touch retheme for sections not pictured in the reference (kept in
+   place per the approved plan — just blended into the new dark surface) */
+#scr-dashboard .coach-section,#scr-dashboard .wrapped-card,#scr-dashboard .push-chip{
+  background:var(--o-surface);border-color:var(--o-surface-border);
+}
+#scr-dashboard .coach-label,#scr-dashboard .wrapped-title{font-family:var(--font-display);}
+
+/* ══════════════════════════════════════════════════════════════
+   ONYX — Programs screen redesign (continuation of the dashboard
+   Onyx handoff). Per design_handoff_programs_onyx/README.md. Scoped
+   to #scr-programs so other screens keep their current look.
+   ══════════════════════════════════════════════════════════════ */
+#scr-programs{
+  --o-gold:#e6c579;
+  --o-gold-grad:linear-gradient(135deg,#e9cb7d,#c79c4f);
+  --o-text:#f4f3f1;
+  --o-text-2:#f6f5f2;
+  --o-muted:#c9c9cf;
+  --o-muted-2:#a6a6ad;
+  --o-muted-3:#8b8b92;
+  --o-faint:#7d7d84;
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-ui:'Manrope',system-ui,sans-serif;
+  background:radial-gradient(120% 60% at 50% -10%, #171612 0%, #0a0a0b 46%);
+  font-family:var(--font-ui);
+}
+
+/* Top bar (screen-specific title/count) */
+#scr-programs .topbar-title{
+  font-family:var(--font-display);font-weight:800;font-size:26px;
+  letter-spacing:-.02em;color:var(--o-text-2);line-height:1.1;
+}
+#scr-programs .topbar-sub{font-family:var(--font-ui);font-weight:600;font-size:var(--fs-sm);color:var(--o-muted-2);margin-top:6px;}
+
+/* Tier labels */
+#scr-programs .tier-label{
+  display:flex;align-items:center;gap:10px;margin:0 0 14px;
+  font-family:var(--font-display);font-weight:800;font-size:var(--fs-2xs);
+  letter-spacing:.16em;text-transform:uppercase;color:var(--o-muted-3);
+}
+#scr-programs .tier-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
+#scr-programs .tier-label.flag{color:var(--o-gold);}
+#scr-programs .tier-label.influencer{margin-top:24px;color:var(--o-muted-3);}
+
+/* Flagship cards — full-width stacked */
+#scr-programs #flagGrid{display:flex;flex-direction:column;gap:12px;}
+#scr-programs .cat-card{
+  position:relative;display:block;border-radius:20px;padding:18px;
+  overflow:hidden;text-decoration:none;color:inherit;
+  transition:transform .12s ease,box-shadow .15s;
+}
+#scr-programs .cat-card:active{transform:scale(.985);}
+#scr-programs #flagGrid .cat-card{animation:flagBreathe 4.6s ease-in-out infinite;}
+#scr-programs .cat-icon{
+  position:static;opacity:1;font-size:0;
+  width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+}
+#scr-programs .cat-tag{
+  display:inline-block;font-size:var(--fs-3xs);font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;border-radius:20px;padding:3px 10px;margin-bottom:9px;
+}
+#scr-programs .cat-name{
+  font-family:var(--font-display);font-weight:800;font-size:var(--fs-2xl);color:var(--o-text-2);
+  line-height:1.2;padding-right:0;
+}
+#scr-programs .cat-meta{
+  font-family:var(--font-ui);font-size:12.5px;color:var(--o-muted);line-height:1.5;
+  padding-right:0;-webkit-line-clamp:unset;
+}
+#scr-programs .cat-count{
+  display:block;margin-top:12px;font-family:var(--font-ui);font-weight:700;
+  font-size:var(--fs-2xs);letter-spacing:.06em;text-transform:uppercase;color:var(--o-muted-3);
+}
+/* Scoped to #flagGrid (flagship + influencer cards), not the whole screen —
+   a broader #scr-programs selector here used to also hide the "Designed by
+   you"/"Designed by Mike Cross" attribution the separate Your Programs /
+   Published Programs tiers render, which is real information those tiers
+   need, unlike the redundant line on flagship/influencer cards. */
+#flagGrid .cat-designer{display:none;}
+
+/* Chevron affordance (positioned via markup's trailing SVG) */
+#scr-programs .cat-chevron{position:absolute;right:18px;top:18px;flex-shrink:0;}
+
+/* Per-program accent tokens — flagship */
+#scr-programs .cat-card.ss{background:linear-gradient(160deg,rgba(201,80,90,.16),rgba(20,20,22,.5));border:1px solid rgba(201,80,90,.3);border-top:2.5px solid #c9505a;--fs-rest:0 4px 20px rgba(201,80,90,.18);--fs-peak:0 6px 30px rgba(201,80,90,.4);--fs-ring:0 0 0 1px rgba(201,80,90,.22);}
+#scr-programs .cat-card.ss .cat-icon{background:rgba(201,80,90,.18);}
+#scr-programs .cat-card.ss .cat-tag{background:rgba(201,80,90,.2);border:1px solid rgba(201,80,90,.4);color:#fda4af;}
+#scr-programs .cat-card.ss:active{box-shadow:0 0 0 2px #c9505a,0 0 26px rgba(201,80,90,.55)!important;}
+
+#scr-programs .cat-card.pmc{background:linear-gradient(160deg,rgba(139,127,240,.16),rgba(20,20,22,.5));border:1px solid rgba(139,127,240,.28);border-top:2.5px solid #8b7ff0;--fs-rest:0 4px 20px rgba(139,127,240,.18);--fs-peak:0 6px 30px rgba(139,127,240,.4);--fs-ring:0 0 0 1px rgba(139,127,240,.22);}
+#scr-programs .cat-card.pmc .cat-icon{background:rgba(139,127,240,.18);}
+#scr-programs .cat-card.pmc .cat-tag{background:rgba(139,127,240,.2);border:1px solid rgba(139,127,240,.4);color:#c4bdfa;}
+#scr-programs .cat-card.pmc:active{box-shadow:0 0 0 2px #8b7ff0,0 0 26px rgba(139,127,240,.55)!important;}
+
+#scr-programs .cat-card.mc{background:linear-gradient(160deg,rgba(216,180,99,.16),rgba(20,20,22,.5));border:1px solid rgba(216,180,99,.3);border-top:2.5px solid #d8b463;--fs-rest:0 4px 20px rgba(216,180,99,.18);--fs-peak:0 6px 30px rgba(216,180,99,.4);--fs-ring:0 0 0 1px rgba(216,180,99,.22);}
+#scr-programs .cat-card.mc .cat-icon{background:rgba(216,180,99,.18);}
+#scr-programs .cat-card.mc .cat-tag{background:rgba(216,180,99,.2);border:1px solid rgba(216,180,99,.4);color:var(--o-gold);}
+#scr-programs .cat-card.mc:active{box-shadow:0 0 0 2px #d8b463,0 0 26px rgba(216,180,99,.55)!important;}
+
+#scr-programs .cat-card.ks{background:linear-gradient(160deg,rgba(224,160,60,.16),rgba(20,20,22,.5));border:1px solid rgba(224,160,60,.28);border-top:2.5px solid #e0a03c;--fs-rest:0 4px 20px rgba(224,160,60,.18);--fs-peak:0 6px 30px rgba(224,160,60,.4);--fs-ring:0 0 0 1px rgba(224,160,60,.22);}
+#scr-programs .cat-card.ks .cat-icon{background:rgba(224,160,60,.18);}
+#scr-programs .cat-card.ks .cat-tag{background:rgba(224,160,60,.2);border:1px solid rgba(224,160,60,.4);color:#f0c078;}
+#scr-programs .cat-card.ks:active{box-shadow:0 0 0 2px #e0a03c,0 0 26px rgba(224,160,60,.55)!important;}
+
+#scr-programs .cat-card.mm{background:linear-gradient(160deg,rgba(111,119,224,.16),rgba(20,20,22,.5));border:1px solid rgba(111,119,224,.28);border-top:2.5px solid #6f77e0;--fs-rest:0 4px 20px rgba(111,119,224,.18);--fs-peak:0 6px 30px rgba(111,119,224,.4);--fs-ring:0 0 0 1px rgba(111,119,224,.22);}
+#scr-programs .cat-card.mm .cat-icon{background:rgba(111,119,224,.18);}
+#scr-programs .cat-card.mm .cat-tag{background:rgba(111,119,224,.2);border:1px solid rgba(111,119,224,.4);color:#a3a8f2;}
+#scr-programs .cat-card.mm:active{box-shadow:0 0 0 2px #6f77e0,0 0 26px rgba(111,119,224,.55)!important;}
+
+#scr-programs .cat-card.hv{background:linear-gradient(160deg,rgba(159,191,74,.16),rgba(20,20,22,.5));border:1px solid rgba(159,191,74,.28);border-top:2.5px solid #9fbf4a;--fs-rest:0 4px 20px rgba(159,191,74,.18);--fs-peak:0 6px 30px rgba(159,191,74,.4);--fs-ring:0 0 0 1px rgba(159,191,74,.22);}
+#scr-programs .cat-card.hv .cat-icon{background:rgba(159,191,74,.18);}
+#scr-programs .cat-card.hv .cat-tag{background:rgba(159,191,74,.2);border:1px solid rgba(159,191,74,.4);color:#c3dc8f;}
+#scr-programs .cat-card.hv:active{box-shadow:0 0 0 2px #9fbf4a,0 0 26px rgba(159,191,74,.55)!important;}
+
+/* Influencer grid — 2-up compact cards (kept inside MARKET:STRIP markers in markup) */
+#scr-programs .influencer-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media (max-width:559px){#scr-programs .influencer-grid{grid-template-columns:1fr;}}
+#scr-programs .influencer-grid .cat-card{border-radius:16px;padding:14px;margin-bottom:0;}
+#scr-programs .influencer-grid .cat-icon{width:28px;height:28px;border-radius:8px;margin-bottom:20px;}
+/* Was display:none — the compact influencer-grid layout still carries a
+   sizing rule for .cat-tag below (font-size/padding/margin), which only
+   makes sense if something once intended to show it; hiding it was what
+   left the tag-tinting parity gap between flagship and influencer cards. */
+#scr-programs .influencer-grid .cat-tag{display:inline-block;}
+#scr-programs .influencer-grid .cat-name{font-size:var(--fs-md);padding-right:0;}
+#scr-programs .influencer-grid .cat-meta{
+  font-size:var(--fs-2xs);color:var(--o-muted-3);line-height:1.4;padding-right:0;
+  display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+#scr-programs .influencer-grid .cat-count{font-size:var(--fs-3xs);color:var(--o-faint);margin-top:8px;}
+
+/* Per-program accent tokens — influencer */
+
+/* Exercise Library link */
+#scr-programs .lib-link{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(216,180,99,.08);border:1px solid rgba(216,180,99,.24);
+  border-radius:16px;padding:14px 16px;text-decoration:none;margin-bottom:20px;
+  transition:transform .12s ease;
+}
+#scr-programs .lib-link:active{transform:scale(.985);}
+#scr-programs .lib-icon{width:32px;height:32px;border-radius:9px;background:rgba(216,180,99,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#scr-programs .lib-name{font-family:var(--font-display);font-weight:800;font-size:var(--fs-md);color:var(--o-gold);}
+#scr-programs .lib-sub{font-size:var(--fs-2xs);color:var(--o-muted-3);font-weight:600;margin-top:1px;}
+
+/* Build a Program CTA */
+#scr-programs .build-cta{
+  display:block;border-radius:18px;border:1.5px dashed rgba(216,180,99,.3);
+  padding:24px 18px;text-align:center;text-decoration:none;
+  background:rgba(255,255,255,.02);transition:transform .12s ease;
+}
+#scr-programs .build-cta:active{transform:scale(.985);}
+#scr-programs .build-cta-title{font-family:var(--font-display);font-weight:800;font-size:var(--fs-lg);color:var(--o-text);margin:10px 0 4px;}
+#scr-programs .build-cta-sub{font-size:var(--fs-xs);color:var(--o-muted-3);line-height:1.5;}
+
+/* ══════════════════════════════════════════════════════════════
+   ONYX — Conditioning Corner redesign (continuation of the Onyx
+   handoff series). Per design_handoff_conditioning_onyx/README.md.
+   Scoped to #scr-conditioning / #condBody.
+   ══════════════════════════════════════════════════════════════ */
+#scr-conditioning{
+  background:radial-gradient(120% 60% at 50% -10%, #171612 0%, #0a0a0b 46%);
+  font-family:'Manrope',system-ui,sans-serif;
+}
+#scr-conditioning .topbar-title{font-family:'Archivo',system-ui,sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em;color:#f6f5f2;line-height:1.1;}
+#scr-conditioning .topbar-sub{font-family:'Manrope',system-ui,sans-serif;font-weight:600;font-size:var(--fs-sm);color:#a6a6ad;margin-top:6px;}
+#scr-conditioning .prog-eyebrow{font-family:'Archivo',system-ui,sans-serif;font-weight:700;font-size:var(--fs-2xs);letter-spacing:.18em;text-transform:uppercase;color:#8b8b92;}
+#scr-conditioning .prog-title{font-family:'Archivo',system-ui,sans-serif;font-weight:800;color:#f6f5f2;letter-spacing:-.02em;}
+#scr-conditioning .prog-sub{color:#a6a6ad;}
+
+/* ══════════════════════════════════════════════════════════════
+   ONYX — Nutrition screen wrapper. mc-macros.js renders/styles
+   everything inside #nutritionBody itself; this just gives the
+   screen shell (topbar) the same Onyx treatment as the other tabs.
+   Scoped to #scr-nutrition.
+   ══════════════════════════════════════════════════════════════ */
+#scr-nutrition{
+  background:radial-gradient(120% 60% at 50% -10%, #171612 0%, #0a0a0b 46%);
+  font-family:'Manrope',system-ui,sans-serif;
+}
+#scr-nutrition .topbar-title{font-family:'Archivo',system-ui,sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em;color:#f6f5f2;line-height:1.1;}
+#scr-nutrition .topbar-sub{font-family:'Manrope',system-ui,sans-serif;font-weight:600;font-size:var(--fs-sm);color:#a6a6ad;margin-top:6px;}
+
+#condBody{
+  --o-gold:#e6c579;
+  --o-gold-grad:linear-gradient(135deg,#e9cb7d,#c79c4f);
+  --o-text:#f4f3f1;
+  --o-text-2:#f6f5f2;
+  --o-muted:#c9c9cf;
+  --o-muted-2:#a6a6ad;
+  --o-muted-3:#8b8b92;
+  --o-faint:#7d7d84;
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-ui:'Manrope',system-ui,sans-serif;
+}
+
+/* Sub-tab toggle buttons (rendered inline by tgBtn()) */
+#condBody .cond-toggle-btn.active{
+  background:var(--o-gold-grad)!important;color:#1a1409!important;
+  font-family:var(--font-display);font-weight:800;
+}
+#condBody .cond-toggle-btn{color:var(--o-muted-3);font-family:var(--font-display);font-weight:800;}
+
+/* Sub-category header */
+#condBody .cond-sub-head{display:flex;align-items:center;gap:12px;margin:0 0 16px;}
+#condBody .cond-sub-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#condBody .cond-sub-name{font-family:var(--font-display);font-weight:800;font-size:var(--fs-xl);color:var(--o-text);letter-spacing:-.01em;}
+#condBody .cond-sub-blurb{font-size:var(--fs-xs);color:var(--o-muted-2);margin-top:1px;}
+
+/* Routine cards */
+#condBody .cond-card{
+  position:relative;display:block;border-radius:16px;padding:16px 18px;
+  text-decoration:none;color:inherit;margin-bottom:10px;
+  transition:transform .12s ease;
+}
+#condBody .cond-card:active{transform:scale(.985);}
+#condBody .cond-tag{font-family:var(--font-ui);font-size:var(--fs-2xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+#condBody .cond-name{font-family:var(--font-display);font-weight:800;font-size:16.5px;color:var(--o-text);margin-bottom:5px;padding-right:24px;}
+#condBody .cond-meta{font-family:var(--font-ui);font-size:var(--fs-xs);color:var(--o-muted-2);line-height:1.5;padding-right:8px;}
+#condBody .cond-stats{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;align-items:center;}
+#condBody .cond-stat{
+  font-size:var(--fs-2xs);font-weight:700;color:var(--o-muted);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;padding:4px 10px;
+}
+#condBody .cond-arrow{
+  position:absolute;right:16px;top:18px;width:auto;height:auto;
+  background:none!important;border:none!important;
+}
+
+/* PB pill (appended at runtime by mc-cond.js) */
+#condBody .mcc-pb,
+.mcc-pb{
+  color:var(--o-gold)!important;
+  background:rgba(216,180,99,.12)!important;
+  border:1px solid rgba(216,180,99,.28)!important;
+  border-radius:20px!important;
+  font-size:var(--fs-2xs)!important;font-weight:800!important;
+  margin-left:auto;
+}
+
+/* Exercises sub-tab container */
+#condBody input[placeholder="Search exercises…"]{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  color:var(--o-text);border-radius:11px;
+}
+#condBody{color:var(--o-muted-2);}
+
+/* Bottom tab bar (shared) */
+.tab-bar{
+  background:rgba(10,10,11,.82);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.tab{color:#6b6b72;}
+.tab>div:last-child{font-size:9.5px;font-weight:700;}
+.tab.active{color:#e6c579;}
+
+/* ══════════════════════════════════════════════════════════════
+   SAND LIGHT MODE (Tier 4 Phase 3) — toggle + shared chrome.
+   Topbar and tab bar go Sand here; each screen's own content canvas
+   is retheme'd separately below, screen by screen (Phase 6), since
+   an earlier draft that flipped page background without touching
+   the Onyx tokens broke legibility — most of the Home tab's text
+   shares the same light-colored Onyx tokens as its cards, so it went
+   near-invisible against a light canvas. Phase 6 fixes that properly
+   by deriving a light counterpart for every --o-* token per screen.
+   Toggle: mc-appearance.js sets/removes data-theme on <html>.
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] .topbar{background:linear-gradient(to bottom, #f5f2ec 80%, transparent);}
+html[data-theme="light"] .topbar-title{color:#1c1a17;}
+html[data-theme="light"] .topbar-sub{color:#6b6459;}
+html[data-theme="light"] .topbar-icon{background:rgba(28,26,23,.05);border:1px solid rgba(28,26,23,.12);}
+html[data-theme="light"] #scr-programs .topbar-title,
+html[data-theme="light"] #scr-conditioning .topbar-title,
+html[data-theme="light"] #scr-nutrition .topbar-title{color:#1c1a17;}
+html[data-theme="light"] #scr-programs .topbar-sub,
+html[data-theme="light"] #scr-conditioning .topbar-sub,
+html[data-theme="light"] #scr-nutrition .topbar-sub{color:#6b6459;}
+html[data-theme="light"] .tab-bar{background:rgba(245,242,236,.92);border-top:1px solid rgba(28,26,23,.08);}
+html[data-theme="light"] .tab{color:#8a8377;}
+html[data-theme="light"] .tab.active{color:#a9762f;}
+html[data-theme="light"] .theme-icon-dark{display:none;}
+html[data-theme="light"] .theme-icon-light{display:block!important;}
+
+/* Page-level tokens (:root's --text/--muted/--surface/--border family,
+   distinct from the Onyx --o-* system) are declared once globally,
+   not per-screen — they're consumed both by "not yet migrated to Onyx"
+   sections on every screen (Coach Note, custom workouts, Conditioning's
+   .cond-card/.cond-ex-item) AND by two bottom sheets that mc-macros.js /
+   the Program Select flow append straight to <body> rather than nesting
+   inside any #scr-* screen, so a screen-scoped override would never
+   reach them at all. */
+html[data-theme="light"]{
+  --bg:#f5f2ec;
+  --surface:#efe9db;
+  --surface2:rgba(28,26,23,.06);
+  --border:rgba(28,26,23,.08);
+  --border2:rgba(28,26,23,.12);
+  --text:#1c1a17;
+  --muted:#8a8377;
+  --muted2:#6b6459;
+}
+/* Body-appended sheets: a few backgrounds/inputs are hardcoded hex
+   tuned for the dark canvas and don't route through any token. */
+html[data-theme="light"] .ps-sheet,
+html[data-theme="light"] .nt-sheet,
+html[data-theme="light"] .nt-fav-bar{background:#efe9db;}
+html[data-theme="light"] .ps-sheet{border-top-color:rgba(28,26,23,.1);}
+html[data-theme="light"] .ps-handle,
+html[data-theme="light"] .nt-handle{background:rgba(28,26,23,.15);}
+html[data-theme="light"] .ps-card{border-color:rgba(28,26,23,.08);}
+html[data-theme="light"] .ps-check{border-color:rgba(28,26,23,.14);}
+html[data-theme="light"] .ob-skip{background:#efe9db;border-top-color:rgba(28,26,23,.1);}
+html[data-theme="light"] .ntx-met-track{background:rgba(28,26,23,.1);}
+html[data-theme="light"] .nt-field input,
+html[data-theme="light"] .nt-field select,
+html[data-theme="light"] .nt-input,
+html[data-theme="light"] .nt-seg button,
+html[data-theme="light"] .nt-uom button{background:rgba(28,26,23,.05);}
+
+/* ══════════════════════════════════════════════════════════════
+   SAND LIGHT MODE — PHASE 6a: Home tab (#scr-dashboard).
+   Mirrors every Onyx token this screen redeclares (see the
+   #scr-dashboard block above) with a light-mode counterpart, plus
+   the handful of hardcoded white-overlay/dark-canvas colors inside
+   it that don't route through those tokens. --o-gold-grad and the
+   shared --gold/--gold-glow focus-ring tokens are intentionally
+   left as-is — both already read fine against a light card.
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] #scr-dashboard{
+  --o-gold:#a9762f;
+  --o-text:#1c1a17;
+  --o-muted:#6b6459;
+  --o-muted-2:#8a8377;
+  --o-faint:#a39c8f;
+  --o-surface:rgba(28,26,23,.035);
+  --o-surface-border:rgba(28,26,23,.08);
+  background:#f5f2ec;
+}
+html[data-theme="light"] #scr-dashboard .hero-card{
+  background:linear-gradient(158deg,#fbf9f4 0%,#efe9db 68%);
+  border-color:rgba(169,118,47,.22);
+}
+html[data-theme="light"] #scr-dashboard .hero-sheen{background:linear-gradient(90deg,rgba(28,26,23,.1),transparent);}
+html[data-theme="light"] #scr-dashboard .hero-name{color:#1c1a17;}
+html[data-theme="light"] #scr-dashboard .phase-pill{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.1);}
+html[data-theme="light"] #scr-dashboard .tool-icon-wrap{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.08);}
+html[data-theme="light"] #scr-dashboard .tool-card.gold .tool-icon-wrap{background:rgba(169,118,47,.1);border-color:rgba(169,118,47,.2);}
+/* Rail cards keep each program's identity hue but swap the dark
+   canvas gradient stop for a pale sand tint, same formula for all 6. */
+html[data-theme="light"] #scr-dashboard .rail-card.ss{background:linear-gradient(160deg,rgba(201,80,90,.14),rgba(245,242,236,.9));}
+html[data-theme="light"] #scr-dashboard .rail-card.pmc{background:linear-gradient(160deg,rgba(139,127,240,.14),rgba(245,242,236,.9));}
+html[data-theme="light"] #scr-dashboard .rail-card.mc{background:linear-gradient(160deg,rgba(216,180,99,.14),rgba(245,242,236,.9));}
+html[data-theme="light"] #scr-dashboard .rail-card.ks{background:linear-gradient(160deg,rgba(224,160,60,.14),rgba(245,242,236,.9));}
+html[data-theme="light"] #scr-dashboard .rail-card.mm{background:linear-gradient(160deg,rgba(111,119,224,.14),rgba(245,242,236,.9));}
+html[data-theme="light"] #scr-dashboard .rail-card.hv{background:linear-gradient(160deg,rgba(159,191,74,.14),rgba(245,242,236,.9));}
+/* Icon glyphs are inline SVG stroke/fill attributes tuned for a dark
+   canvas (pale gray / pale gold); both read as near-invisible on the
+   new light tool-card chips, so give them a darker bronze/slate ink. */
+html[data-theme="light"] #scr-dashboard .tool-icon-wrap svg *{stroke:#8a7256;}
+html[data-theme="light"] #scr-dashboard .tool-icon-wrap svg [fill]:not([fill="none"]){fill:#8a7256;}
+html[data-theme="light"] .topbar-icon svg *{stroke:#6b6459;}
+
+/* ══════════════════════════════════════════════════════════════
+   SAND LIGHT MODE — PHASE 6b: Programs tab (#scr-programs).
+   Same approach as 6a: light counterpart for every --o-* token,
+   flat Sand background, and each program's cat-card gradient (10
+   flagship + influencer variants) gets the same pale-tint treatment
+   as the Home tab's rail cards. Per-program .cat-tag text was pale
+   (tuned for a dark tag chip) so it gets a darker shade of that same
+   identity hue instead — background/border tints are left alone since
+   translucent color tints read fine over either canvas.
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] #scr-programs{
+  --o-gold:#a9762f;
+  --o-text:#1c1a17;
+  --o-text-2:#1c1a17;
+  --o-muted:#6b6459;
+  --o-muted-2:#8a8377;
+  --o-muted-3:#8a8377;
+  --o-faint:#a39c8f;
+  background:#f5f2ec;
+}
+html[data-theme="light"] #scr-programs .tier-label::after{background:rgba(28,26,23,.1);}
+html[data-theme="light"] #scr-programs .cat-card.ss{background:linear-gradient(160deg,rgba(201,80,90,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.ss .cat-tag{color:#a13c46;}
+html[data-theme="light"] #scr-programs .cat-card.pmc{background:linear-gradient(160deg,rgba(139,127,240,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.pmc .cat-tag{color:#5b4fc7;}
+html[data-theme="light"] #scr-programs .cat-card.mc{background:linear-gradient(160deg,rgba(216,180,99,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.ks{background:linear-gradient(160deg,rgba(224,160,60,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.ks .cat-tag{color:#a3701f;}
+html[data-theme="light"] #scr-programs .cat-card.mm{background:linear-gradient(160deg,rgba(111,119,224,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.mm .cat-tag{color:#454dc4;}
+html[data-theme="light"] #scr-programs .cat-card.hv{background:linear-gradient(160deg,rgba(159,191,74,.14),rgba(245,242,236,.92));}
+html[data-theme="light"] #scr-programs .cat-card.hv .cat-tag{color:#6b8a2a;}
+
+/* ══════════════════════════════════════════════════════════════
+   SAND LIGHT MODE — PHASE 6c: Conditioning tab
+   (#scr-conditioning / #condBody).
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] #scr-conditioning{background:#f5f2ec;}
+html[data-theme="light"] #scr-conditioning .topbar-title,
+html[data-theme="light"] #scr-conditioning .prog-title{color:#1c1a17;}
+html[data-theme="light"] #scr-conditioning .topbar-sub,
+html[data-theme="light"] #scr-conditioning .prog-eyebrow,
+html[data-theme="light"] #scr-conditioning .prog-sub{color:#6b6459;}
+html[data-theme="light"] #condBody{
+  --o-gold:#a9762f;
+  --o-text:#1c1a17;
+  --o-text-2:#1c1a17;
+  --o-muted:#6b6459;
+  --o-muted-2:#8a8377;
+  --o-muted-3:#8a8377;
+  --o-faint:#a39c8f;
+}
+/* .cond-card/.cond-ex-item already retheme via the global --surface/
+   --border tokens above; these are the remaining hardcoded (non-token)
+   white overlays and pale text tuned for the dark canvas. */
+html[data-theme="light"] #condBody .cond-sub-icon{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.1);}
+html[data-theme="light"] #condBody .cond-stat{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.1);}
+html[data-theme="light"] #condBody .cond-arrow{color:#1c1a17;}
+html[data-theme="light"] #condBody .cond-ex-item{color:#6b6459;}
+html[data-theme="light"] #condBody input[placeholder="Search exercises…"]{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.12);}
+
+/* ══════════════════════════════════════════════════════════════
+   SAND LIGHT MODE — PHASE 6d: Nutrition tab (#scr-nutrition).
+   mc-macros.js renders #nutritionBody's content using the same
+   global --text/--muted/--surface/--border tokens overridden above
+   (plus the .nt- and .ntx- hardcoded-hex exceptions already covered in
+   the shared block, since its sheets are body-appended like the
+   Program Select sheet) — so only the screen shell needs its own rule.
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="light"] #scr-nutrition{background:#f5f2ec;}
+html[data-theme="light"] #scr-nutrition .topbar-title{color:#1c1a17;}
+html[data-theme="light"] #scr-nutrition .topbar-sub{color:#6b6459;}
+</style>
+<script src="mc-theme.js"></script>
+<script src="mc-appearance.js"></script>
+<script src="exercise-catalog.js"></script>
+<script src="mc-global-search.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     DASHBOARD SCREEN
+══════════════════════════════════════ -->
+<div class="screen active" id="scr-dashboard">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="avatar">MC</div>
+      <div>
+        <div class="topbar-title" id="greeting">Workout</div>
+        <div class="topbar-sub" id="todayDate"></div>
+      </div>
+    </div>
+    <div class="topbar-icon mc-global-search-btn" onclick="if(window.MC_GLOBAL_SEARCH)MC_GLOBAL_SEARCH.open();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Search programs &amp; exercises" role="button" tabindex="0" aria-label="Search programs and exercises" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#c9c9cf" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="topbar-icon" onclick="if(window.MCCalendar)MCCalendar.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle workout calendar">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="2.5" stroke="#c9c9cf" stroke-width="2"/><path d="M4 9.5h16M9 3v3M15 3v3" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="topbar-icon mc-theme-toggle" onclick="if(window.MC_APPEARANCE)MC_APPEARANCE.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle light/dark mode" role="button" tabindex="0" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg class="theme-icon-dark" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="#c9c9cf" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="theme-icon-light" width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:none;"><circle cx="12" cy="12" r="4.5" stroke="#c9c9cf" stroke-width="2"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <!-- roadmap B3 — always-visible reciprocal nav in the standalone (master
+         repo) deployment. Stripped for the Rolodex market build, which uses
+         the relative ./cookbook/ mount link below instead (portable
+         regardless of the Rolodex's actual domain). -->
+    <!-- roadmap 4.7 — only reachable once build-market.py has mounted Mikes-Cookbook at ./cookbook/; inert here, materialized in the Rolodex market build -->
+    <a class="topbar-icon" href="./cookbook/index.html" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;text-decoration:none;" title="Recipes — Mike's Cookbook" aria-label="Open Mike's Cookbook recipes">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M7 2.5v8.5M5 2.5v4.2c0 1.1.9 2 2 2s2-.9 2-2V2.5M7 10.8V21.5M17 2.5c-1.66 0-3 2.24-3 5s1.34 5 3 5 3-2.24 3-5-1.34-5-3-5zM17 12.3v9.2" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <div id="pmUnlockBtn" onclick="if(window.MC_PM)MC_PM.unlock();" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0.15;font-size:18px;-webkit-tap-highlight-color:transparent;">🔐</div>
+  </div>
+
+  <div id="offlineBar" class="offline-bar">📵 Offline — showing cached content</div>
+  <div id="swUpdate" class="sw-update" onclick="doSwUpdate()">🔄 Update available — tap to reload</div>
+
+  <!-- Universal momentum strip (streak) — market-safe, hidden until earned -->
+  <div class="momentum-strip" id="momentumStrip">
+    <span class="ms-flame"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3c1.6 3 4 4.2 4 7.5A4 4 0 0 1 8 11c0-1 .3-1.7.8-2.4C8 9 7 10.3 7 12.5A5 5 0 0 0 17 12.5C17 8 13.5 6 12 3z" fill="#e6c579"/></svg></span>
+    <div class="ms-body">
+      <div class="ms-streak" id="msStreak"></div>
+      <div class="ms-sub" id="msSub"></div>
+    </div>
+    <div class="ms-badge" id="msBadge"></div>
+  </div>
+
+  <!-- Cross-app "Today" strip (roadmap B3) — signed in with the cookbook
+       linked, summarizes today's planned meals + macro target in one glance.
+       Hidden entirely with no bridge data, so a trainee who's never linked
+       the cookbook sees nothing extra on Home. -->
+  <div class="today-strip" id="todayStrip" onclick="switchTab('nutrition')" role="button" tabindex="0" aria-label="Open Nutrition tab"></div>
+
+  <!-- Current Program -->
+  <div class="sec-header">
+    <div class="sec-title">Current Program</div>
+    <div class="sec-link" onclick="openProgSelect()">See all</div>
+  </div>
+  <div class="hero-eyebrow">Continue where you left off</div>
+  <div class="hero-wrap">
+
+    <div class="hero-empty" id="heroEmpty" onclick="openProgSelect()" role="button" tabindex="0" aria-label="No active program set — choose a program" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProgSelect();}">
+      <div class="hero-empty-icon">⚡</div>
+      <div class="hero-empty-title">No active program set</div>
+      <div class="hero-empty-sub">Open any program below and tap 'Set as Active' to pin it here.</div>
+      <div class="hero-empty-btn">Choose Program</div>
+    </div>
+
+    <div class="hero-card" id="heroCard" onclick="openActiveProgram()" role="button" tabindex="0" aria-label="Continue your active program" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openActiveProgram();}">
+      <div class="hero-glow"></div>
+      <div class="hero-sheen"></div>
+      <div class="hero-inner">
+        <div class="hero-top-row">
+          <div class="hero-badge" id="heroBadge">Active</div>
+          <div class="hero-ring" id="heroRing">
+            <svg width="56" height="56" viewBox="0 0 56 56" style="transform:rotate(-90deg);display:block;">
+              <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,.08)" stroke-width="5" fill="none"/>
+              <circle id="heroRingProgress" cx="28" cy="28" r="24" stroke="#e6c579" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="151" stroke-dashoffset="60"/>
+            </svg>
+            <div class="hero-ring-center">
+              <div class="hero-ring-num" id="heroDay">—</div>
+              <div class="hero-ring-lbl" id="heroRingLbl">DAY</div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-name" id="heroName"></div>
+        <div class="hero-desc" id="heroDesc"></div>
+        <div class="hero-phases" id="heroPhases"></div>
+        <div class="hero-fatigue" id="heroFatigue"></div>
+        <div class="hero-tap" id="heroTap">Open program →</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Client assignment banner (roadmap 4.5) — only appears when a PM has
+       suggested a program/macro goals; hidden the rest of the time -->
+  <div class="client-assign-card" id="clientAssignCard" style="display:none;"></div>
+
+  <!-- Coach Claude (collapsed by default; fetches once per day) -->
+  <div class="coach-section" id="coachSection">
+    <button class="coach-toggle" id="coachToggle" onclick="toggleCoach()" aria-expanded="false">
+      <span class="coach-icon">🤖</span>
+      <span class="coach-label">Coach Note</span>
+      <span class="coach-chevron" id="coachChevron">›</span>
+    </button>
+    <div class="coach-body" id="coachBody">
+      <div class="coach-note" id="coachNote"></div>
+    </div>
+  </div>
+
+  <!-- Workout-history calendar (filled by mc-calendar.js) -->
+  <div id="calendarCard"></div>
+
+  <!-- Programs rail (new — Onyx redesign) -->
+  <div class="prog-rail-head">
+    <div class="prog-rail-title">Programs</div>
+    <div class="prog-rail-link" onclick="switchTab('programs')">Browse all</div>
+  </div>
+  <!-- filled at runtime by renderProgramCards() in the inline script below,
+       from MC_PM_DATA.programs (mc-pm-data.js) -->
+  <div class="prog-rail"></div>
+
+  <!-- Training Tools -->
+  <div class="sec-header">
+    <div class="sec-title">Training Tools</div>
+  </div>
+  <div class="tools-wrap">
+    <div class="tools-grid">
+      <a href="exercise-library.html" class="tool-card gold">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H12v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H12v16h6.5A1.5 1.5 0 0 0 20 18.5z"/></svg></div>
+        <div class="tool-name">Exercise Library</div>
+        <div class="tool-sub" id="libCountDash">539 exercises by muscle group</div>
+      </a>
+      <a href="build-workout.html" class="tool-card">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6M3 21l1-4L15 6l3 3L7 20z"/></svg></div>
+        <div class="tool-name">Build Your Own</div>
+        <div class="tool-sub">Create workouts from the library</div>
+      </a>
+      <a href="quick-pump.html" class="tool-card">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
+        <div class="tool-name">Quick Pump</div>
+        <div class="tool-sub">30/45-min sessions when you're in a rush</div>
+      </a>
+      <a href="build-program.html" class="tool-card">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></div>
+        <div class="tool-name">Program Builder</div>
+        <div class="tool-sub">Multi-week custom programs</div>
+      </a>
+      <a href="program-guide.html" class="tool-card gold">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h9.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z"/><path d="M5 4.5v13.5a2 2 0 0 0 2 2h9.5" /><path d="M8 9h6M8 12.5h6"/></svg></div>
+        <div class="tool-name">Program Guide</div>
+        <div class="tool-sub">Instructions for every program</div>
+      </a>
+      <a href="max-out.html" class="tool-card">
+        <div class="tool-icon-wrap" style="font-size:16px;">🥇</div>
+        <div class="tool-name">Max-Out Calculator</div>
+        <div class="tool-sub">Test a 1-rep max, Epley-estimated</div>
+      </a>
+      <a href="wrapped.html" class="tool-card">
+        <div class="tool-icon-wrap" style="font-size:16px;">🎁</div>
+        <div class="tool-name">MC Wrapped</div>
+        <div class="tool-sub">Your training year, recapped</div>
+      </a>
+      <a href="quick-tour.html" class="tool-card gold" id="quickTourCard" style="grid-column:1 / -1;">
+        <div class="tool-icon-wrap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 7 5.5z" fill="#e6c579" stroke="none"/></svg></div>
+        <div class="tool-name">Quick Tour <span id="tourBadge" style="display:none;font-size:11px;font-weight:900;letter-spacing:0.08em;color:#000;background:var(--gold);border-radius:5px;padding:1px 6px;margin-left:4px;vertical-align:middle;">NEW</span></div>
+        <div class="tool-sub">3-min guided walkthrough of the whole app</div>
+      </a>
+    </div>
+  </div>
+
+  <div id="backupStatus" style="display:none;"></div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     PROGRAMS SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="scr-programs">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Programs</div>
+      <div class="topbar-sub" id="flagCount"></div>
+    </div>
+    <div class="topbar-icon mc-global-search-btn" onclick="if(window.MC_GLOBAL_SEARCH)MC_GLOBAL_SEARCH.open();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Search programs &amp; exercises" role="button" tabindex="0" aria-label="Search programs and exercises" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#c9c9cf" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="topbar-icon mc-theme-toggle" onclick="if(window.MC_APPEARANCE)MC_APPEARANCE.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle light/dark mode" role="button" tabindex="0" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg class="theme-icon-dark" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="#c9c9cf" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="theme-icon-light" width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:none;"><circle cx="12" cy="12" r="4.5" stroke="#c9c9cf" stroke-width="2"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="prog-screen-inner">
+
+    <div class="tier-label flag">★ Flagship Programs</div>
+
+    <!-- filled at runtime by renderProgramCards() in the inline script below,
+         from MC_PM_DATA.programs (mc-pm-data.js) -->
+    <div class="prog-cards lay-stack" id="flagGrid"></div><!-- /#flagGrid -->
+
+    <!-- Bonus Workouts — auto-collected standalone workouts (rendered by mc-bonus-routing.js when ≥1 exists) -->
+    <div id="bonusCardSlot"></div>
+
+    <!-- Collections — owner folders of standalone workouts (rendered by mc-collections.js) -->
+    <div id="collectionsSlot"></div>
+
+
+    <div class="tier-label influencer" id="pubTier" style="display:none;">📣 Published Programs</div>
+    <div id="pubProgList"></div>
+
+    <div class="tier-label influencer" id="customTier" style="display:none;">🧩 Your Programs</div>
+    <div id="customProgList"></div>
+
+    <a href="exercise-library.html" class="lib-link">
+      <span class="lib-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H12v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H12v16h6.5A1.5 1.5 0 0 0 20 18.5z"/></svg>
+      </span>
+      <div style="flex:1;min-width:0;">
+        <div class="lib-name">Exercise Library</div>
+        <div class="lib-sub">577 exercises · search &amp; substitute</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b8b92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </a>
+
+    <a href="build-program.html" class="build-cta">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <div class="build-cta-title">Build a Program</div>
+      <div class="build-cta-sub">Multi-week custom program with its own hero card, schedule and color rail.</div>
+    </a>
+
+    <a href="collections.html" class="build-cta" style="margin-top:12px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e6c579" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a1.5 1.5 0 0 1 1.5-1.5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9.5V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></svg>
+      <div class="build-cta-title">Collections</div>
+      <div class="build-cta-sub">Group standalone workouts into folders — by goal, body part, or anything.</div>
+    </a>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     CONDITIONING SCREEN
+══════════════════════════════════════ -->
+<div class="screen" id="scr-conditioning">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Conditioning</div>
+      <div class="topbar-sub">Cardio · conditioning · core</div>
+    </div>
+    <div class="topbar-icon mc-global-search-btn" onclick="if(window.MC_GLOBAL_SEARCH)MC_GLOBAL_SEARCH.open();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Search programs &amp; exercises" role="button" tabindex="0" aria-label="Search programs and exercises" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#c9c9cf" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="topbar-icon mc-theme-toggle" onclick="if(window.MC_APPEARANCE)MC_APPEARANCE.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle light/dark mode" role="button" tabindex="0" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg class="theme-icon-dark" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="#c9c9cf" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="theme-icon-light" width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:none;"><circle cx="12" cy="12" r="4.5" stroke="#c9c9cf" stroke-width="2"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="prog-screen-inner">
+    <div class="prog-header">
+      <div class="prog-eyebrow">Conditioning Corner</div>
+      <h1 class="prog-title">Burn It Out</h1>
+      <div class="prog-sub">Finish a lift with conditioning, or run it as a standalone session.</div>
+    </div>
+    <div id="condBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     NUTRITION SCREEN (macro tracker)
+══════════════════════════════════════ -->
+<div class="screen" id="scr-nutrition">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Nutrition</div>
+      <div class="topbar-sub">Daily macros · goals · food log</div>
+    </div>
+    <div class="topbar-icon mc-global-search-btn" onclick="if(window.MC_GLOBAL_SEARCH)MC_GLOBAL_SEARCH.open();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Search programs &amp; exercises" role="button" tabindex="0" aria-label="Search programs and exercises" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#c9c9cf" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="topbar-icon mc-theme-toggle" onclick="if(window.MC_APPEARANCE)MC_APPEARANCE.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle light/dark mode" role="button" tabindex="0" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+      <svg class="theme-icon-dark" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="#c9c9cf" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="theme-icon-light" width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:none;"><circle cx="12" cy="12" r="4.5" stroke="#c9c9cf" stroke-width="2"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+  <div class="prog-screen-inner">
+    <div id="nutritionBody"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     BOTTOM TAB BAR
+══════════════════════════════════════ -->
+<div class="tab-bar" role="tablist" aria-label="Main sections">
+  <div class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')" role="tab" aria-selected="true" tabindex="0">
+    <div class="tab-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5"/></svg></div>
+    <div>Dashboard</div>
+  </div>
+  <div class="tab" id="tab-programs" onclick="switchTab('programs')" role="tab" aria-selected="false" tabindex="-1">
+    <div class="tab-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg></div>
+    <div>Programs</div>
+  </div>
+  <div class="tab" id="tab-conditioning" onclick="switchTab('conditioning')" role="tab" aria-selected="false" tabindex="-1">
+    <div class="tab-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1.6 3 4 4.2 4 7.5A4 4 0 0 1 8 11c0-1 .3-1.7.8-2.4C8 9 7 10.3 7 12.5A5 5 0 0 0 17 12.5"/></svg></div>
+    <div>Conditioning</div>
+  </div>
+  <div class="tab" id="tab-nutrition" onclick="switchTab('nutrition')" role="tab" aria-selected="false" tabindex="-1">
+    <div class="tab-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-2-3 1-5 2-5-1 2 .5 3 1.5 4A5 5 0 1 1 8 8.5C9 10 11 10 12 8z"/></svg></div>
+    <div>Nutrition</div>
+  </div>
+  <div class="tab" id="tab-stats" onclick="location.href='stats.html'" role="link" aria-label="History — leaves this app section for a separate page">
+    <div class="tab-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9h16M9 3v3M15 3v3"/></svg></div>
+    <div>History</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PROGRAM SELECT SHEET
+══════════════════════════════════════ -->
+<div class="ps-overlay" id="psOverlay" onclick="closeProgSelectOutside(event)">
+  <div class="ps-sheet" role="dialog" aria-modal="true" aria-labelledby="psTitle">
+    <div class="ps-handle"></div>
+    <div class="ps-title" id="psTitle">Set Active Program</div>
+    <div class="ps-sub">Pins to your dashboard hero card.</div>
+    <div id="psCards" role="listbox" aria-label="Choose a program"></div>
+    <button class="ps-confirm" onclick="confirmProg()">Set as Active Program</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     FIRST-RUN ONBOARDING SHEET
+══════════════════════════════════════ -->
+<div class="ps-overlay" id="obOverlay" onclick="MC_ONBOARD.closeOutside(event)">
+  <div class="ps-sheet" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+    <div class="ps-handle"></div>
+    <div id="obStepPick">
+      <div class="ps-title" id="obTitle">Pick your program</div>
+      <div class="ps-sub">Choose one to see this week, then start Day 1.</div>
+      <div id="obCards" role="listbox" aria-label="Choose a program"></div>
+      <button class="ob-skip" onclick="MC_ONBOARD.skip()">Skip for now</button>
+    </div>
+    <div id="obStepWeek" style="display:none;">
+      <div class="ps-title">This week</div>
+      <div class="ps-sub" id="obWeekSub"></div>
+      <div id="obWeekCard"></div>
+      <button class="ps-confirm" onclick="MC_ONBOARD.start()">Start Day 1 →</button>
+      <button class="ob-back" onclick="MC_ONBOARD.back()">← Choose a different program</button>
+      <button class="ob-skip" onclick="MC_ONBOARD.skip()">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<script src="conditioning-data.js"></script>
+<script src="mc-cond.js"></script>
+<script src="mc-program-store.js"></script>
+<script src="mc-bonus-routing.js"></script>
+<script src="mc-collections.js"></script>
+<script src="mc-program-pub.js"></script>
+<script src="mc-live-tracker.js"></script>
+<script src="mc-resume.js"></script>
+<script src="mc-chart.js"></script>
+<script src="mc-calendar.js"></script>
+<script src="mc-pm-data.js"></script>
+<script src="mc-recap.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-body.js"></script>
+<script src="mc-macrocalc.js"></script>
+<script src="mc-foodapi.js"></script>
+<script src="mc-barcode.js"></script>
+<script src="mc-bridge.js"></script>
+<script src="mc-macros.js"></script>
+<script>
+// ── PROGRAM CARDS (Home rail + Programs tab grid) ──
+// Both lists render at runtime from MC_PM_DATA.programs so a program only
+// ever needs to be added in mc-pm-data.js — see CLAUDE.md's former "known
+// gap" note on #flagGrid/.prog-rail duplication. Bespoke per-program icon
+// markup (previously hand-typed twice, and already slightly out of sync
+// between the two copies) now lives in one map and is shared by both sizes.
+// Runs first in this script, before anything that reads the rendered DOM
+// (flagCount, the influencer live-streak strip below).
+(function () {
+  var PROGRAM_ICONS = {
+    ss:    { stroke: '#e8828b', sw: 2, cap: 'round', path: 'M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11' },
+    pmc:   { stroke: '#b3aaf7', sw: 2, cap: 'round', join: 'round', path: 'M13 2 4 14h6l-1 8 9-12h-6z' },
+    mc:    { stroke: '#e6c579', sw: 2, cap: 'round', join: 'round', path: 'M4 8l3.5 2.5L12 4l4.5 6.5L20 8l-1.5 10h-13z' },
+    ks:    { pathFill: '#f0c078', path: 'M12 3c1.6 3 4 4.2 4 7.5A4 4 0 0 1 8 11c0-1 .3-1.7.8-2.4C8 9 7 10.3 7 12.5A5 5 0 0 0 17 12.5C17 8 13.5 6 12 3z' },
+    mm:    { stroke: '#a3a8f2', sw: 2, join: 'round', path: 'M12 2.5 20 7v10l-8 4.5L4 17V7z' },
+    hv:    { stroke: '#c3dc8f', sw: 2, cap: 'round', path: 'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+  };
+
+  function iconSVG(id, size) {
+    var ic = PROGRAM_ICONS[id];
+    if (!ic) return '';
+    var attrs = 'width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none"'
+      + (ic.stroke ? ' stroke="' + ic.stroke + '"' : '')
+      + (ic.sw ? ' stroke-width="' + ic.sw + '"' : '')
+      + (ic.cap ? ' stroke-linecap="' + ic.cap + '"' : '')
+      + (ic.join ? ' stroke-linejoin="' + ic.join + '"' : '');
+    var inner = ic.circles
+      ? ic.circles.map(function (c) { return '<circle cx="' + c.cx + '" cy="' + c.cy + '" r="' + c.r + '"/>'; }).join('')
+      : '<path d="' + ic.path + '"' + (ic.pathFill ? ' fill="' + ic.pathFill + '"' : '') + '/>';
+    return '<svg ' + attrs + '>' + inner + '</svg>';
+  }
+
+  function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  var CHEVRON = '<svg class="cat-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b8b92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+
+  function catCardHTML(p, tagLabel, chevron) {
+    return '<a href="' + p.href + '" class="cat-card ' + p.id + '">'
+      + (chevron ? CHEVRON : '')
+      + '<span class="cat-icon">' + iconSVG(p.id, chevron ? 18 : 15) + '</span>'
+      + '<div class="cat-tag">' + tagLabel + '</div>'
+      + '<div class="cat-name">' + escHtml(p.name) + '</div>'
+      + '<div class="cat-meta">' + escHtml(p.desc) + '</div>'
+      + (p.liveBadge ? '<div class="gz-live" id="gzLive" style="display:none;"><div class="gz-streak" id="gzStreak"></div></div>' : '')
+      + '<div class="cat-count">' + escHtml(p.meta) + '</div>'
+      + '</a>';
+  }
+
+  function railCardHTML(p) {
+    return '<a href="' + p.href + '" class="rail-card ' + p.id + '">'
+      + '<div class="rail-icon">' + iconSVG(p.id, 19) + '</div>'
+      + '<div class="rail-name">' + escHtml(p.name) + '</div>'
+      + '<div class="rail-meta">' + escHtml(p.meta) + '</div>'
+      + '</a>';
+  }
+
+  if (!window.MC_PM_DATA) return;
+  var all = window.MC_PM_DATA.programs;
+  var flagship = all.filter(function (p) { return p.tier === 'flagship'; });
+  var influencer = all.filter(function (p) { return p.tier === 'influencer'; });
+
+  var rail = document.querySelector('#scr-dashboard .prog-rail');
+  if (rail) rail.innerHTML = flagship.map(railCardHTML).join('');
+
+  var flagGrid = document.getElementById('flagGrid');
+  if (flagGrid) flagGrid.innerHTML = flagship.map(function (p) { return catCardHTML(p, 'Flagship', true); }).join('');
+
+  var infGrid = document.querySelector('#scr-programs .influencer-grid');
+  if (infGrid) infGrid.innerHTML = influencer.map(function (p) { return catCardHTML(p, 'Partner', false); }).join('');
+})();
+
+// ── DATE ──
+const d=new Date();
+document.getElementById('todayDate').textContent=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+// ── FLAGSHIP PROGRAM COUNT ── computed from the actual rendered cards so it
+// never drifts from reality (this repo's history is full of stale counts).
+document.getElementById('flagCount').textContent=document.querySelectorAll('#flagGrid .cat-card').length+' training programs';
+
+// ── GREETING (time-aware) ──
+(function(){
+  const h=d.getHours();
+  const g=h<5?'Late night':h<12?'Good morning':h<17?'Good afternoon':h<21?'Good evening':'Winding down';
+  const el=document.getElementById('greeting');
+  if(el)el.textContent=g;
+})();
+
+// ── MOMENTUM STRIP (universal · market-safe) ──
+// Same streak the licensed program card shows, but as a standalone element
+// that survives the Rolodex build so the public app has it too.
+(function populateMomentum(){
+  if(!window.MCActivity) return;
+  const a=window.MCActivity.get();
+  const strip=document.getElementById('momentumStrip');
+  if(!strip) return;
+  if(a.streak>0){
+    document.getElementById('msStreak').textContent=a.streak+'-day streak';
+    const sub=document.getElementById('msSub'), badge=document.getElementById('msBadge');
+    if(a.trainedToday){
+      sub.textContent='Nice — you trained today'; sub.className='ms-sub today';
+      badge.textContent='✓ TODAY'; badge.className='ms-badge today';
+    } else {
+      sub.textContent="Don't break the chain"; sub.className='ms-sub';
+      badge.textContent='KEEP ALIVE'; badge.className='ms-badge';
+    }
+    strip.classList.add('show');
+  } else {
+    strip.classList.remove('show');
+  }
+})();
+
+// ── CROSS-APP "TODAY" STRIP (roadmap B3 · mc-bridge.js) ──
+// Compact, single-line summary of today's cookbook-planned meals + macro
+// target vs. the momentum strip's own-training-streak above. Hidden with no
+// bridge data at all (no cookbook link yet), so it never clutters Home for
+// the many trainees who don't use the cookbook.
+(function populateTodayStrip(){
+  if(!window.MCBridge) return;
+  const t=window.MCBridge.today();
+  const strip=document.getElementById('todayStrip');
+  if(!strip) return;
+  const hasMeals=t.meals && t.meals.length>0;
+  const hasTargets=!!t.targets;
+  if(!hasMeals && !hasTargets){ strip.classList.remove('show'); return; }
+
+  const parts=[];
+  if(hasMeals){
+    const logged=t.meals.filter(function(m){return m.completed;}).length;
+    parts.push(t.meals.length+(t.meals.length===1?' meal':' meals')+' planned'+(logged?' ('+logged+' logged)':''));
+  }
+  if(hasTargets && t.targets.kcal){
+    parts.push(t.targets.kcal+' kcal goal');
+  }
+  strip.innerHTML=
+    '<span class="ts-ic">🍽</span>'+
+    '<div class="ts-body"><div class="ts-line">'+parts.join(' · ')+'</div></div>'+
+    '<span class="ts-arr">›</span>';
+  strip.classList.add('show');
+})();
+
+
+// ── PROGRAMS DATA ── (single source of truth: mc-pm-data.js)
+const PROGS = window.MC_PM_DATA.programs;
+
+// ── STATE ──
+const STORE='mc_active_prog';
+let activeProg=null;
+let tempSel=null;
+
+// built-in programs + the user's custom programs (mc-program-store.js) + the
+// owner-published programs (mc-program-pub.js), mapped into the same card
+// shape so hero/select/theming need no special cases. A published program the
+// user also has locally only appears once, as their own custom copy.
+function allProgs(){
+  let customs=[],pubs=[];
+  try{
+    if(window.MCPrograms) customs=MCPrograms.getAll().map(p=>MCPrograms.asProgCard(p));
+    if(window.MCPub){
+      const mine=new Set(customs.map(c=>c.cprogId));
+      pubs=MCPub.getAll().filter(p=>!mine.has(p.id)).map(p=>MCPub.asProgCard(p));
+    }
+  }catch(e){}
+  return PROGS.concat(customs,pubs);
+}
+
+function loadState(){
+  try{
+    const s=localStorage.getItem(STORE);
+    if(s){
+      activeProg=JSON.parse(s);
+      // a pinned custom program may have been edited since — re-resolve it
+      if(activeProg&&activeProg.cprogId&&window.MCPrograms){
+        const cur=MCPrograms.get(activeProg.cprogId);
+        if(cur){activeProg=MCPrograms.asProgCard(cur);localStorage.setItem(STORE,JSON.stringify(activeProg));}
+        else{activeProg=null;localStorage.removeItem(STORE);}
+      }
+      // a pinned published program may have been re-published since — re-resolve
+      // from the mirror, but keep the stored card if the mirror is still cold
+      if(activeProg&&activeProg.pubId&&window.MCPub){
+        const pub=MCPub.get(activeProg.pubId);
+        if(pub){activeProg=MCPub.asProgCard(pub);localStorage.setItem(STORE,JSON.stringify(activeProg));}
+      }
+      renderHero();
+    }
+  }catch(e){}
+  // Non-blocking Supabase hydration: if authenticated, pull startedAt from the
+  // cloud so the Day Navigator survives browser clears and works cross-device.
+  try{
+    if(window.MC_SB&&MC_SB.configured){
+      MC_SB.getActiveProgram().then(function(sbProg){
+        if(!sbProg||!sbProg.startedAt) return;
+        // Use the cloud record only when it has a newer (or the only) startedAt.
+        if(!activeProg||(activeProg.id===sbProg.id&&(!activeProg.startedAt||sbProg.startedAt>activeProg.startedAt))){
+          if(activeProg) sbProg.id=activeProg.id; // keep local id resolution
+          if(activeProg&&activeProg.startedAt&&sbProg.startedAt<activeProg.startedAt) return;
+          activeProg=Object.assign({},activeProg||{},{startedAt:sbProg.startedAt});
+          try{localStorage.setItem(STORE,JSON.stringify(activeProg));}catch(e2){}
+          renderHero();
+        }
+      }).catch(function(){});
+    }
+  }catch(e){}
+}
+
+// ── TABS ──
+function switchTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab[role="tab"]').forEach(t=>{
+    t.classList.remove('active');
+    t.setAttribute('aria-selected','false');
+    t.setAttribute('tabindex','-1');
+  });
+  document.getElementById('scr-'+tab).classList.add('active');
+  const active=document.getElementById('tab-'+tab);
+  active.classList.add('active');
+  active.setAttribute('aria-selected','true');
+  active.setAttribute('tabindex','0');
+  window.scrollTo(0,0);
+}
+
+// ── HERO ──
+function renderHero(){
+  const empty=document.getElementById('heroEmpty');
+  const card=document.getElementById('heroCard');
+  if(!activeProg){empty.style.display='block';card.style.display='none';return;}
+  empty.style.display='none';
+  card.style.display='block';
+  document.getElementById('heroName').textContent=activeProg.name;
+  document.getElementById('heroDesc').textContent=activeProg.desc;
+  const di=heroDayCount(activeProg);
+  if(di){
+    document.getElementById('heroDay').textContent=di.day;
+    document.getElementById('heroRingLbl').textContent='WK '+di.week;
+    document.getElementById('heroBadge').textContent='Day '+di.day+' · Week '+di.week;
+  }else{
+    document.getElementById('heroDay').textContent=activeProg.splits.length;
+    document.getElementById('heroRingLbl').textContent='SPLIT';
+    document.getElementById('heroBadge').textContent='Active';
+  }
+  // Ring stroke stays the fixed Onyx gold (#e6c579 in the static markup) —
+  // matches the reference design's single-accent restraint rather than the
+  // old per-program border/shadow tint.
+  // Next lift, derived from workout completion data (see heroNextLift)
+  const nx=heroNextLift(activeProg);
+  // Phases — keep a 4-pill window that always includes the next split, highlighted
+  const splits=activeProg.splits||[];
+  let start=0;
+  if(nx.idx>=4)start=Math.min(nx.idx-3,Math.max(0,splits.length-4));
+  const ph=document.getElementById('heroPhases');
+  ph.innerHTML=splits.slice(start,start+4).map((s,i)=>
+    `<div class="phase-pill${(start+i)===nx.idx?' active':''}">${s}</div>`
+  ).join('');
+  const tap=document.getElementById('heroTap');
+  if(tap){
+    tap.textContent=nx.cta;
+    // In-progress session → promote the muted CTA into a green Resume pill.
+    tap.classList.toggle('resume', !!nx.resumeHref);
+  }
+}
+
+// Count unique training days logged since the program's start date.
+// Returns { day, week } where day = sessions since startedAt (deduped by
+// calendar date) and week = which program cycle the user is in.
+// Returns null when no startedAt is set (backward compat for old saves).
+function heroDayCount(prog){
+  if(!prog||!prog.startedAt) return null;
+  const since=Date.parse(prog.startedAt);
+  const daySet=new Set();
+  try{
+    (JSON.parse(localStorage.getItem('mc_workout_log_v1')||'[]')||[]).forEach(function(e){
+      const t=Date.parse(e.date)||0;
+      if(t>=since) daySet.add(new Date(t).toDateString());
+    });
+  }catch(e){}
+  const count=daySet.size;
+  const day=Math.max(1,count);
+  const splitsLen=(prog.splits&&prog.splits.length)||1;
+  const week=Math.max(1,Math.ceil(day/splitsLen));
+  return {day:day,week:week};
+}
+
+// Does a split label (e.g. "Back & Shoulders") share a muscle/keyword with a
+// logged workout title? Used to line up completion history with the program's
+// rotation. Generic words are ignored so only real body-part matches count.
+function heroSplitMatches(splitLabel,title){
+  const stop={and:1,the:1,day:1,amp:1,split:1,splits:1,workout:1,week:1,'of':1,both:1,worlds:1,favorite:1,'for':1};
+  const tw=((title||'').toLowerCase().match(/[a-z]+/g)||[]);
+  return ((splitLabel||'').toLowerCase().match(/[a-z]+/g)||[])
+    .some(w=>w.length>=3&&!stop[w]&&tw.indexOf(w)>=0);
+}
+
+// Work out which lift is "next" for the active program from completion data:
+//   • an in-progress session (mc_activity.last) that matches this program wins
+//     — that's literally the lift to resume, and we deep-link straight to it.
+//   • otherwise step one past the most-recently-finished split in the rotation
+//     (mc_workout_log_v1). With no history we start at the first split.
+function heroNextLift(p){
+  const splits=p.splits||[];
+  // 1) in-progress workout — exact resume signal (kept in step with mc-resume.js)
+  let act={};try{act=JSON.parse(localStorage.getItem('mc_activity')||'{}')||{};}catch(e){}
+  const L=act.last;
+  const live=!!(L&&L.done>0&&L.done<L.total&&!L.dismissed&&(Date.now()-L.ts)<=36*3600*1000);
+  // 2) most recently finished split for this program → next in rotation
+  let lastIdx=-1,lastTs=0;
+  try{
+    (JSON.parse(localStorage.getItem('mc_workout_log_v1')||'[]')||[]).forEach(e=>{
+      const t=Date.parse(e.date)||0;
+      splits.forEach((s,i)=>{if(t>lastTs&&heroSplitMatches(s,e.workoutName)){lastTs=t;lastIdx=i;}});
+    });
+  }catch(e){}
+  let idx=lastIdx>=0?(lastIdx+1)%splits.length:0;
+  // a live session that belongs to this program takes over the "next" slot
+  let resumeHref=null;
+  if(live){
+    let mi=-1;splits.forEach((s,i)=>{if(mi<0&&heroSplitMatches(s,L.title))mi=i;});
+    if(mi>=0){idx=mi;resumeHref=L.pageId;}
+  }
+  let cta;
+  if(resumeHref){cta='↩️ Resume '+(L.title||'workout')+' · '+L.done+'/'+L.total+' →';}
+  else{cta=(lastIdx>=0?'Next up: ':'Start: ')+(splits[idx]||'')+' →';}
+  return {idx:idx,cta:cta,resumeHref:resumeHref};
+}
+
+// Hero tap → open the CURRENT program (not the change-program sheet — that
+// lives on "See all"). If completion data points at an in-progress lift for
+// this program, jump straight to it; otherwise open the program's page.
+function openActiveProgram(){
+  if(!activeProg){openProgSelect();return;}
+  const nx=heroNextLift(activeProg);
+  if(nx.resumeHref){location.href=nx.resumeHref;return;}
+  let url=activeProg.href
+    ||(activeProg.cprogId?'cat-custom.html?prog='+encodeURIComponent(activeProg.cprogId)
+    :(activeProg.pubId?'cat-custom.html?pub='+encodeURIComponent(activeProg.pubId):''));
+  if(url)location.href=url;else openProgSelect();
+}
+
+// ── CUSTOM PROGRAMS (Programs tab list) ──
+function renderCustomPrograms(){
+  const tier=document.getElementById('customTier');
+  const list=document.getElementById('customProgList');
+  if(!tier||!list||!window.MCPrograms)return;
+  const progs=MCPrograms.getAll();
+  tier.style.display=progs.length?'':'none';
+  list.innerHTML=progs.map(p=>{
+    const col=p.color||'#34d399';
+    const pub=window.MCPub&&MCPub.isPublished(p.id);
+    return `<a href="cat-custom.html?prog=${p.id}" class="cat-card" style="border-color:${col}55;background:linear-gradient(135deg,${col}14,var(--surface));">
+      <span class="cat-icon">${p.icon||'🧩'}</span>
+      <div class="cat-tag" style="color:${col};">Custom · ${p.weeks} Weeks${pub?' · 📣 Published':''}</div>
+      <div class="cat-name">${esc(p.name)}</div>
+      <div class="cat-meta">${p.days.map(d=>esc(d.name)).join(' · ')}</div>
+      <div class="cat-count">${p.days.length} Days →</div>
+      <div class="cat-designer">✍️ Designed by you</div>
+    </a>`;
+  }).join('');
+}
+
+// ── PUBLISHED PROGRAMS (Programs tab list) ──
+// Owner-published programs from Supabase (mc-program-pub.js mirror). Ones the
+// user also has locally stay under "Your Programs" with a 📣 badge instead.
+function renderPublishedPrograms(){
+  const tier=document.getElementById('pubTier');
+  const list=document.getElementById('pubProgList');
+  if(!tier||!list||!window.MCPub)return;
+  const mine=new Set(window.MCPrograms?MCPrograms.getAll().map(p=>p.id):[]);
+  const progs=MCPub.getAll().filter(p=>!mine.has(p.id));
+  tier.style.display=progs.length?'':'none';
+  list.innerHTML=progs.map(p=>{
+    const col=p.color||'#34d399';
+    return `<a href="cat-custom.html?pub=${p.id}" class="cat-card" style="border-color:${col}55;background:linear-gradient(135deg,${col}14,var(--surface));">
+      <span class="cat-icon">${p.icon||'📣'}</span>
+      <div class="cat-tag" style="color:${col};">Published · ${p.weeks} Weeks</div>
+      <div class="cat-name">${esc(p.name)}</div>
+      <div class="cat-meta">${p.days.map(d=>esc(d.name)).join(' · ')}</div>
+      <div class="cat-count">${p.days.length} Days →</div>
+      <div class="cat-designer">✍️ Designed by Mike Cross</div>
+    </a>`;
+  }).join('');
+}
+
+// ── PROGRAM SELECT ──
+function buildProgCards(){
+  const wrap=document.getElementById('psCards');
+  wrap.innerHTML='';
+  allProgs().forEach(p=>{
+    const d=document.createElement('div');
+    const isSel=activeProg&&activeProg.id===p.id;
+    d.className='ps-card'+(isSel?' sel':'');
+    d.id='psc-'+p.id;
+    d.style.setProperty('--prog-color',p.color);
+    d.setAttribute('role','option');
+    d.setAttribute('tabindex','0');
+    d.setAttribute('aria-selected',isSel?'true':'false');
+    d.innerHTML=`<div class="ps-icon">${p.icon}</div><div class="ps-info"><div class="ps-name">${p.name}</div><div class="ps-meta">${p.meta}</div></div><div class="ps-check" id="pschk-${p.id}">${isSel?'✓':''}</div>`;
+    d.onclick=()=>selectProg(p.id);
+    d.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectProg(p.id);}};
+    wrap.appendChild(d);
+  });
+  tempSel=activeProg?activeProg.id:null;
+}
+
+function openProgSelect(){
+  buildProgCards();
+  document.getElementById('psOverlay').classList.add('open');
+}
+
+function closeProgSelectOutside(e){
+  if(e.target===document.getElementById('psOverlay'))
+    document.getElementById('psOverlay').classList.remove('open');
+}
+
+function selectProg(id){
+  tempSel=id;
+  allProgs().forEach(p=>{
+    const c=document.getElementById('psc-'+p.id);
+    const ch=document.getElementById('pschk-'+p.id);
+    if(c){c.classList.toggle('sel',p.id===id);c.setAttribute('aria-selected',p.id===id?'true':'false');}
+    if(ch){ch.textContent=p.id===id?'✓':'';}
+  });
+}
+
+function confirmProg(){
+  if(!tempSel)return;
+  const sel=allProgs().find(p=>p.id===tempSel);
+  if(!sel)return;
+  // Preserve startedAt when re-confirming the same program; reset on switch.
+  if(activeProg&&activeProg.id===tempSel&&activeProg.startedAt){
+    sel.startedAt=activeProg.startedAt;
+  }else{
+    sel.startedAt=new Date().toISOString();
+  }
+  activeProg=sel;
+  try{localStorage.setItem(STORE,JSON.stringify(activeProg));}catch(e){}
+  document.getElementById('psOverlay').classList.remove('open');
+  renderHero();
+  // shift the chrome accent to the newly pinned program (mc-theme.js)
+  try{document.dispatchEvent(new CustomEvent('mc:program-changed'));}catch(e){}
+  // best-effort Supabase sync so start date survives browser clears
+  try{if(window.MC_SB&&MC_SB.configured)MC_SB.saveActiveProgram(activeProg).catch(function(){});}catch(e){}
+}
+
+// First-run onboarding hook (mc-onboarding.js): pin the chosen program and
+// jump straight to it in one step, instead of pin-then-separately-tap-hero.
+function startOnboardProgram(id){
+  const sel=allProgs().find(p=>p.id===id);
+  if(!sel)return;
+  sel.startedAt=new Date().toISOString();
+  activeProg=sel;
+  try{localStorage.setItem(STORE,JSON.stringify(activeProg));}catch(e){}
+  try{document.dispatchEvent(new CustomEvent('mc:program-changed'));}catch(e){}
+  try{if(window.MC_SB&&MC_SB.configured)MC_SB.saveActiveProgram(activeProg).catch(function(){});}catch(e){}
+  openActiveProgram();
+}
+
+// ── OFFLINE ──
+window.addEventListener('online',()=>document.getElementById('offlineBar').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
+if(!navigator.onLine)document.getElementById('offlineBar').classList.add('show');
+
+// ── SW ── registration + reliable auto-update handled by mc-sw-update.js
+// (loaded near the end of body). It defines window.doSwUpdate for the banner.
+
+// ── CONDITIONING TAB ──
+function hexA(hex,a){
+  var h=hex.replace('#','');
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function tintLight(hex){
+  var h=hex.replace('#',''); var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  var mix=function(c){return Math.round(c+(255-c)*0.35);};
+  return 'rgb('+mix(r)+','+mix(g)+','+mix(b)+')';
+}
+// resolved owner override for a conditioning routine (published+local, via
+// the shared page-override layer). Returns {name?,tag?,meta?} or null.
+function condOverride(id){
+  try{
+    if(window.MC_PO&&MC_PO.effective){
+      var p=((MC_PO.effective().pages||{}).cond||{})[id];
+      if(p&&!p.reset) return p;
+    }
+  }catch(e){}
+  return null;
+}
+function renderConditioning(){
+  var body=document.getElementById('condBody');
+  if(!body||typeof CONDITIONING==='undefined'){return;}
+  var html='';
+  CONDITIONING.subcategories.forEach(function(sub){
+    if(sub.type!=='routines') return;
+    var col=sub.color||'#E24B4A';
+    html+='<div class="cond-sub"><div class="cond-sub-head">'
+      +'<div class="cond-sub-icon" style="background:'+hexA(col,0.14)+';border:1px solid '+hexA(col,0.35)+'">'+(sub.icon||'🔥')+'</div>'
+      +'<div><div class="cond-sub-name">'+esc(sub.name)+'</div>'
+      +(sub.blurb?'<div class="cond-sub-blurb">'+esc(sub.blurb)+'</div>':'')+'</div></div>';
+    (sub.routines||[]).forEach(function(r){
+      // resolve owner inline-text overrides (mc-pm-inline.js, 'cond' page).
+      var ov=condOverride(r.id);
+      var nm=(ov&&ov.name)||r.name, tg=(ov&&ov.tag!=null&&ov.tag!=='')?ov.tag:r.tag, mt=(ov&&ov.meta)||r.meta;
+      html+='<a href="'+r.href+'" class="cond-card" data-cond-id="'+esc(r.id)+'"'
+          +' data-mc-orig-name="'+esc(r.name)+'" data-mc-orig-tag="'+esc(r.tag||'')+'" data-mc-orig-meta="'+esc(r.meta||'')+'"'
+          +' style="background:linear-gradient(135deg,'+hexA(col,0.1)+',rgba(20,20,22,.5));border:1px solid '+hexA(col,0.28)+'">'
+          +'<svg class="cond-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b8b92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+          +(tg?'<div class="cond-tag" style="color:'+tintLight(col)+'">'+esc(tg)+'</div>':'')
+          +'<div class="cond-name">'+esc(nm)+'</div>'
+          +(mt?'<div class="cond-meta">'+esc(mt)+'</div>':'')
+          +((r.stats&&r.stats.length)?'<div class="cond-stats">'+r.stats.map(function(s){return '<span class="cond-stat">'+esc(s)+'</span>';}).join('')+'</div>':'')
+          +'</a>';
+    });
+    html+='</div>';
+  });
+  body.innerHTML=html;
+}
+
+// ── QUICK TOUR — show a "NEW" badge until the tour has been completed ──
+(function(){
+  try{
+    if(!localStorage.getItem('mc_tour_done_v1')){
+      var b=document.getElementById('tourBadge');
+      if(b) b.style.display='inline-block';
+    }
+  }catch(e){}
+})();
+
+// ── INIT ──
+// Clear any stale "smart back" target when landing on the hub, so a guide
+// page opened later never inherits a back destination from a prior visit.
+try{ sessionStorage.removeItem('mc_back_to'); }catch(e){}
+loadState();
+// Fatigue flag: non-blocking — populates hero card with high-load muscle
+// warnings from the last 7 days of Supabase workout logs.
+(function(){
+  var THRESHOLD=20; // sets per muscle per 7 days = "high load" flag
+  function renderFatigue(counts){
+    var el=document.getElementById('heroFatigue'); if(!el) return;
+    var high=Object.keys(counts).filter(function(m){return counts[m]>=THRESHOLD&&m!=='Other';});
+    if(!high.length){el.innerHTML='';return;}
+    el.innerHTML=high.map(function(m){
+      return '<span class="hero-fatigue-chip">🔥 '+m+' · '+counts[m]+' sets</span>';
+    }).join('');
+  }
+  try{
+    if(window.MC_SB&&MC_SB.configured&&MC_SB.getWeeklyVolume){
+      MC_SB.getWeeklyVolume(7).then(renderFatigue).catch(function(){});
+    }
+  }catch(e){}
+})();
+renderConditioning();
+renderCustomPrograms();
+renderPublishedPrograms();
+if(window.MC_BONUS) MC_BONUS.renderDashboardCard();
+if(window.MC_COLLECTIONS) MC_COLLECTIONS.renderDashboardCards();
+// re-render when mc-program-pub.js pulls fresh published programs
+document.addEventListener('mc:published-programs',()=>{renderPublishedPrograms();renderCustomPrograms();loadState();});
+// honor ?tab= deep-link from the global bottom nav (mc-nav.js)
+(function(){var t=new URLSearchParams(location.search).get('tab');if(t&&document.getElementById('scr-'+t))switchTab(t);})();
+
+// ── Coach Claude section (collapsed by default; fetches once per day) ──────
+function toggleCoach(){
+  var sec=document.getElementById('coachSection');
+  if(!sec) return;
+  var opening=!sec.classList.contains('open');
+  sec.classList.toggle('open',opening);
+  var btn=document.getElementById('coachToggle');
+  if(btn) btn.setAttribute('aria-expanded',opening?'true':'false');
+  if(opening) loadCoachNote();
+}
+function coachEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function renderCoachReport(el,report){
+  el.innerHTML=
+    '<div class="coach-summary">'+coachEsc(report.summary)+'</div>'+
+    (report.flags&&report.flags.length?(
+      '<div class="coach-chip-label">Flags</div><div class="coach-chip-row">'+
+      report.flags.map(function(f){
+        return '<span class="coach-chip coach-chip-'+(f.severity==='warn'?'warn':'info')+'"><b>'+coachEsc(f.exercise)+':</b> '+coachEsc(f.message)+'</span>';
+      }).join('')+'</div>'
+    ):'')+
+    (report.volumeWarnings&&report.volumeWarnings.length?(
+      '<div class="coach-chip-label">Volume</div><div class="coach-chip-row">'+
+      report.volumeWarnings.map(function(v){
+        return '<span class="coach-chip coach-chip-warn"><b>'+coachEsc(v.muscle)+':</b> '+coachEsc(v.message)+'</span>';
+      }).join('')+'</div>'
+    ):'')+
+    (report.swaps&&report.swaps.length?(
+      '<div class="coach-chip-label">Swap ideas</div><div class="coach-chip-row">'+
+      report.swaps.map(function(s){
+        return '<span class="coach-chip coach-chip-swap"><b>'+coachEsc(s.exercise)+' → '+coachEsc(s.suggestion)+':</b> '+coachEsc(s.reason)+'</span>';
+      }).join('')+'</div>'
+    ):'');
+}
+function loadCoachNote(){
+  var el=document.getElementById('coachNote');
+  if(!el) return;
+  var today=new Date().toISOString().slice(0,10);
+  try{
+    var cached=JSON.parse(localStorage.getItem('mc_coach_report_v1')||'null');
+    if(cached&&cached.date===today&&cached.report){renderCoachReport(el,cached.report);return;}
+  }catch(e){}
+  el.textContent='Analyzing your training…';
+  try{
+    if(!window.MC_SB||!MC_SB.callCoach){el.textContent='Sign in to unlock your coaching note.';return;}
+    MC_SB.callCoach().then(function(report){
+      if(!report){el.textContent='Log some workouts and check back for personalized insights.';return;}
+      renderCoachReport(el,report);
+      try{localStorage.setItem('mc_coach_report_v1',JSON.stringify({date:today,report:report}));}catch(e){}
+    }).catch(function(){el.textContent='Coach unavailable right now — check back later.';});
+  }catch(e){el.textContent='Coach unavailable right now — check back later.';}
+}
+
+// ── Client assignment banner (roadmap 4.5) ──────────────────────────────────
+// A PM's roster assignment is a SUGGESTION only (pm_clients RLS only ever
+// lets a user read their OWN row) — this always ends in a same-user write
+// the trainee triggers themselves (saveActiveProgram / their own macro
+// goals), exactly like every other write already in this app.
+(function(){
+  function dismissKey(row){ return 'mc_client_assign_dismissed|'+row.id+'|'+row.updated_at; }
+  function macroSummary(g){
+    if(!g||!g.kcal) return '';
+    return g.kcal+' kcal · '+(g.p||0)+'p / '+(g.f||0)+'f / '+(g.c||0)+'c';
+  }
+  function renderAssignCard(row){
+    var el=document.getElementById('clientAssignCard');
+    if(!el) return;
+    var progName=row.assigned_program_name;
+    var goals=row.assigned_macro_goals;
+    if(!progName&&!goals) return; // nothing actually assigned yet
+    var bodyParts=[];
+    if(progName) bodyParts.push('a program — <b>'+esc(progName)+'</b>');
+    if(goals) bodyParts.push('macro goals — <b>'+esc(macroSummary(goals))+'</b>');
+    var btns='';
+    if(progName) btns+='<button class="cac-btn primary" onclick="acceptClientProgram(\''+row.id+'\')">Accept program</button>';
+    if(goals) btns+='<button class="cac-btn" onclick="acceptClientGoals(\''+row.id+'\')">Apply goals</button>';
+    el.innerHTML=
+      '<div class="cac-head"><span class="cac-icon">🎯</span><span class="cac-title">Your coach has a suggestion</span>'+
+        '<button class="cac-x" aria-label="Dismiss" onclick="dismissClientAssign(\''+row.id+'\',\''+row.updated_at+'\')">✕</button></div>'+
+      '<div class="cac-body">Your coach assigned you '+bodyParts.join(' and ')+'. Nothing changes until you tap to accept.</div>'+
+      '<div class="cac-btns">'+btns+'</div>';
+    el.style.display='block';
+    el.dataset.row=JSON.stringify(row);
+  }
+  window.dismissClientAssign=function(id,updatedAt){
+    try{localStorage.setItem('mc_client_assign_dismissed|'+id+'|'+updatedAt,'1');}catch(e){}
+    var el=document.getElementById('clientAssignCard');
+    if(el) el.style.display='none';
+  };
+  window.acceptClientProgram=function(id){
+    var el=document.getElementById('clientAssignCard');
+    var row=el&&el.dataset.row?JSON.parse(el.dataset.row):null;
+    if(!row||!row.assigned_program_id) return;
+    var sel=allProgs().find(function(p){return p.id===row.assigned_program_id;});
+    if(!sel){ alert('That program is no longer available.'); return; }
+    sel.startedAt=new Date().toISOString();
+    activeProg=sel;
+    try{localStorage.setItem(STORE,JSON.stringify(activeProg));}catch(e){}
+    renderHero();
+    try{document.dispatchEvent(new CustomEvent('mc:program-changed'));}catch(e){}
+    try{if(window.MC_SB&&MC_SB.configured)MC_SB.saveActiveProgram(activeProg).catch(function(){});}catch(e){}
+    window.dismissClientAssign(id,row.updated_at);
+  };
+  window.acceptClientGoals=function(id){
+    var el=document.getElementById('clientAssignCard');
+    var row=el&&el.dataset.row?JSON.parse(el.dataset.row):null;
+    if(!row||!row.assigned_macro_goals) return;
+    try{
+      var obj=JSON.parse(localStorage.getItem('mc_macros_v1')||'{}');
+      obj.goals=Object.assign({},obj.goals,row.assigned_macro_goals);
+      localStorage.setItem('mc_macros_v1',JSON.stringify(obj));
+    }catch(e){}
+    window.dismissClientAssign(id,row.updated_at);
+  };
+  function initClientAssign(){
+    if(!window.MC_SB||!MC_SB.configured||typeof MC_SB.getMyAssignment!=='function') return;
+    MC_SB.isOwner().then(function(owner){
+      if(owner) return null; // the PM's own account never sees its own roster as a suggestion
+      return MC_SB.getMyAssignment();
+    }).then(function(row){
+      if(!row) return;
+      try{ if(localStorage.getItem(dismissKey(row))) return; }catch(e){}
+      renderAssignCard(row);
+    }).catch(function(){});
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',initClientAssign);
+  } else { setTimeout(initClientAssign,300); }
+})();
+
+// ── Push notification chip (appears when supported + not yet granted) ────────
+(function(){
+  function initPushChip(){
+    if(!window.MC_PUSH||!MC_PUSH.isSupported()) return;
+    if(MC_PUSH.getState()==='granted'){maybeCheckStreak();return;}
+    if(MC_PUSH.getState()==='denied') return;
+    var chip=document.getElementById('pushChip');
+    if(chip) chip.classList.add('visible');
+  }
+  // Run after scripts load
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',initPushChip);
+  } else { setTimeout(initPushChip,1200); }
+})();
+
+function onEnablePush(){
+  if(!window.MC_PUSH) return;
+  MC_PUSH.requestAndSubscribe().then(function(sub){
+    var chip=document.getElementById('pushChip');
+    if(chip) chip.classList.remove('visible');
+    if(sub) maybeCheckStreak();
+  }).catch(function(){});
+}
+
+// ── 7-day streak milestone detection ────────────────────────────────────────
+function maybeCheckStreak(){
+  try{
+    var log=JSON.parse(localStorage.getItem('mc_workout_log_v1')||'[]');
+    if(!Array.isArray(log)||log.length<7) return;
+    var today=new Date(); today.setHours(0,0,0,0);
+    var streak=0;
+    for(var i=0;i<7;i++){
+      var d=new Date(today); d.setDate(d.getDate()-i);
+      var ds=d.toDateString();
+      if(log.some(function(e){return e.date&&new Date(e.date).toDateString()===ds;})){streak++;}
+      else break;
+    }
+    if(streak<7) return;
+    // Don't spam — only push once per streak detection per day
+    var streakKey='mc_streak_push_'+new Date().toISOString().slice(0,10);
+    if(localStorage.getItem(streakKey)) return;
+    localStorage.setItem(streakKey,'1');
+    if(window.MC_SB&&MC_SB.sendPush){
+      MC_SB.sendPush({title:'🔥 7-Day Streak!',body:'You\'ve trained 7 days in a row. Incredible consistency — keep it going!'}).catch(function(){});
+    }
+  }catch(e){}
+}
+
+// ── MC Wrapped — training stats card ────────────────────────────────────────
+function loadWrapped(){
+  try{
+    var log=JSON.parse(localStorage.getItem('mc_workout_log_v1')||'[]');
+    var days=new Set();
+    (Array.isArray(log)?log:[]).forEach(function(e){if(e.date)days.add(new Date(e.date).toDateString());});
+    var dayCount=days.size;
+    if(dayCount===0) return; // hide card when no data
+    var card=document.getElementById('wrappedCard');
+    if(card) card.classList.add('visible');
+
+    document.getElementById('wDays').textContent=dayCount;
+
+    // Active program name (short)
+    try{
+      var prog=JSON.parse(localStorage.getItem('mc_active_prog')||'null');
+      var progEl=document.getElementById('wProgram');
+      if(progEl) progEl.textContent=prog&&prog.name?prog.name.slice(0,12):'—';
+    }catch(e){}
+
+    // Sets + top muscle from Supabase (non-blocking)
+    if(window.MC_SB&&MC_SB.getWeeklyVolume){
+      MC_SB.getWeeklyVolume(365).then(function(counts){
+        var total=Object.values(counts).reduce(function(a,b){return a+b;},0);
+        var setsEl=document.getElementById('wSets');
+        if(setsEl) setsEl.textContent=total||'—';
+        if(!total) return;
+        var top=Object.entries(counts).sort(function(a,b){return b[1]-a[1];})[0];
+        if(!top) return;
+        var muscleEl=document.getElementById('wMuscle');
+        if(muscleEl) muscleEl.textContent=top[0].split(' ')[0]; // first word
+        var bar=document.getElementById('wMuscleBar');
+        if(bar) bar.style.width=Math.round(top[1]/total*100)+'%';
+      }).catch(function(){});
+    }
+  }catch(e){}
+}
+// Render on load after scripts settle
+setTimeout(loadWrapped,1500);
+</script>
+<script src="mc-onboarding.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-push.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-backup-status.js"></script>
+<script src="mc-export.js"></script>
+<script src="mc-account.js"></script>
+<script src="mc-biometric.js"></script>
+<script src="program-overrides.js"></script>
+<script src="mc-layout.js"></script>
+<script src="program-manager.js"></script>
+<script>
+// Trigger PM unlock immediately after scripts load if ?pm=1 is in URL
+(function(){
+  if(/[?&]pm=1/.test(location.search)){
+    history.replaceState(null,'',location.pathname+location.hash);
+    if(window.MC_PM) MC_PM.unlock();
+  }
+})();
+</script>
+<script src="mc-sw-update.js"></script>
+<!-- Live exercise-library count: sourced from the shared catalog so it never drifts -->
+<script src="exercise-catalog.js"></script>
+<script>
+(function(){
+  if(!window.EXERCISES)return;
+  var skip={Cardio:1,Core:1}; // cardio/core live under the Conditioning tab
+  var n=EXERCISES.filter(function(e){return !skip[e.muscle];}).length;
+  var dash=document.getElementById('libCountDash');
+  if(dash)dash.textContent=n+' exercises by muscle group';
+  var el=document.getElementById('libCount');
+  if(el)el.textContent=n+' exercises · search by muscle group · save replacements';
+})();
+</script>
+</body>
+</html>

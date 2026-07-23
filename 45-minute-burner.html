@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>The 45 Minute Burner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:240px;color:#e2e8f0;}
+
+/* ── DEEP CRIMSON + DARK SLATE SHELL ───────────────────────────────── */
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:60px 20px 22px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:28px;font-weight:900;color:#fff;margin-bottom:10px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+.content{max-width:680px;margin:20px auto 0;padding:0 16px;}
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:18px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+
+/* ── SECTION HEADINGS ── */
+.sec-head{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#fdba74;text-transform:uppercase;margin:18px 0 10px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(249,115,22,0.4),transparent);}
+
+/* ── CONFIG SCREEN ── */
+.cfg-card{background:linear-gradient(155deg,#111a2b,#0c1320);border:1.5px solid rgba(248,250,252,0.5);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
+.cfg-label{font-size:13px;font-weight:900;color:#fff;margin-bottom:3px;}
+.cfg-help{font-size:11.5px;color:#94a3b8;font-weight:600;margin-bottom:14px;line-height:1.5;}
+.cfg-opts{display:flex;flex-direction:column;gap:9px;}
+.cfg-opt{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.25);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:13px 14px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;transition:all 0.15s;}
+.cfg-opt:active{transform:scale(0.99);}
+.cfg-opt.sel{border-color:#f97316;background:rgba(249,115,22,0.12);box-shadow:0 4px 18px rgba(220,38,38,0.25);}
+.cfg-opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.cfg-opt.sel .cfg-opt-radio{border-color:#f97316;}
+.cfg-opt.sel .cfg-opt-radio::after{content:'';width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#f97316,#dc2626);}
+.cfg-opt-main{flex:1;min-width:0;}
+.cfg-opt-title{font-size:13.5px;font-weight:900;color:#fff;}
+.cfg-opt-desc{font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:2px;line-height:1.45;}
+.cfg-start{width:100%;margin-top:6px;padding:16px;border-radius:14px;border:none;font-size:15px;font-weight:900;letter-spacing:0.04em;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 8px 26px rgba(220,38,38,0.4);}
+.cfg-start:disabled{background:rgba(255,255,255,0.06);color:#475569;box-shadow:none;cursor:not-allowed;}
+.cfg-start:not(:disabled):active{transform:scale(0.99);}
+
+/* ── TIMELINE STEP CARDS · dark slate · white borders ── */
+.pstep{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:13px;margin-bottom:10px;box-shadow:0 8px 26px rgba(0,0,0,0.4);transition:border-color .2s,opacity .2s;}
+.pstep.locked{border-color:rgba(248,250,252,0.12);opacity:0.5;pointer-events:none;}
+.pstep.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);opacity:1;}
+.pstep.done{border-color:rgba(52,211,153,0.8);box-shadow:0 6px 22px rgba(16,185,129,0.18);opacity:0.92;}
+.pstep-top{display:flex;align-items:center;gap:12px;}
+.pstep-stepnum{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;font-size:12px;font-weight:900;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(220,38,38,0.4);}
+.pstep.done .pstep-stepnum{background:linear-gradient(135deg,#34d399,#059669);}
+.pstep-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.pstep-main{flex:1;min-width:0;}
+.pstep-name{font-size:15px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pstep-target{font-size:11.5px;color:#94a3b8;font-weight:700;margin-top:2px;}
+
+/* status badges */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;letter-spacing:0.06em;padding:4px 9px;border-radius:8px;white-space:nowrap;text-transform:uppercase;flex-shrink:0;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.work{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;animation:badgePulse 1s ease-in-out infinite;}
+.badge.rest{background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.14);color:#94a3b8;border:1px solid rgba(148,163,184,0.22);}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.78;}}
+
+/* embedded countdown (timed) */
+.cd-box{background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:13px;margin-top:11px;text-align:center;}
+.cd-mini-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+.cd-disp{font-size:40px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;}
+.cd-disp.running{color:#fb923c;}
+.cd-disp.done{color:#34d399;}
+.cd-prog{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin:12px 0 14px;}
+.cd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:3px;transition:width 0.25s linear;}
+.cd-prog-fill.done{background:#34d399;}
+.cd-btns{display:flex;gap:8px;justify-content:center;}
+.cd-btn{padding:9px 20px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.cd-btn.go{background:rgba(52,211,153,0.16);color:#34d399;border:1px solid rgba(52,211,153,0.35);}
+.cd-btn.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.cd-btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.12);}
+.pstep-complete{width:100%;margin-top:14px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;letter-spacing:0.03em;font-family:inherit;background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.pstep-complete:active{transform:scale(0.99);}
+.pstep-complete:disabled{background:rgba(255,255,255,0.05);color:#475569;cursor:not-allowed;}
+
+/* ── BURPEE INTERVAL ENGINE (core option 1) ── */
+.bp-wrap{margin-top:14px;}
+.bp-roundline{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.bp-round{font-size:12px;font-weight:900;color:#fdba74;letter-spacing:0.08em;text-transform:uppercase;}
+.bp-disp{font-size:50px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:0.95;text-align:center;margin:2px 0;}
+.bp-disp.work{color:#f87171;}
+.bp-disp.rest{color:#38bdf8;}
+.bp-disp.done{color:#34d399;}
+.bp-phaselabel{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+.bp-counter{display:none;}
+.bp-wrap.work .bp-counter{display:block;}
+.bp-counter-lbl{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;}
+.bp-count-row{display:flex;align-items:center;justify-content:center;gap:14px;}
+.bp-count-btn{width:50px;height:50px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:24px;font-weight:900;cursor:pointer;font-family:inherit;}
+.bp-count-btn:active{transform:scale(0.92);}
+.bp-count-num{font-size:44px;font-weight:900;color:#fb923c;font-variant-numeric:tabular-nums;line-height:1;min-width:80px;text-align:center;cursor:pointer;user-select:none;border-radius:14px;padding:4px 8px;}
+.bp-count-num:active{background:rgba(249,115,22,0.12);}
+.bp-tap-hint{text-align:center;font-size:11px;color:#475569;margin-top:8px;font-style:italic;}
+.bp-restbar{display:none;margin:4px 0 6px;}
+.bp-wrap.rest .bp-restbar{display:block;}
+.bp-restbar-track{height:20px;background:rgba(255,255,255,0.07);border-radius:10px;overflow:hidden;}
+.bp-restbar-fill{height:100%;width:0%;background:linear-gradient(90deg,#0ea5e9,#0369a1);border-radius:10px;transition:width 0.25s linear;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;}
+.bp-restbar-fill span{font-size:11px;font-weight:900;color:#fff;}
+.bp-ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+.bp-ctrl{padding:11px 18px;border-radius:11px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.bp-ctrl.go{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.bp-ctrl.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.bp-ctrl.skip{background:rgba(14,165,233,0.14);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3);}
+.bp-chips,.ld-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+.bp-chip,.ld-chip{font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:var(--muted);font-variant-numeric:tabular-nums;}
+.bp-chip.filled,.ld-chip.filled{border-color:rgba(249,115,22,0.45);background:rgba(249,115,22,0.1);color:#fdba74;}
+.bp-chip.current,.ld-chip.current{border-color:#f87171;background:rgba(220,38,38,0.18);color:#fff;}
+.ld-chip.done{border-color:rgba(52,211,153,0.45);background:rgba(52,211,153,0.12);color:#6ee7b7;}
+
+/* ── 1–18 PUSH-UP LADDER (core option 2) ── */
+.ld-wrap{margin-top:14px;}
+.ld-tier-disp{text-align:center;}
+.ld-tier-lbl{font-size:12px;font-weight:900;color:#fdba74;letter-spacing:0.1em;text-transform:uppercase;}
+.ld-tier-num{font-size:50px;font-weight:900;color:#fb923c;line-height:1;font-variant-numeric:tabular-nums;margin:2px 0;}
+.ld-tier-sub{font-size:12px;color:#94a3b8;font-weight:700;}
+.ld-input-row{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0 4px;}
+.ld-input-row input{width:96px;padding:10px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:26px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.ld-input-row input:focus{border-color:#f97316;}
+.ld-input-row label{font-size:11px;color:#94a3b8;font-weight:700;}
+.ld-complete{width:100%;margin-top:14px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;font-family:inherit;background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,0.35);}
+.ld-complete:active{transform:scale(0.99);}
+
+/* ── REST OVERLAY (shared: 15s ladder rest / generic) ── */
+.rest-overlay{position:fixed;inset:0;z-index:160;background:rgba(5,8,14,0.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.rest-overlay.show{display:flex;}
+.rest-panel{width:100%;max-width:440px;text-align:center;}
+.rest-kicker{font-size:12px;font-weight:900;letter-spacing:0.24em;text-transform:uppercase;color:#fdba74;margin-bottom:6px;}
+.rest-sub{font-size:13px;color:#94a3b8;font-weight:700;margin-bottom:22px;}
+.rest-time{font-size:84px;font-weight:900;color:#fb923c;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:1;margin-bottom:18px;text-shadow:0 6px 30px rgba(249,115,22,0.4);}
+.rest-track{height:24px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:14px;overflow:hidden;margin-bottom:22px;}
+.rest-fill{height:100%;width:100%;background:linear-gradient(90deg,#dc2626,#f97316);border-radius:14px;transition:width 0.3s linear;box-shadow:0 0 20px rgba(249,115,22,0.5);}
+.rest-next{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:12px;padding:13px 16px;font-size:13px;font-weight:800;color:#fed7aa;margin-bottom:20px;line-height:1.5;}
+.rest-skip{padding:12px 28px;border-radius:11px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#cbd5e1;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+/* ── OPTIONAL BURNOUT ── */
+.burn-card{background:linear-gradient(155deg,#111a2b,#0c1320);border:1.5px dashed rgba(248,250,252,0.4);border-radius:16px;margin-bottom:14px;overflow:hidden;}
+.burn-card.done{border-style:solid;border-color:rgba(52,211,153,0.85);}
+.burn-head{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none;}
+.burn-icon{font-size:24px;}
+.burn-head-main{flex:1;min-width:0;}
+.burn-name{font-size:15px;font-weight:900;color:#fff;}
+.burn-opt-tag{font-size:10px;font-weight:900;letter-spacing:0.14em;color:#fdba74;text-transform:uppercase;}
+.burn-chev{font-size:13px;color:var(--muted);transition:transform 0.25s;}
+.burn-card.open .burn-chev{transform:rotate(180deg);}
+.burn-body{max-height:0;overflow:hidden;transition:max-height 0.35s ease;}
+.burn-card.open .burn-body{max-height:760px;}
+.burn-inner{padding:4px 18px 18px;}
+.burn-sel-lbl{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px;}
+.burn-stepper{display:flex;align-items:center;justify-content:center;gap:16px;}
+.burn-step-btn{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:23px;font-weight:900;cursor:pointer;font-family:inherit;}
+.burn-step-btn:active{transform:scale(0.92);}
+.burn-goal-input{width:118px;padding:10px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:32px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.burn-goal-input:focus{border-color:#f97316;}
+.burn-goal-unit{text-align:center;font-size:12px;color:#94a3b8;font-weight:700;margin:8px 0 14px;}
+.burn-hint{text-align:center;font-size:11px;color:#475569;font-style:italic;margin-bottom:14px;}
+.burn-verify{border-top:1px solid rgba(255,255,255,0.07);padding-top:14px;}
+.burn-verify-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.burn-verify-lbl{font-size:11px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;}
+.burn-verify-count{font-size:13px;font-weight:900;color:#fdba74;}
+.burn-tap{width:100%;padding:22px;border-radius:14px;border:1.5px solid rgba(249,115,22,0.4);background:rgba(249,115,22,0.1);color:#fb923c;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:0.03em;}
+.burn-tap:active{transform:scale(0.99);background:rgba(249,115,22,0.18);}
+.burn-tap-row{display:flex;gap:8px;margin-top:8px;}
+.burn-tap-row button{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#cbd5e1;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
+.burn-complete{width:100%;margin-top:14px;padding:13px;border-radius:12px;border:1.5px solid rgba(52,211,153,0.4);background:rgba(52,211,153,0.1);color:#6ee7b7;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;}
+.burn-card.done .burn-complete{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;border-color:transparent;}
+
+/* ── COMPLETION BANNER ── */
+.done-banner{display:none;background:linear-gradient(135deg,#34d399,#059669);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px;box-shadow:0 8px 30px rgba(16,185,129,0.4);}
+.done-banner.show{display:block;}
+.done-banner .db-t{font-size:20px;font-weight:900;color:#06281d;}
+.done-banner .db-s{font-size:13px;font-weight:700;color:#06281d;opacity:0.85;margin-top:4px;}
+
+/* ── LIVE SUMMARY FOOTER ── */
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);display:none;}
+.sum-drawer.live{display:block;}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#fdba74;display:flex;align-items:center;gap:6px;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:var(--muted);transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:380px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+/* top progress bar */
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">🔥 Cardio Conditioning</div>
+      <div class="title">The 45 Minute Burner</div>
+      <div><span class="schedule">Configurable Live Engine</span></div>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- ── CONFIG SCREEN ── -->
+    <div id="configScreen">
+      <div class="intro-warn"><strong>Build your burn.</strong> Pick how you split the 15 minutes of jump rope and which core challenge you want — the live timeline, step counter and timers all adjust to your picks.</div>
+
+      <div class="sec-head">Step 1 · Jump Rope Split</div>
+      <div class="cfg-card">
+        <div class="cfg-label">🪢 How do you want to split the rope?</div>
+        <div class="cfg-help">15 total minutes of jump rope, divided around your core challenge.</div>
+        <div class="cfg-opts" id="ropeOpts">
+          <button class="cfg-opt" data-v="10-5" onclick="CFG.pickRope('10-5')"><span class="cfg-opt-radio"></span><span class="cfg-opt-main"><span class="cfg-opt-title">10 before · 5 after</span><span class="cfg-opt-desc">10 min to warm into it, 5-min finisher after the core block.</span></span></button>
+          <button class="cfg-opt" data-v="7.5-7.5" onclick="CFG.pickRope('7.5-7.5')"><span class="cfg-opt-radio"></span><span class="cfg-opt-main"><span class="cfg-opt-title">7.5 before · 7.5 after</span><span class="cfg-opt-desc">Even split — half before the core, half after.</span></span></button>
+          <button class="cfg-opt" data-v="15-0" onclick="CFG.pickRope('15-0')"><span class="cfg-opt-radio"></span><span class="cfg-opt-main"><span class="cfg-opt-title">All 15 up front</span><span class="cfg-opt-desc">Knock out the full 15 minutes before the core challenge.</span></span></button>
+        </div>
+      </div>
+
+      <div class="sec-head">Step 2 · Core Challenge</div>
+      <div class="cfg-card">
+        <div class="cfg-label">💥 Pick your core block</div>
+        <div class="cfg-help">The main event the rope is split around.</div>
+        <div class="cfg-opts" id="coreOpts">
+          <button class="cfg-opt" data-v="burpee" onclick="CFG.pickCore('burpee')"><span class="cfg-opt-radio"></span><span class="cfg-opt-main"><span class="cfg-opt-title">💀 10-Round Burpee Challenge</span><span class="cfg-opt-desc">Automated 1-min max effort / 30-sec rest engine with a live rep log per round.</span></span></button>
+          <button class="cfg-opt" data-v="ladder" onclick="CFG.pickCore('ladder')"><span class="cfg-opt-radio"></span><span class="cfg-opt-main"><span class="cfg-opt-title">💪 1–18 Push-Up Ladder</span><span class="cfg-opt-desc">Climb tiers 1 → 18; each completed tier auto-triggers a 15-sec rest bar.</span></span></button>
+        </div>
+      </div>
+
+      <button class="cfg-start" id="cfgStart" onclick="CFG.start()" disabled>Build My Burner →</button>
+    </div>
+
+    <!-- ── LIVE TIMELINE ── -->
+    <div id="liveScreen" style="display:none;">
+      <div class="intro-warn"><strong>Keep breaks near zero.</strong> Move straight from one step to the next — only the automated rest timers should pause you. <span id="cfgRecap" style="color:#fdba74;font-weight:800;"></span> · <a href="#" onclick="CFG.reconfigure();return false;" style="color:#fca5a5;font-weight:800;">⚙ Reconfigure</a></div>
+      <div class="done-banner" id="doneBanner">
+        <div class="db-t">🏆 Burner Complete</div>
+        <div class="db-s">Every step logged. Check your totals below.</div>
+      </div>
+      <div id="timelineMount"></div>
+      <div class="sec-head">Optional Burnout</div>
+      <div id="burnoutMount"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── REST OVERLAY ── -->
+<div class="rest-overlay" id="restOverlay">
+  <div class="rest-panel">
+    <div class="rest-kicker" id="restKicker">Rest</div>
+    <div class="rest-sub" id="restSub">Recover.</div>
+    <div class="rest-time" id="restTime">0:15</div>
+    <div class="rest-track"><div class="rest-fill" id="restFill"></div></div>
+    <div class="rest-next" id="restNext">Next…</div>
+    <button class="rest-skip" onclick="REST.skip()">Skip Rest →</button>
+  </div>
+</div>
+
+<!-- ── LIVE SUMMARY FOOTER ── -->
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title"><span id="sumTitleText">📊 Summary</span> · <span id="sumStep">Step 0 / 0</span></div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qMin">0</div><div class="sum-quick-l">Timed Min</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qReps">0</div><div class="sum-quick-l">Total Reps</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">⏱️</span><span class="sum-line-nm" id="dCardioNm">Timed Cardio (treadmill + rope)</span><span class="sum-line-v" id="dCardio">0:00 <small>elapsed</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico" id="dCoreIco">💀</span><span class="sum-line-nm" id="dCoreNm">Core Challenge</span><span class="sum-line-v" id="dCore">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🦵</span><span class="sum-line-nm">Walking Lunge Burnout</span><span class="sum-line-v" id="dBurn">— <small>skipped</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🔢</span><span class="sum-line-nm">Running Total Reps</span><span class="sum-line-v" id="dTotalReps">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">✅</span><span class="sum-line-nm">Timeline Steps</span><span class="sum-line-v" id="dSteps">0 <small>/ 0</small></span></div>
+      <button class="sum-reset" onclick="resetAll()">↺ Reset Workout</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   THE 45 MINUTE BURNER — configurable, state-driven live engine
+   =================================================================== */
+function fmt(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function buzz(p){
+  try{ if(navigator.vibrate) navigator.vibrate(p||[200,100,200]); }catch(e){}
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18,0.36].forEach(function(t,i){
+      var o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=i===2?880:660;
+      g.gain.setValueAtTime(0.32,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);
+    });
+  }catch(e){}
+}
+
+/* reusable embedded Countdown */
+function Countdown(totalSec,hooks){
+  this.total=totalSec;this.remaining=totalSec;this.running=false;this.endAt=0;this.iv=null;
+  this.onTick=hooks.onTick||function(){};this.onDone=hooks.onDone||function(){};
+}
+Countdown.prototype.start=function(){ if(this.running||this.remaining<=0)return; this.running=true;this.endAt=Date.now()+this.remaining*1000; var s=this;this.iv=setInterval(function(){s._tick();},200);this._tick(); };
+Countdown.prototype._tick=function(){ this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000)); this.onTick(this.remaining,this.total,this.running); if(this.remaining<=0){this._clear();this.running=false;this.onDone();} };
+Countdown.prototype._clear=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} };
+Countdown.prototype.pause=function(){ if(!this.running)return; this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000)); this.running=false;this._clear();this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.reset=function(){ this._clear();this.running=false;this.remaining=this.total;this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.elapsed=function(){ return this.total-this.remaining; };
+
+
+/* ════════════════════════════════════════════════════════════════
+   SHARED REST OVERLAY (ladder 15s, etc.)
+   ════════════════════════════════════════════════════════════════ */
+var REST = {
+  timer:null, onEnd:null,
+  show:function(sec,opts){
+    opts=opts||{};
+    this.onEnd=opts.onEnd||function(){};
+    document.getElementById('restKicker').textContent=opts.kicker||'Rest';
+    document.getElementById('restSub').textContent=opts.sub||'Recover.';
+    document.getElementById('restNext').textContent=opts.next||'';
+    document.getElementById('restOverlay').classList.add('show');
+    var disp=document.getElementById('restTime'), fill=document.getElementById('restFill');
+    fill.style.width='100%';
+    var self=this;
+    this.timer=new Countdown(sec,{
+      onTick:function(rem,total){ disp.textContent=fmt(rem); fill.style.width=Math.max(0,(rem/total)*100)+'%'; },
+      onDone:function(){ buzz([200,100,200]); self._end(); }
+    });
+    this.timer.start();
+  },
+  skip:function(){ if(this.timer)this.timer.pause(); this._end(); },
+  _end:function(){
+    document.getElementById('restOverlay').classList.remove('show');
+    this.timer=null;
+    var cb=this.onEnd; this.onEnd=null;
+    if(cb) cb();
+  }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   CONFIG
+   ════════════════════════════════════════════════════════════════ */
+var CFG = {
+  rope:null, core:null,
+  pickRope:function(v){ this.rope=v; this._mark('ropeOpts',v); this._refresh(); },
+  pickCore:function(v){ this.core=v; this._mark('coreOpts',v); this._refresh(); },
+  _mark:function(group,v){
+    document.querySelectorAll('#'+group+' .cfg-opt').forEach(function(b){ b.classList.toggle('sel',b.dataset.v===v); });
+  },
+  _refresh:function(){ document.getElementById('cfgStart').disabled=!(this.rope&&this.core); },
+  start:function(){
+    if(!(this.rope&&this.core)) return;
+    document.getElementById('configScreen').style.display='none';
+    document.getElementById('liveScreen').style.display='block';
+    document.getElementById('sumDrawer').classList.add('live');
+    var splits={'10-5':[10,5],'7.5-7.5':[7.5,7.5],'15-0':[15,0]};
+    var coreName=this.core==='burpee'?'10-Round Burpees':'1–18 Push-Up Ladder';
+    document.getElementById('cfgRecap').textContent='Rope '+this.rope.replace('-',' / ')+' min · '+coreName;
+    BURNER.build({rope:this.rope, core:this.core, split:splits[this.rope]});
+    BURNER.render();
+    BURN.mount();
+    updateSummary();
+  },
+  reconfigure:function(){
+    if(!confirm('Reconfigure? This resets your current session.')) return;
+    resetAll(true);
+  }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   BURNER ENGINE — sequential timeline of steps
+   ════════════════════════════════════════════════════════════════ */
+var BURNER = {
+  cfg:null, steps:[], activeIdx:0, complete:false,
+
+  build:function(cfg){
+    this.cfg=cfg; this.complete=false; this.activeIdx=0;
+    var before=cfg.split[0], after=cfg.split[1];
+    var steps=[];
+    steps.push({type:'timed', key:'treadmill', icon:'🏃', name:'Incline Treadmill Walk', sec:15*60, done:false, timer:null});
+    steps.push({type:'timed', key:'rope-pre', icon:'🪢', name:'Jump Rope — Pre-Burn', sec:Math.round(before*60), done:false, timer:null});
+    if(cfg.core==='burpee') steps.push({type:'burpee', key:'core', icon:'💀', name:'10-Round Burpee Challenge', done:false});
+    else steps.push({type:'ladder', key:'core', icon:'💪', name:'1–18 Push-Up Ladder', done:false});
+    if(after>0) steps.push({type:'timed', key:'rope-post', icon:'🪢', name:'Jump Rope — Finisher', sec:Math.round(after*60), done:false, timer:null});
+    steps.forEach(function(s,i){ s.idx=i; });
+    this.steps=steps;
+    // reset modules
+    BURPEE.reset(true); LADDER.reset(true);
+  },
+
+  render:function(){
+    var html='';
+    this.steps.forEach(function(st){ html+=BURNER.stepHTML(st); });
+    document.getElementById('timelineMount').innerHTML=html;
+    this.steps.forEach(function(st){ if(st.type==='timed') BURNER.wireTimer(st); });
+    if(this.cfg.core==='burpee') BURPEE.init(); else LADDER.init();
+    this.refreshStates();
+  },
+
+  stepHTML:function(st){
+    var n=st.idx+1;
+    var inner;
+    if(st.type==='timed'){
+      inner=
+        '<div class="cd-box">'+
+          '<div class="cd-mini-label">⏱️ Countdown</div>'+
+          '<div class="cd-disp" id="cd-disp-'+st.key+'">'+fmt(st.sec)+'</div>'+
+          '<div class="cd-prog"><div class="cd-prog-fill" id="cd-fill-'+st.key+'"></div></div>'+
+          '<div class="cd-btns">'+
+            '<button class="cd-btn go" id="cd-go-'+st.key+'" onclick="BURNER.timerToggle(\''+st.key+'\')">▶ Start</button>'+
+            '<button class="cd-btn ghost" onclick="BURNER.timerReset(\''+st.key+'\')">↺ Reset</button>'+
+          '</div>'+
+        '</div>'+
+        '<button class="pstep-complete" id="done-'+st.key+'" onclick="BURNER.completeTimed(\''+st.key+'\')" disabled>✓ Step Complete</button>';
+    } else if(st.type==='burpee'){
+      inner=BURPEE.html();
+    } else {
+      inner=LADDER.html();
+    }
+    var target = st.type==='timed' ? fmt(st.sec)+' interval'
+      : (st.type==='burpee' ? '10 × 1:00 max / 0:30 rest' : 'Tiers 1 → 18 · 15s rest each');
+    return ''+
+    '<div class="pstep locked" id="step-'+st.key+'">'+
+      '<div class="pstep-top">'+
+        '<div class="pstep-stepnum">'+n+'</div>'+
+        '<div class="pstep-ico">'+st.icon+'</div>'+
+        '<div class="pstep-main">'+
+          '<div class="pstep-name">'+st.name+'</div>'+
+          '<div class="pstep-target">'+target+'</div>'+
+        '</div>'+
+        '<span class="badge idle" id="badge-'+st.key+'">Locked</span>'+
+      '</div>'+
+      inner+
+    '</div>';
+  },
+
+  wireTimer:function(st){
+    st.timer=new Countdown(st.sec,{
+      onTick:function(rem,total,running){
+        var d=document.getElementById('cd-disp-'+st.key), f=document.getElementById('cd-fill-'+st.key);
+        if(d){ d.textContent=fmt(rem); d.className='cd-disp'+(running?' running':'')+(rem<=0?' done':''); }
+        if(f){ f.style.width=Math.round(((total-rem)/total)*100)+'%'; }
+        updateSummary();
+      },
+      onDone:function(){
+        buzz([200,100,200,100,400]);
+        var d=document.getElementById('cd-disp-'+st.key), f=document.getElementById('cd-fill-'+st.key);
+        if(d){ d.textContent='DONE'; d.className='cd-disp done'; }
+        if(f){ f.className='cd-prog-fill done'; f.style.width='100%'; }
+        if(!st.done && BURNER.steps[BURNER.activeIdx]===st) BURNER.completeTimed(st.key);
+      }
+    });
+  },
+
+  timerToggle:function(key){
+    var st=this._byKey(key); if(!st||!st.timer) return;
+    if(this.steps[this.activeIdx]!==st) return;
+    var go=document.getElementById('cd-go-'+key);
+    if(st.timer.running){ st.timer.pause(); if(go){go.textContent='▶ Resume';go.className='cd-btn go';} }
+    else { st.timer.start(); if(go){go.textContent='⏸ Pause';go.className='cd-btn pause';} }
+  },
+  timerReset:function(key){
+    var st=this._byKey(key); if(!st||!st.timer) return;
+    st.timer.reset();
+    var go=document.getElementById('cd-go-'+key); if(go){go.textContent='▶ Start';go.className='cd-btn go';}
+    updateSummary();
+  },
+  completeTimed:function(key){
+    var st=this._byKey(key); if(!st||st.done) return;
+    if(this.steps[this.activeIdx]!==st) return;
+    if(st.timer) st.timer.pause();
+    st.done=true; buzz([200]); this.advance(); updateSummary();
+  },
+
+  // called by core modules when their full block is finished
+  completeCore:function(){
+    var st=this._byKey('core'); if(!st||st.done) return;
+    st.done=true; this.advance(); updateSummary();
+  },
+
+  advance:function(){
+    var ni=this.activeIdx;
+    while(ni<this.steps.length && this.steps[ni].done) ni++;
+    this.activeIdx=ni;
+    this.refreshStates();
+    if(ni<this.steps.length) this.scrollTo(this.steps[ni].key);
+    else this.finish();
+  },
+
+  finish:function(){
+    this.complete=true;
+    document.getElementById('doneBanner').classList.add('show');
+    document.getElementById('sumTitleText').textContent='🏆 Burner Complete';
+    buzz([200,100,200,100,200,100,500]);
+    updateSummary();
+  },
+
+  refreshStates:function(){
+    var self=this;
+    this.steps.forEach(function(st,i){
+      var card=document.getElementById('step-'+st.key); if(!card) return;
+      var state= st.done?'done':((i===self.activeIdx && !self.complete)?'active':'locked');
+      card.className='pstep '+state;
+      var btn=document.getElementById('done-'+st.key);
+      if(btn) btn.disabled=(state!=='active');
+      var badge=document.getElementById('badge-'+st.key);
+      if(badge){
+        if(st.done){ badge.className='badge green'; badge.textContent='✓ Done'; }
+        else if(state==='active'){ badge.className='badge crimson'; badge.textContent='● Active'; }
+        else { badge.className='badge idle'; badge.textContent='Locked'; }
+      }
+    });
+  },
+
+  isCoreActive:function(){ var st=this.steps[this.activeIdx]; return st && st.key==='core'; },
+  _byKey:function(k){ for(var i=0;i<this.steps.length;i++) if(this.steps[i].key===k) return this.steps[i]; return null; },
+  scrollTo:function(key){ try{ var el=document.getElementById('step-'+key); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} },
+
+  cardioElapsed:function(){ var s=0; this.steps.forEach(function(st){ if(st.type==='timed'&&st.timer) s+=st.timer.elapsed(); }); return s; },
+  coreReps:function(){ return this.cfg && this.cfg.core==='burpee' ? BURPEE.total() : LADDER.total(); },
+  stepsDone:function(){ return this.steps.filter(function(s){return s.done;}).length; }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   CORE OPTION 1 — BURPEE INTERVAL ENGINE (10 × 1:00 / 0:30)
+   ════════════════════════════════════════════════════════════════ */
+var BURPEE = {
+  ROUNDS:10, WORK:60, REST:30,
+  round:0, phase:'idle', counts:new Array(10).fill(0), timer:null,
+
+  reset:function(silent){
+    if(this.timer){ this.timer.pause(); this.timer=null; }
+    this.round=0; this.phase='idle'; this.counts=new Array(10).fill(0);
+    if(!silent) this._sync();
+  },
+
+  html:function(){
+    return ''+
+    '<div class="bp-wrap" id="bpWrap">'+
+      '<div class="bp-roundline">'+
+        '<span class="bp-round" id="bpRound">Ready · Round 1 / 10</span>'+
+        '<span class="badge idle" id="bpPhase">Idle</span>'+
+      '</div>'+
+      '<div class="bp-disp" id="bpDisp">1:00</div>'+
+      '<div class="bp-phaselabel" id="bpLabel">Press start to begin</div>'+
+      '<div class="bp-counter">'+
+        '<div class="bp-counter-lbl">Burpees this round — tap the number</div>'+
+        '<div class="bp-count-row">'+
+          '<button class="bp-count-btn" onclick="BURPEE.inc(-1)">−</button>'+
+          '<div class="bp-count-num" id="bpCount" onclick="BURPEE.inc(1)">0</div>'+
+          '<button class="bp-count-btn" onclick="BURPEE.inc(1)">+</button>'+
+        '</div>'+
+        '<div class="bp-tap-hint">Tap the big number to add a rep</div>'+
+      '</div>'+
+      '<div class="bp-restbar">'+
+        '<div class="bp-restbar-track"><div class="bp-restbar-fill" id="bpRestFill"><span id="bpRestSpan"></span></div></div>'+
+      '</div>'+
+      '<div class="bp-ctrls">'+
+        '<button class="bp-ctrl go" id="bpGo" onclick="BURPEE.startOrPause()">▶ Start Block</button>'+
+        '<button class="bp-ctrl skip" onclick="BURPEE.skip()">⤳ Skip</button>'+
+      '</div>'+
+      '<div class="bp-chips" id="bpChips"></div>'+
+    '</div>';
+  },
+
+  init:function(){ this.renderChips(); },
+
+  startOrPause:function(){
+    if(!BURNER.isCoreActive()) return;
+    if(this.phase==='idle'){ this.round=0; this._enterWork(); }
+    else if(this.phase==='done'){ /* already finished */ }
+    else if(this.timer && this.timer.running){
+      this.timer.pause();
+      var g=document.getElementById('bpGo'); if(g){g.textContent='▶ Resume';g.className='bp-ctrl pause';}
+    } else if(this.timer){
+      this.timer.start();
+      var g2=document.getElementById('bpGo'); if(g2){g2.textContent='⏸ Pause';g2.className='bp-ctrl pause';}
+    }
+  },
+
+  _phaseUI:function(){
+    var wrap=document.getElementById('bpWrap'), disp=document.getElementById('bpDisp'),
+        badge=document.getElementById('bpPhase'), label=document.getElementById('bpLabel'),
+        round=document.getElementById('bpRound'), go=document.getElementById('bpGo');
+    wrap.className='bp-wrap '+(this.phase==='idle'?'':this.phase);
+    disp.className='bp-disp '+(this.phase==='idle'?'':this.phase);
+    if(this.phase==='work'){ badge.className='badge work'; badge.textContent='🔥 Max Effort'; label.textContent='WORK — GO ALL OUT'; round.textContent='Round '+(this.round+1)+' / 10'; if(go){go.textContent='⏸ Pause';go.className='bp-ctrl pause';} }
+    else if(this.phase==='rest'){ badge.className='badge rest'; badge.textContent='💧 Rest'; label.textContent='REST — 30 seconds'; round.textContent='Round '+(this.round+1)+' / 10 done'; if(go){go.textContent='⏸ Pause';go.className='bp-ctrl pause';} }
+    else if(this.phase==='done'){ badge.className='badge green'; badge.textContent='✓ Complete'; label.textContent='BLOCK COMPLETE'; round.textContent='All 10 rounds done'; }
+  },
+
+  _enterWork:function(){
+    this.phase='work';
+    this.counts[this.round]=this.counts[this.round]||0;
+    document.getElementById('bpCount').textContent=this.counts[this.round];
+    this._phaseUI(); this.renderChips(); buzz([300]);
+    var self=this;
+    this.timer=new Countdown(this.WORK,{
+      onTick:function(rem){ document.getElementById('bpDisp').textContent=fmt(rem); },
+      onDone:function(){ buzz([200,100,200,100,400]); self._enterRest(); }
+    });
+    this.timer.start();
+  },
+  _enterRest:function(){
+    this.phase='rest'; this._phaseUI();
+    var fill=document.getElementById('bpRestFill'), span=document.getElementById('bpRestSpan');
+    fill.style.width='0%';
+    var self=this;
+    this.timer=new Countdown(this.REST,{
+      onTick:function(rem,total){ document.getElementById('bpDisp').textContent=fmt(rem); fill.style.width=Math.round(((total-rem)/total)*100)+'%'; span.textContent=rem+'s'; },
+      onDone:function(){ buzz([300]); self.round++; if(self.round>=self.ROUNDS) self._finish(); else self._enterWork(); }
+    });
+    this.timer.start();
+  },
+  _finish:function(){
+    this.phase='done'; this.timer=null;
+    document.getElementById('bpDisp').textContent='✓';
+    this._phaseUI(); this.renderChips();
+    buzz([200,100,200,100,500]);
+    BURNER.completeCore();
+  },
+
+  skip:function(){
+    if(!BURNER.isCoreActive()) return;
+    if(this.phase==='work'){ if(this.timer)this.timer.pause(); this._enterRest(); }
+    else if(this.phase==='rest'){ if(this.timer)this.timer.pause(); this.round++; if(this.round>=this.ROUNDS)this._finish(); else this._enterWork(); }
+  },
+  inc:function(n){
+    if(this.phase!=='work') return;
+    this.counts[this.round]=Math.max(0,(this.counts[this.round]||0)+n);
+    document.getElementById('bpCount').textContent=this.counts[this.round];
+    this.renderChips(); updateSummary();
+  },
+  renderChips:function(){
+    var host=document.getElementById('bpChips'); if(!host) return;
+    var h='';
+    for(var i=0;i<this.ROUNDS;i++){
+      var cls='bp-chip';
+      if(this.phase==='work'&&i===this.round) cls+=' current';
+      else if(this.counts[i]>0) cls+=' filled';
+      h+='<span class="'+cls+'">R'+(i+1)+': '+(this.counts[i]||0)+'</span>';
+    }
+    host.innerHTML=h;
+  },
+  _sync:function(){ if(document.getElementById('bpChips')) this.renderChips(); },
+  total:function(){ return this.counts.reduce(function(a,b){return a+(b||0);},0); }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   CORE OPTION 2 — 1–18 PUSH-UP LADDER (15s rest per tier)
+   ════════════════════════════════════════════════════════════════ */
+var LADDER = {
+  TOTAL:18, tier:0, done:false, logged:new Array(18).fill(0),
+
+  reset:function(silent){ this.tier=0; this.done=false; this.logged=new Array(18).fill(0); if(!silent) this._sync(); },
+
+  html:function(){
+    return ''+
+    '<div class="ld-wrap" id="ldWrap">'+
+      '<div class="ld-tier-disp">'+
+        '<div class="ld-tier-lbl" id="ldLbl">Tier 1 / 18</div>'+
+        '<div class="ld-tier-num" id="ldNum">1</div>'+
+        '<div class="ld-tier-sub">push-ups this tier</div>'+
+      '</div>'+
+      '<div class="ld-input-row">'+
+        '<label>Actual:</label>'+
+        '<input id="ldInput" type="number" inputmode="numeric" placeholder="1" onfocus="this.select()">'+
+        '<label>reps</label>'+
+      '</div>'+
+      '<button class="ld-complete" id="ldComplete" onclick="LADDER.completeTier()">✓ Tier Complete → 15s Rest</button>'+
+      '<div class="ld-chips" id="ldChips"></div>'+
+    '</div>';
+  },
+
+  init:function(){ this._render(); },
+
+  _render:function(){
+    var lbl=document.getElementById('ldLbl'), num=document.getElementById('ldNum'),
+        inp=document.getElementById('ldInput'), btn=document.getElementById('ldComplete');
+    if(!lbl) return;
+    if(this.done){
+      lbl.textContent='Ladder Complete'; num.textContent='✓';
+      if(btn){ btn.textContent='✓ All 18 Tiers Done'; btn.disabled=true; }
+      if(inp){ inp.style.display='none'; }
+    } else {
+      var t=this.tier+1;
+      lbl.textContent='Tier '+t+' / 18';
+      num.textContent=t;
+      if(inp){ inp.placeholder=String(t); inp.value=''; }
+    }
+    this._chips();
+  },
+  _chips:function(){
+    var host=document.getElementById('ldChips'); if(!host) return;
+    var h='';
+    for(var i=0;i<this.TOTAL;i++){
+      var cls='ld-chip';
+      if(i<this.tier) cls+=' done';
+      else if(i===this.tier && !this.done) cls+=' current';
+      h+='<span class="'+cls+'">'+(i+1)+'</span>';
+    }
+    host.innerHTML=h;
+  },
+  _sync:function(){ if(document.getElementById('ldChips')) this._render(); },
+
+  completeTier:function(){
+    if(!BURNER.isCoreActive() || this.done) return;
+    var t=this.tier+1;
+    var inp=document.getElementById('ldInput');
+    var v=inp?parseInt(inp.value,10):NaN;
+    this.logged[this.tier]=isNaN(v)?t:v;
+    buzz([200]);
+    updateSummary();
+    var last=(this.tier+1>=this.TOTAL);
+    if(last){ this.tier++; this.done=true; this._render(); buzz([200,100,200,100,500]); BURNER.completeCore(); return; }
+    // advance tier behind the automated 15s rest overlay
+    this.tier++;
+    this._render();
+    var nextReps=this.tier+1;
+    REST.show(15,{
+      kicker:'🪜 Ladder Rest',
+      sub:'15-second breather between tiers.',
+      next:'Next — Tier '+(this.tier+1)+': '+nextReps+' push-ups',
+      onEnd:function(){ updateSummary(); }
+    });
+  },
+  total:function(){ return this.logged.reduce(function(a,b){return a+(b||0);},0); }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   OPTIONAL BURNOUT — Walking Lunges 100–200 (tap-to-verify)
+   ════════════════════════════════════════════════════════════════ */
+var BURN = {
+  goal:100, verified:0, done:false,
+
+  mount:function(){
+    this.goal=100; this.verified=0; this.done=false;
+    document.getElementById('burnoutMount').innerHTML=
+    '<div class="burn-card" id="burnCard">'+
+      '<div class="burn-head" onclick="BURN.toggle()">'+
+        '<div class="burn-icon">🦵</div>'+
+        '<div class="burn-head-main">'+
+          '<div class="burn-opt-tag">Optional · Post-Workout</div>'+
+          '<div class="burn-name">Walking Lunge Burnout</div>'+
+        '</div>'+
+        '<div class="burn-chev">▼</div>'+
+      '</div>'+
+      '<div class="burn-body">'+
+        '<div class="burn-inner">'+
+          '<div class="burn-sel-lbl">Set your rep goal (100–200)</div>'+
+          '<div class="burn-stepper">'+
+            '<button class="burn-step-btn" onclick="BURN.bump(-10)">−</button>'+
+            '<input class="burn-goal-input" id="burnGoal" type="number" inputmode="numeric" value="100" oninput="BURN.setGoal(this.value)" onfocus="this.select()">'+
+            '<button class="burn-step-btn" onclick="BURN.bump(10)">+</button>'+
+          '</div>'+
+          '<div class="burn-goal-unit">walking lunges</div>'+
+          '<div class="burn-hint">Tap to verify reps as you knock them out — break it up however you like.</div>'+
+          '<div class="burn-verify">'+
+            '<div class="burn-verify-top"><span class="burn-verify-lbl">Verified Reps</span><span class="burn-verify-count" id="burnCount">0 / 100</span></div>'+
+            '<button class="burn-tap" id="burnTap" onclick="BURN.tap(5)">✓ Tap to verify +5</button>'+
+            '<div class="burn-tap-row">'+
+              '<button onclick="BURN.tap(1)">+1</button>'+
+              '<button onclick="BURN.tap(10)">+10</button>'+
+              '<button onclick="BURN.tap(-5)">−5</button>'+
+            '</div>'+
+          '</div>'+
+          '<button class="burn-complete" id="burnComplete" onclick="BURN.toggleDone()">○ Mark Burnout Complete</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  },
+  toggle:function(){ document.getElementById('burnCard').classList.toggle('open'); },
+  setGoal:function(v){ v=parseInt(v,10); this.goal=(isNaN(v)||v<1)?0:v; this._refresh(); },
+  bump:function(n){ this.goal=Math.max(0,this.goal+n); document.getElementById('burnGoal').value=this.goal; this._refresh(); },
+  tap:function(n){ this.verified=Math.max(0,this.verified+n); this._refresh(); },
+  toggleDone:function(){
+    this.done=!this.done;
+    var card=document.getElementById('burnCard'), btn=document.getElementById('burnComplete');
+    card.classList.toggle('done',this.done);
+    btn.textContent=this.done?'✓ Burnout Complete':'○ Mark Burnout Complete';
+    this._refresh();
+  },
+  _refresh:function(){
+    var c=document.getElementById('burnCount'); if(c) c.textContent=this.verified+' / '+this.goal;
+    var tap=document.getElementById('burnTap'); if(tap) tap.textContent='✓ Tap to verify +5';
+    updateSummary();
+  },
+  summaryValue:function(){
+    if(this.done) return {v:this.verified||this.goal, label:'reps ✓ done'};
+    if(this.verified>0) return {v:this.verified, label:'/ '+this.goal+' verified'};
+    return null;
+  },
+  reps:function(){ var s=this.summaryValue(); return s?s.v:0; }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   LIVE SUMMARY + PROGRESS
+   ════════════════════════════════════════════════════════════════ */
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+
+function updateSummary(){
+  if(!BURNER.cfg) return;
+  var cardioSec=BURNER.cardioElapsed();
+  var cardioMin=cardioSec/60;
+  var coreReps=BURNER.coreReps();
+  var burnReps=BURN.reps();
+  var totalReps=coreReps+burnReps;
+
+  document.getElementById('qMin').textContent=cardioMin.toFixed(1);
+  document.getElementById('qReps').textContent=totalReps;
+
+  document.getElementById('dCardio').innerHTML=fmt(cardioSec)+' <small>of 15 min</small>';
+  var coreIsBurpee=BURNER.cfg.core==='burpee';
+  document.getElementById('dCoreIco').textContent=coreIsBurpee?'💀':'💪';
+  document.getElementById('dCoreNm').textContent=coreIsBurpee?'Burpees · 10 rounds':'Push-Up Ladder · 1–18';
+  document.getElementById('dCore').innerHTML=coreReps+' <small>reps</small>';
+
+  var bs=BURN.summaryValue();
+  document.getElementById('dBurn').innerHTML = bs ? bs.v+' <small>'+bs.label+'</small>' : '— <small>skipped</small>';
+  document.getElementById('dTotalReps').innerHTML=totalReps+' <small>reps</small>';
+
+  var done=BURNER.stepsDone(), total=BURNER.steps.length;
+  document.getElementById('dSteps').innerHTML=done+' <small>/ '+total+'</small>';
+  var stepNo=Math.min(BURNER.activeIdx+1,total);
+  document.getElementById('sumStep').textContent='Step '+(BURNER.complete?total:stepNo)+' / '+total;
+
+  updateProgress();
+}
+function updateProgress(){
+  if(!BURNER.steps.length) return;
+  var done=BURNER.stepsDone(), total=BURNER.steps.length;
+  var fill=document.getElementById('progFill'); if(fill) fill.style.width=Math.round((done/total)*100)+'%';
+}
+
+function resetAll(toConfig){
+  if(toConfig!==true){
+    if(!confirm('Reset the entire workout? All timers and logged reps will clear.')) return;
+  }
+  if(REST.timer) REST.timer.pause();
+  document.getElementById('restOverlay').classList.remove('show');
+  if(BURPEE.timer){ BURPEE.timer.pause(); BURPEE.timer=null; }
+  BURPEE.reset(true); LADDER.reset(true);
+  document.getElementById('liveScreen').style.display='none';
+  document.getElementById('configScreen').style.display='block';
+  document.getElementById('sumDrawer').classList.remove('live','open');
+  document.getElementById('doneBanner').classList.remove('show');
+  document.getElementById('timelineMount').innerHTML='';
+  document.getElementById('burnoutMount').innerHTML='';
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('sumTitleText').textContent='📊 Summary';
+  document.getElementById('sumStep').textContent='Step 0 / 0';
+  CFG.rope=null; CFG.core=null;
+  document.querySelectorAll('.cfg-opt').forEach(function(b){ b.classList.remove('sel'); });
+  document.getElementById('cfgStart').disabled=true;
+  BURNER.cfg=null; BURNER.steps=[]; BURNER.activeIdx=0; BURNER.complete=false;
+}
+
+/* keep timed values fresh while timers run */
+setInterval(function(){ if(BURNER.cfg) updateSummary(); },1000);
+</script>
+
+<script src="mc-nav.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>

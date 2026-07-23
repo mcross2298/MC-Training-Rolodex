@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Custom Workout &mdash; MC Training</title>
+<style>
+:root{--accent:#34d399;--accent-rgb:52,211,153;}
+.header{background:linear-gradient(90deg,#0d1f3c,#050d1a);}
+.tb-cluster{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);cursor:pointer;}
+.tb-rest{background:rgba(34,211,238,0.15);color:#67e8f9;border:1px solid rgba(34,211,238,0.28);}
+/* live cluster-edit popover — anchored under whichever badge/note was tapped */
+.cluster-pop{position:fixed;z-index:400;width:min(280px,calc(100vw - 24px));
+  background:#0d1f3c;border:1px solid rgba(34,211,238,0.3);border-radius:14px;
+  padding:12px 14px;box-shadow:0 10px 32px rgba(0,0,0,0.5);}
+.cluster-pop-hd{font-size:12px;font-weight:900;letter-spacing:0.04em;color:#67e8f9;margin-bottom:8px;}
+.cluster-pop-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.cluster-pop-count,.cluster-pop-rest{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
+  border-radius:8px;padding:8px;color:#e2e8f0;font-size:12px;font-weight:700;font-family:inherit;}
+.cluster-pop-inp{width:42px;min-height:38px;text-align:center;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.14);border-radius:8px;color:#e2e8f0;font-size:14px;font-weight:800;font-family:inherit;}
+.cluster-pop-lbl{font-size:11px;color:var(--muted);font-weight:700;}
+.cluster-plus{font-size:13px;font-weight:800;color:#22d3ee;}
+.cluster-pop-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.cluster-pop-remove{background:none;border:none;color:#f87171;font-size:12px;font-weight:700;cursor:pointer;padding:6px 0;font-family:inherit;}
+.cluster-pop-done{background:linear-gradient(90deg,#22d3ee,#34d399);color:#04121f;border:none;
+  border-radius:8px;padding:8px 16px;font-size:12px;font-weight:900;cursor:pointer;font-family:inherit;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+<link rel="stylesheet" href="mc-card-actions.css"/>
+<link rel="stylesheet" href="mc-setlog.css"/>
+<link rel="stylesheet" href="mc-summary.css"/>
+<script>
+// Namespace this run's persistence per custom workout BEFORE the shared
+// logger/summary modules read it (they capture window.MC_PID_OVERRIDE on load).
+(function(){
+  var id = new URLSearchParams(location.search).get('id') || 'unknown';
+  window.__CW_ID = id;
+  window.MC_PID_OVERRIDE = 'custom-' + id;
+})();
+</script>
+  <link rel="stylesheet" href="mc-light.css">
+<script src="mc-reps.js"></script>
+</head>
+<body>
+<div class="header">
+  <a href="build-workout.html" class="back-link">&larr; Builder</a>
+  <div class="header-inner">
+    <div class="eyebrow">&#128295; Custom Workout</div>
+    <div class="title" id="wkTitle">Workout</div>
+    <div class="subtitle" id="wkSub"></div>
+  </div>
+</div>
+
+<div class="content" id="cards"></div>
+
+<div class="fw-bar" id="fwBar" style="display:none;">
+  <button class="fw-btn" onclick="finishWorkout()">🏁 Finish Workout</button>
+</div>
+
+<script>
+var CW_KEY = 'mc_custom_workouts_v1';
+var SL_KEY = 'mc_setlog_v1';
+var WL_KEY = 'mc_workout_log_v1';
+var PID = window.MC_PID_OVERRIDE;
+
+function getWorkout(){
+  var id = window.__CW_ID;
+  var all; try{ all = JSON.parse(localStorage.getItem(CW_KEY)||'[]'); }catch(e){ all = []; }
+  return all.filter(function(w){ return w.id===id; })[0] || null;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function slug(s){ return String(s).trim().replace(/\s+/g,'-').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,24)||'ex'; }
+
+// --- drop sets: an exercise may carry a SEQUENCE of drops -----------------
+// New workouts store ex.drops = ['AMRAP','8',...]; older ones a single ex.drop.
+function dropsOf(ex){
+  if(ex.drops && ex.drops.length) return ex.drops.slice();
+  if(ex.drop) return [ex.drop];
+  return [];
+}
+// Build the "drop a,b,c" clause mc-setlog's parseDrop understands, appended to
+// the working-set scheme so each drop becomes its own logged row. An AMRAP
+// drop target displays as a bare "∞" (one per AMRAP drop, never a "2×∞"
+// shorthand) — mc-setlog.js's parseDrop accepts "∞" as a synonym for the
+// word "AMRAP", so this stays fully parseable (the Log Sets row still shows
+// literal "AMRAP" in the reps box either way).
+function dropClause(drops){
+  if(!drops.length) return '';
+  return ' drop ' + drops.map(function(d){ return d==='AMRAP' ? '∞' : d; }).join(',');
+}
+function dropBadge(drops){
+  if(!drops.length) return '';
+  if(drops.length===1){
+    var d=drops[0];
+    return '<span class="type-badge tb-drop">↘️ Drop'+(d==='AMRAP'?' ∞':' '+esc(d))+'</span>';
+  }
+  var txt = '↘️ Drop '+drops.map(function(d){ return d==='AMRAP'?'∞':esc(d); }).join('→');
+  return '<span class="type-badge tb-drop">'+txt+'</span>';
+}
+// Cluster set: each working set is split into mini-sets with a short intra-set
+// rest. Shown as a badge plus an explanatory note line — both tappable to
+// adjust the rep breakdown mid-session (e.g. drop 5+5+5 to 5+5+4 if the last
+// mini-set isn't happening today), via openClusterEdit() below.
+function clusterBadge(ex, i){
+  if(!ex.cluster) return '';
+  return '<span class="type-badge tb-cluster" onclick="event.stopPropagation();openClusterEdit(this,'+i+')" title="Tap to adjust the rep breakdown">🧩 Cluster '+esc(ex.cluster)+' ✎</span>';
+}
+function clusterNote(ex, i){
+  if(!ex.cluster) return '';
+  var rest = ex.clusterRest ? (' · '+esc(ex.clusterRest)+' intra-set rest') : '';
+  return '<div class="a-notes" onclick="event.stopPropagation();openClusterEdit(this,'+i+')">🧩 Cluster set — '+esc(ex.cluster)+' per working set'+rest+'</div>';
+}
+
+// ---- live cluster editing (mid-session) -----------------------------------
+// Reuses the same toggle/count-selector/per-mini-input pattern build-workout.html's
+// clusterEditor() already has — just surfaced as a small popover anchored to
+// whatever badge/note was tapped, instead of a builder form field.
+var CLUSTER_REST_OPTS = ['10s','15s','20s','30s'];
+function parseClusterStr(val){ return val ? val.split('+').map(function(p){ return p.trim(); }) : []; }
+function buildClusterStr(parts){ return parts.filter(function(p){ return p; }).join('+'); }
+function closeClusterEdit(){
+  var pop = document.getElementById('clusterPop');
+  if(pop) pop.remove();
+}
+function openClusterEdit(anchor, i){
+  closeClusterEdit();
+  var wk = getWorkout();
+  var ex = wk && wk.exercises[i];
+  if(!ex) return;
+  var parts = parseClusterStr(ex.cluster);
+  if(parts.length < 3) parts = ['5','5','5'];
+  var pop = document.createElement('div');
+  pop.id = 'clusterPop';
+  pop.className = 'cluster-pop';
+  var repsHtml = parts.map(function(p, k){
+    return (k>0?'<span class="cluster-plus">+</span>':'') +
+      '<input class="cluster-pop-inp" type="text" value="'+esc(p)+'" data-k="'+k+'">';
+  }).join('');
+  var restOpts = CLUSTER_REST_OPTS.map(function(r){
+    return '<option value="'+r+'"'+(r===(ex.clusterRest||'15s')?' selected':'')+'>⏲ '+r+' intra-rest</option>';
+  }).join('');
+  pop.innerHTML =
+    '<div class="cluster-pop-hd">Adjust cluster reps</div>' +
+    '<div class="cluster-pop-row">' +
+      '<select class="cluster-pop-count">' +
+        [3,4].map(function(n){ return '<option value="'+n+'"'+(parts.length===n?' selected':'')+'>'+n+' mini-sets</option>'; }).join('') +
+      '</select>' +
+    '</div>' +
+    '<div class="cluster-pop-row cluster-pop-reps">'+repsHtml+'<span class="cluster-pop-lbl">reps</span></div>' +
+    '<div class="cluster-pop-row"><select class="cluster-pop-rest">'+restOpts+'</select></div>' +
+    '<div class="cluster-pop-actions">' +
+      '<button type="button" class="cluster-pop-remove">Remove cluster</button>' +
+      '<button type="button" class="cluster-pop-done">Done</button>' +
+    '</div>';
+  document.body.appendChild(pop);
+  var r = anchor.getBoundingClientRect();
+  var top = Math.min(r.bottom + 6, window.innerHeight - pop.offsetHeight - 12);
+  var left = Math.max(12, Math.min(r.left, window.innerWidth - pop.offsetWidth - 12));
+  pop.style.top = (top + window.scrollY) + 'px';
+  pop.style.left = left + 'px';
+
+  function currentParts(){
+    return Array.prototype.map.call(pop.querySelectorAll('.cluster-pop-inp'), function(inp){ return (inp.value||'5').trim(); });
+  }
+  pop.querySelector('.cluster-pop-count').addEventListener('change', function(){
+    var n = parseInt(this.value, 10);
+    var p2 = currentParts();
+    var last = p2[p2.length-1] || '5';
+    while(p2.length < n) p2.push(last);
+    p2 = p2.slice(0, n);
+    ex.cluster = buildClusterStr(p2);
+    saveWorkoutClusterEdit(wk);
+    openClusterEdit(anchor, i);   // re-render popover with the new count
+  });
+  pop.querySelector('.cluster-pop-remove').addEventListener('click', function(){
+    ex.cluster = ''; ex.clusterRest = '';
+    saveWorkoutClusterEdit(wk);
+    closeClusterEdit();
+    render();
+  });
+  pop.querySelector('.cluster-pop-done').addEventListener('click', function(){
+    ex.cluster = buildClusterStr(currentParts());
+    ex.clusterRest = pop.querySelector('.cluster-pop-rest').value;
+    saveWorkoutClusterEdit(wk);
+    closeClusterEdit();
+    render();
+  });
+  setTimeout(function(){
+    document.addEventListener('click', function onDoc(e){
+      if(pop.contains(e.target)) return;
+      document.removeEventListener('click', onDoc);
+      closeClusterEdit();
+    });
+  }, 0);
+}
+// Persist the edited cluster scheme back into the saved custom workout, then
+// re-stamp the live card's data attributes + drop its existing Log Sets
+// panel so mc-setlog.js's MutationObserver rebuilds it with the new reps —
+// not-yet-logged mini-sets pick up the new targets; already-checked sets keep
+// whatever was actually logged (mc-setlog.js never touches saved history).
+function saveWorkoutClusterEdit(wk){
+  var all; try{ all = JSON.parse(localStorage.getItem(CW_KEY)||'[]'); }catch(e){ all = []; }
+  var idx = all.findIndex(function(w){ return w.id===wk.id; });
+  if(idx>=0){ all[idx] = wk; try{ localStorage.setItem(CW_KEY, JSON.stringify(all)); }catch(e){} }
+}
+
+// --- prescribed rest ------------------------------------------------------
+// Custom workouts store ex.rest in SECONDS (set in build-workout.html). Show
+// it in the Rest cell and offer a tap-to-start rest timer — the same contract
+// the program pages + run-program.html use, so mc-setlog auto-starts it.
+function restLabel(secs){ secs = parseInt(secs,10)||0; if(!secs) return ''; return (secs%60===0)?(secs/60)+' min':secs+'s'; }
+function restTimer(rest, name){
+  var secs = parseInt(rest,10)||0;
+  if(!secs) return '';
+  var label = secs>=60 && secs%60===0 ? (secs/60)+' min' : secs+' sec';
+  return '<span class="rest-timer idle" data-rest="'+label+'" data-label="'+label+'" '
+    + 'onclick="buildTimerFloat();TMR.toggle(this,'+secs+',\''+esc(name).replace(/'/g,'')+'\')" '
+    + 'title="Tap to start rest timer">'
+    + '<span class="rest-timer-icon">⏱️</span><span class="rest-timer-label">'+label+'</span></span>';
+}
+
+// The "sets" string mc-setlog.js parses (repFor/setCount) and aReps() renders
+// as chips. A pyramid rep list (e.g. "15,12,10") already carries its own set
+// count in the comma segments — prefixing it with "N×" corrupts both readers
+// (mc-setlog.js's comma-split sees "3×15" as segment 1 and strips the "×",
+// producing "315"; aReps() doesn't understand a leading multiplier at all).
+// Only a single uniform rep target needs the "N×reps" form.
+function schemeOf(ex, drops){
+  var reps = (''+(ex.reps||'10')).trim();
+  var base = (reps.indexOf(',') !== -1) ? reps : ((ex.sets||3) + '×' + reps);
+  return base + dropClause(drops);
+}
+
+// A single (non-superset) exercise card — the original .a-card layout.
+function renderSingle(ex, i){
+  var drops = dropsOf(ex);
+  var scheme = schemeOf(ex, drops);
+  var badges = '';
+  if(ex.muscle) badges += '<span class="type-badge tb-midset">'+esc(ex.muscle)+'</span>';
+  badges += dropBadge(drops);
+  badges += clusterBadge(ex, i);
+  if(ex.tempo) badges += '<span class="type-badge tb-tempo">⏱ '+esc(ex.tempo)+'</span>';
+  var did = 'cw' + i + '-' + slug(ex.name);
+  return '<div class="ex-card a-card" data-id="'+did+'" data-type="single"'
+    + (ex.seedWeight?' data-mc-seed-weight="'+esc(ex.seedWeight)+'"':'')
+    + (ex.cluster?' data-mc-cluster="'+esc(ex.cluster)+'" data-mc-cluster-rest="'+esc(ex.clusterRest||'')+'"':'')+'>'
+    + '<div class="ex-body"><div class="ex-content">'
+    +   '<div class="a-top"><div class="a-idx">'+(i+1)+'</div>'
+    +   '<div class="a-head"><div class="ex-name a-name">'+esc(ex.name)+'</div>'
+    +   (badges?'<div class="a-badges">'+badges+'</div>':'')
+    +   '</div></div>'
+    +   '<div class="a-reps">'+aReps(ex.reps||'10')+'</div>'
+    +   '<div class="a-strip"><div class="a-cell"><span class="k">Sets</span><span class="v"><span class="ex-sets" data-field="sets">'+esc(scheme)+'</span></span></div>'
+    +   '<div class="a-cell"><span class="k">Rest</span><span class="v">'+(ex.rest?esc(restLabel(ex.rest)):'—')+'</span></div></div>'
+    +   (ex.rest?'<div class="a-timerbar">'+restTimer(ex.rest, ex.name)+'</div>':'')
+    +   clusterNote(ex, i)
+    + '</div></div></div>';
+}
+
+// A superset group (2+ chained exercises) — the shared .ss-card contract the
+// program pages use, so the set-logger and summary wire up automatically.
+function renderSuperset(g){
+  var legs = g.map(function(ex, k){
+    var i = ex._i;
+    var drops = dropsOf(ex);
+    var scheme = schemeOf(ex, drops);
+    var badges = '';
+    if(ex.muscle) badges += '<span class="type-badge tb-midset">'+esc(ex.muscle)+'</span>';
+    badges += dropBadge(drops);
+    badges += clusterBadge(ex, i);
+    if(ex.tempo) badges += '<span class="type-badge tb-tempo">⏱ '+esc(ex.tempo)+'</span>';
+    var did = 'cw' + i + '-' + slug(ex.name);
+    var letter = String.fromCharCode(65 + k);   // A, B, C…
+    // A real .rest-timer per leg (not just an info badge) — mc-setlog.js's
+    // normalizeSupersetTimers() consolidates these down to a single timer on
+    // the FINAL leg (the superset's actual rest, after all stations), the same
+    // contract every program page's superset markup already relies on.
+    var restEl = ex.rest ? '<div class="ex-rest">'+restTimer(ex.rest, ex.name)+'</div>' : '';
+    return '<div class="ss-ex" data-id="'+did+'" data-type="ssex"'
+      + (ex.seedWeight?' data-mc-seed-weight="'+esc(ex.seedWeight)+'"':'')
+      + (ex.cluster?' data-mc-cluster="'+esc(ex.cluster)+'" data-mc-cluster-rest="'+esc(ex.clusterRest||'')+'"':'')+'>'
+      + '<div class="ss-num">'+letter+'</div>'
+      + '<div class="ss-content">'
+      +   '<div class="ss-name">'+esc(ex.name)+'</div>'
+      +   '<div class="a-ss-reps">'+aReps(ex.reps||'10')+'</div>'
+      +   '<span class="ex-sets a-ss-sets-hidden">'+esc(scheme)+'</span>'
+      +   (badges?'<div class="a-badges">'+badges+'</div>':'')
+      +   clusterNote(ex, i)
+      +   restEl
+      + '</div></div>';
+  });
+  // 2 = superset, 3 = tri-set, 4+ = giant set; tri+ get the amber .is-tri skin.
+  var label = g.length>=4 ? 'Giant Set' : (g.length===3 ? 'Tri-Set' : 'Superset');
+  var divider = g.length>=3 ? '× TRI-SET ×' : '× SUPERSET ×';
+  return '<div class="ss-card a-ss'+(g.length>=3?' is-tri':'')+'">'
+    + '<div class="ss-header"><span class="ss-label">⚡ '+label+'</span></div>'
+    + legs.join('<div class="ss-divider"><span class="ss-x">'+divider+'</span></div>')
+    + '</div>';
+}
+
+function render(){
+  var wk = getWorkout();
+  var cards = document.getElementById('cards');
+  if(!wk){
+    document.getElementById('wkTitle').textContent = 'Workout not found';
+    cards.innerHTML = '<div class="miss">This custom workout could not be found.<br><br><a href="build-workout.html">← Back to Builder</a></div>';
+    return;
+  }
+  document.getElementById('wkTitle').textContent = wk.name;
+  document.title = wk.name + ' — MC Training';
+  document.getElementById('wkSub').textContent = wk.exercises.length + ' exercises';
+
+  // Render with the premium .a-card layout — same markup contract the program
+  // pages and run-program.html use, so set-logging, cues, summary, charts and
+  // the sleek accent rail all wire up automatically. Consecutive exercises
+  // flagged superset are grouped into a single .ss-card.
+  var groups = [];
+  wk.exercises.forEach(function(ex, i){
+    ex._i = i;   // keep the absolute index for stable per-exercise log ids
+    if(i>0 && ex.superset && groups.length) groups[groups.length-1].push(ex);
+    else groups.push([ex]);
+  });
+  cards.innerHTML = '<div class="tap-hint">Tap to check off</div>' + groups.map(function(g){
+    return g.length>1 ? renderSuperset(g) : renderSingle(g[0], g[0]._i);
+  }).join('');
+
+  // tap card to toggle completion (drives the live summary + daily tracking)
+  Array.prototype.forEach.call(cards.querySelectorAll('.ex-card'), function(c){
+    c.addEventListener('click', function(){ c.classList.toggle('checked'); });
+  });
+  // superset legs check off individually; stop the tap bubbling to the group
+  Array.prototype.forEach.call(cards.querySelectorAll('.ss-ex'), function(c){
+    c.addEventListener('click', function(e){ e.stopPropagation(); c.classList.toggle('checked'); });
+  });
+  document.getElementById('fwBar').style.display = 'block';
+}
+
+function finishWorkout(){
+  var wk = getWorkout(); if(!wk) return;
+  var sl; try{ sl = JSON.parse(localStorage.getItem(SL_KEY)||'{}'); }catch(e){ sl = {}; }
+  var cards = document.querySelectorAll('.ex-card, .ss-ex');
+  var sets = [];
+  Array.prototype.forEach.call(cards, function(c){
+    var name = (c.querySelector('.ex-name, .ss-name')||{}).textContent || '';
+    var arr = sl[PID + '|' + c.dataset.id];
+    var sess = arr && arr[0];
+    if(sess && sess.sets){
+      Object.keys(sess.sets).forEach(function(sn){
+        var v = sess.sets[sn];
+        if((v.w && v.w!=='') || (v.r && v.r!=='')) sets.push({ name:name, weight:v.w||'', reps:v.r||'' });
+      });
+    }
+  });
+  var done = document.querySelectorAll('.ex-card.checked, .ss-ex.checked').length;
+  var log; try{ log = JSON.parse(localStorage.getItem(WL_KEY)||'[]'); }catch(e){ log = []; }
+  log.push({
+    date: new Date().toISOString(),
+    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    workoutName: wk.name, pageId: PID, sets: sets, prs: 0,
+    duration: '', custom: true
+  });
+  try{ localStorage.setItem(WL_KEY, JSON.stringify(log)); }catch(e){}
+  alert('🏁 "' + wk.name + '" logged — ' + done + '/' + cards.length + ' exercises, ' + sets.length + ' sets recorded.');
+  location.href = 'workout-logs.html';
+}
+
+render();
+</script>
+<script src="mc-timer.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-biometric.js"></script>
+<script src="program-overrides.js"></script>
+<script src="mc-card-actions.js"></script>
+<script src="mc-setlog.js"></script>
+<script src="mc-superset-hop.js"></script>
+<script src="mc-session.js"></script>
+<script src="mc-suggest.js"></script>
+<script src="mc-chart.js"></script>
+<script src="mc-exercise-trends.js"></script>
+<script src="mc-cues-data.js"></script>
+<script src="mc-cues.js"></script>
+<script src="mc-summary.js"></script>
+<script src="mc-nav.js"></script>
+</body>
+</html>

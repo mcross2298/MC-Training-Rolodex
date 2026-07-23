@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1E2022" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mike's Cookbook" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <title>Mike's Cookbook</title>
+  <link rel="stylesheet" href="cookbook.css" />
+</head>
+<body>
+  <!-- beforeinstallprompt fires once per session and only reaches a listener
+       already attached, so this loads as early as possible (roadmap B4). -->
+  <script src="mc-install.js"></script>
+  <main class="app shell" data-tabbar="shell">
+    <!-- Screens: only .active is visible. cookbook-home.js drives setTab(). -->
+    <section class="screen active" id="screen-home"></section>
+    <section class="screen" id="screen-planner"></section>
+    <section class="screen" id="screen-categories"></section>
+    <section class="screen" id="screen-recipes"></section>
+    <section class="screen" id="screen-favorites"></section>
+    <section class="screen" id="screen-mikes"></section>
+    <section class="screen" id="screen-tracker"></section>
+
+    <!-- Persistent 2-tab bar: Cookbook ↔ Tracker -->
+    <nav class="tab-bar" id="app-tab-bar">
+      <button class="tab active" id="tab-cookbook" type="button">
+        <span class="tab-icon">📖</span>
+        Cookbook
+      </button>
+      <button class="tab" id="tab-tracker" type="button">
+        <span class="tab-icon">📊</span>
+        Tracker
+      </button>
+    </nav>
+  </main>
+
+  <script src="recipes-data.js"></script>
+  <script src="user-recipes.js"></script>
+  <script src="mc-bridge.js"></script>
+  <script src="cookbook-home.js"></script>
+  <script src="tracker-store.js"></script>
+  <script src="mc-supabase.js"></script>
+  <script src="mc-sync.js"></script>
+  <script src="mc-backup-status.js"></script>
+  <script src="mc-export.js"></script>
+  <script src="mc-account.js"></script>
+  <script src="tracker-calc.js"></script>
+  <script src="tracker-foodapi.js"></script>
+  <script src="tracker-barcode.js"></script>
+  <script src="tracker.js"></script>
+  <script src="cookbook-sw.js"></script>
+</body>
+</html>

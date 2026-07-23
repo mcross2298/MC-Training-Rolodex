@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Workout Logs — MC Training</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#0a0a0a;min-height:100vh;color:#fff;padding-bottom:40px;}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:20px 18px 14px;position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,#0a0a0a 80%,transparent);}
+.back{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,0.1);color:#d4af37;font-size:16px;text-decoration:none;flex-shrink:0;}
+.topbar-info{flex:1;}
+.topbar-title{font-size:18px;font-weight:900;letter-spacing:-0.02em;}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+
+.hero{background:linear-gradient(135deg,#0a1628,#020b18);border-bottom:1px solid rgba(212,175,55,0.15);padding:20px 18px 22px;margin-bottom:0;}
+.hero-eyebrow{font-size:11px;font-weight:900;letter-spacing:0.25em;color:#d4af37;text-transform:uppercase;margin-bottom:8px;}
+.hero-title{font-size:26px;font-weight:900;letter-spacing:-0.02em;margin-bottom:6px;}
+.hero-sub{font-size:13px;color:#6b7280;line-height:1.5;}
+
+/* Stats bar */
+.stats-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);}
+.stat{background:#0a0a0a;padding:14px 12px;text-align:center;}
+.stat-num{font-size:22px;font-weight:900;color:#d4af37;letter-spacing:-0.02em;}
+.stat-label{font-size:11px;font-weight:700;color:#475569;letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
+
+/* Content */
+.content{padding:20px 18px 0;}
+.section-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#475569;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,0.08),transparent);}
+
+/* Log cards */
+.log-card{background:#111;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;margin-bottom:10px;position:relative;overflow:hidden;}
+.log-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--prog-color,#d4af37);border-radius:0 2px 2px 0;}
+.log-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.log-name{font-size:15px;font-weight:800;color:#fff;line-height:1.3;}
+.log-date{font-size:11px;color:#475569;font-weight:600;white-space:nowrap;margin-left:8px;flex-shrink:0;}
+.log-meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.log-tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid rgba(255,255,255,0.07);letter-spacing:0.05em;}
+.log-tag.gold{background:rgba(212,175,55,0.1);color:#d4af37;border-color:rgba(212,175,55,0.25);}
+.log-sets{display:flex;flex-direction:column;gap:6px;}
+.set-row{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#0d0d0d;border-radius:8px;}
+.set-ex{font-size:12px;font-weight:700;color:#e2e8f0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.set-data{font-size:12px;color:#d4af37;font-weight:700;white-space:nowrap;}
+.set-pr{font-size:11px;font-weight:900;background:rgba(212,175,55,0.15);color:#d4af37;border-radius:4px;padding:1px 5px;letter-spacing:0.06em;border:1px solid rgba(212,175,55,0.25);}
+.log-duration{font-size:11px;color:#475569;margin-top:8px;display:flex;align-items:center;gap:5px;}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;}
+.empty-icon{font-size:40px;margin-bottom:14px;}
+.empty-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-0.01em;}
+.empty-sub{font-size:13px;color:#475569;line-height:1.6;margin-bottom:20px;}
+.empty-btn{display:inline-block;padding:12px 24px;background:#d4af37;color:#000;border-radius:12px;font-size:14px;font-weight:900;text-decoration:none;letter-spacing:0.03em;}
+
+/* Clear btn */
+.clear-btn{
+  display:block;width:100%;padding:12px;
+  background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+  border-radius:12px;color:#f87171;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:inherit;margin-top:16px;letter-spacing:0.03em;
+}
+.clear-btn:active{background:rgba(239,68,68,0.15);}
+.lp-hint{font-size:11px;color:#475569;font-weight:600;margin-bottom:12px;}
+
+/* Sessions / Programs tabs */
+.wl-tabs{display:flex;gap:8px;padding:14px 18px 0;}
+.wl-tab{flex:1;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);
+  background:#111;color:var(--muted);font-size:13px;font-weight:800;text-align:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;font-family:inherit;}
+.wl-tab.active{background:rgba(212,175,55,0.12);border-color:rgba(212,175,55,0.4);color:#d4af37;}
+
+/* every history card is tappable now */
+.log-card{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.log-card:active{background:#161616;}
+
+/* Programs view */
+.prog-card{background:#111;border:1px solid rgba(255,255,255,0.07);border-radius:16px;
+  padding:16px;margin-bottom:10px;position:relative;overflow:hidden;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.prog-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--prog-color,#d4af37);border-radius:0 2px 2px 0;}
+.prog-header{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.prog-name{font-size:15px;font-weight:800;color:#fff;}
+.prog-meta{font-size:11px;color:#475569;font-weight:600;margin-top:4px;}
+.prog-chev{font-size:12px;color:#475569;transition:transform 0.2s;flex-shrink:0;}
+.prog-card.open .prog-chev{transform:rotate(180deg);}
+.prog-sessions{display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06);}
+.prog-card.open .prog-sessions{display:block;}
+.prog-sessions .log-card{margin-bottom:8px;}
+.prog-sessions .log-card:last-child{margin-bottom:0;}
+
+.prog-progress{margin-top:10px;}
+.prog-progress-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
+.prog-progress-count{font-size:12px;font-weight:800;color:#e2e8f0;}
+.prog-progress-pct{font-size:12px;font-weight:900;color:var(--prog-color,#d4af37);}
+.prog-bar-track{height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.prog-bar-fill{height:100%;border-radius:3px;background:var(--prog-color,#d4af37);transition:width 0.3s;}
+.prog-complete-chip{display:inline-block;margin-top:8px;font-size:11px;font-weight:900;color:#34d399;letter-spacing:0.04em;}
+
+/* detail bottom sheet — same slide-up/backdrop pattern as build-workout.html's
+   Review sheet and mc-macros.js's sheet(), so history detail behaves like
+   every other sheet in the app. */
+.wl-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.85);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;}
+.wl-overlay.open{opacity:1;pointer-events:auto;}
+.wl-sheet{width:100%;max-width:560px;background:#111;border-top:1px solid rgba(212,175,55,0.25);
+  border-radius:22px 22px 0 0;padding:8px 18px calc(20px + env(safe-area-inset-bottom,0px));
+  max-height:88vh;overflow-y:auto;transform:translateY(16px);transition:transform 0.2s;}
+.wl-overlay.open .wl-sheet{transform:translateY(0);}
+.wl-handle{width:36px;height:4px;background:rgba(255,255,255,0.18);border-radius:2px;
+  margin:0 auto 12px;padding:12px 0;box-sizing:content-box;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.wl-sheet-title{font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.01em;margin-bottom:2px;}
+.wl-sheet-sub{font-size:12px;color:#475569;font-weight:600;margin-bottom:14px;}
+.wl-sheet-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.wl-empty-note{font-size:12px;color:#475569;line-height:1.6;background:#0d0d0d;
+  border-radius:10px;padding:12px;margin-bottom:6px;}
+.wl-resume-btn{display:block;width:100%;text-align:center;padding:13px;border-radius:12px;
+  background:linear-gradient(90deg,#22d3ee,#34d399);color:#04121f;font-weight:900;
+  font-size:14px;text-decoration:none;margin-top:14px;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+<link rel="stylesheet" href="mc-setlog.css"/>
+<link rel="stylesheet" href="mc-summary.css"/>
+<script src="mc-theme.js"></script>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a href="dashboard.html" class="back" onclick="sessionStorage.removeItem('mc_back_to')">←</a>
+  <div class="topbar-info">
+    <div class="topbar-title">Workout Logs</div>
+    <div class="topbar-sub">Completed workouts</div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">📊 Training History</div>
+  <h1 class="hero-title">Workout Logs</h1>
+  <p class="hero-sub">Every completed workout with sets logged, weights used, and personal records.</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Workouts</div></div>
+  <div class="stat"><div class="stat-num" id="statSets">0</div><div class="stat-label">Sets Logged</div></div>
+  <div class="stat"><div class="stat-num" id="statPRs">0</div><div class="stat-label">PRs Set</div></div>
+</div>
+<div id="backupStatus" style="display:none;"></div>
+
+<div class="wl-tabs">
+  <button class="wl-tab active" id="wlTabSessions" onclick="switchTab('sessions')">📅 Sessions</button>
+  <button class="wl-tab" id="wlTabPrograms" onclick="switchTab('programs')">🏋️ Programs</button>
+</div>
+
+<div class="content">
+  <div id="logContent"></div>
+</div>
+
+<!-- session detail bottom sheet -->
+<div class="wl-overlay" id="wlOverlay" onclick="if(event.target===this)closeDetail();">
+  <div class="wl-sheet" id="wlSheet">
+    <div class="wl-handle" id="wlHandle"></div>
+    <div id="wlSheetBody"></div>
+  </div>
+</div>
+
+<script src="mc-pm-data.js"></script>
+<script src="mc-program-store.js"></script>
+<script src="mc-program-pub.js"></script>
+<script>
+const WL_KEY = 'mc_workout_log_v1';
+const SL_KEY = 'mc_setlog_v1';
+
+function getLogs(){
+  try{ return JSON.parse(localStorage.getItem(WL_KEY)||'[]'); }catch(e){ return []; }
+}
+
+function getSetLogs(){
+  try{ return JSON.parse(localStorage.getItem(SL_KEY)||'{}'); }catch(e){ return {}; }
+}
+
+const DAILY_KEY = 'mc_daily_v1';
+function getDaily(){
+  try{ return JSON.parse(localStorage.getItem(DAILY_KEY)||'{}'); }catch(e){ return {}; }
+}
+// Live per-day session tracking written by mc-summary.js as the lifter checks
+// off exercises (even before "Finish Workout" is tapped). Only ever carries
+// aggregate counts (doneSets/doneReps/exTotal/exDone/pct) — no per-exercise
+// breakdown, unlike a finished mc_workout_log_v1 entry.
+function dailyEntries(){
+  return Object.values(getDaily()).sort((a,b)=>(b.ts||0)-(a.ts||0));
+}
+
+// ---- program resolution ---------------------------------------------------
+// Was a ~7-program hardcoded substring list that silently missed every newer
+// program (Modality Matrix, Kitchen Sink, High-Volume, etc.) — this is why
+// unrelated one-off day pages used to show up looking like their own
+// unrelated entries instead of grouping sanely. Resolves against
+// mc-pm-data.js (the same source of truth the rest of the app uses for
+// program id/name/color) via each program's own file-naming prefix, so a new
+// flagship program groups correctly with zero changes here. A handful of
+// legacy day pages predate that naming convention and don't carry a
+// program-id prefix at all — they fall through to the Individual/Standalone
+// bucket below rather than being guessed at (this file ships to the public
+// market build too, so it deliberately never hardcodes a licensed program's
+// own filenames to special-case them — see tools/build-market.py's leak scan).
+const STANDALONE_PROG = {id:'bonus', name:'📋 Individual / Standalone', color:'#94a3b8'};
+const CW_KEY = 'mc_custom_workouts_v1';
+function getCustomWorkout(id){
+  try{
+    const all = JSON.parse(localStorage.getItem(CW_KEY)||'[]');
+    return all.filter(w=>w && w.id===id)[0] || null;
+  }catch(e){ return null; }
+}
+// A custom multi-day program's own pid (from run-program.html's
+// MC_PID_OVERRIDE, e.g. cprog-<id>-d<n> / cprog-<id>-cons<n>-d<n>) OR the
+// bare 'cprog-<id>' a custom single workout can be assigned to via
+// build-workout.html's "Assign to Program" field (wk.program) — same lookup
+// either way, just a different pid shape to strip down to the raw id.
+function resolveCprog(pageId){
+  const cid = pageId.slice('cprog-'.length).replace(/-cons\d+-d\d+$/,'').replace(/-d\d+$/,'');
+  const cp = (window.MCPrograms && MCPrograms.get(cid)) || (window.MCPub && MCPub.get(cid));
+  if(cp) return {id:'cprog-'+cid, name:'🧩 '+cp.name, color:cp.color||'#34d399', total:(cp.days||[]).length};
+  return {id:'cprog-'+cid, name:'🧩 Custom Program', color:'#34d399'};
+}
+function resolveProgram(pageId){
+  pageId = (pageId||'').replace(/\.html$/,'');
+  if(!pageId) return STANDALONE_PROG;
+  // Custom single workouts (build-workout.html -> run-workout.html, pid
+  // 'custom-<id>') can be explicitly assigned to a real program via
+  // build-workout.html's "Assign to Program" field (saved as wk.program —
+  // a flagship id like 'ss', or 'cprog-<id>' for one of the owner's own
+  // custom programs). That assignment was being ignored entirely — every
+  // custom workout resolved purely off its pid, which is always
+  // 'custom-<id>' regardless of assignment, so an assigned workout still
+  // fell into Individual/Standalone. Honor it first.
+  let m = pageId.match(/^custom-(.+)$/);
+  if(m){
+    const wk = getCustomWorkout(m[1]);
+    if(wk && wk.program) return resolveProgram(wk.program);
+    // Unassigned ("Bonus") — still group by the workout's own saved
+    // template rather than a shared catch-all, so repeat sessions of the
+    // same named workout aggregate together under the Programs tab too.
+    if(wk) return {id:'customwk-'+wk.id, name:'🔧 '+(wk.name||'Custom Workout'), color:'#34d399'};
+    return STANDALONE_PROG;
+  }
+  // run-program.html's custom multi-day programs (cprog-<id>-d<n> /
+  // cprog-<id>-cons<n>-d<n>) are real user-built PROGRAMS, not one-off
+  // workouts — they used to fall through to the same bucket as truly
+  // standalone sessions just because they don't live in mc-pm-data.js.
+  if(pageId.indexOf('cprog-')===0) return resolveCprog(pageId);
+  const progs = (window.MC_PM_DATA && MC_PM_DATA.programs) || [];
+  for(const p of progs){
+    if(pageId===p.id || pageId.indexOf(p.id+'-')===0 || pageId.indexOf('cat-'+p.id)===0){
+      return {id:p.id, name:p.name, color:p.color, total:(p.splits||[]).length};
+    }
+  }
+  return STANDALONE_PROG;
+}
+
+// ---- resume link decoding ---------------------------------------------------
+// run-workout.html and run-program.html are single dynamic pages, not real
+// per-workout files — they set window.MC_PID_OVERRIDE to a synthetic id
+// (custom-<id> / cprog-<prog>-d<day> / cprog-<prog>-cons<n>-d<cd>, see the
+// override blocks in run-workout.html and run-program.html, and the matching
+// href builder in mc-schedule.js) instead of a real filename, so a naive
+// `${pid}.html` 404s for every custom workout/program. Decode those three
+// known formats back to the real runner URL; anything else is an ordinary
+// static program page and `${pid}.html` is correct as-is.
+function resumeHref(pid){
+  pid = pid||'';
+  let m = pid.match(/^custom-(.+)$/);
+  if(m) return 'run-workout.html?id='+encodeURIComponent(m[1]);
+  m = pid.match(/^cprog-(.+)-cons(\d+)-d(\d+)$/);
+  if(m) return 'run-program.html?prog='+encodeURIComponent(m[1])+'&cons='+m[2]+'&cd='+m[3];
+  m = pid.match(/^cprog-(.+)-d(\d+)$/);
+  if(m) return 'run-program.html?prog='+encodeURIComponent(m[1])+'&d='+m[2];
+  return pid+'.html';
+}
+
+function formatDate(iso){
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+
+// ---- shared card renderer (both tabs, both entry kinds) --------------------
+// One rendering + one detail path for every history card, so the flat
+// Sessions list and the Programs tab's nested session lists can never drift
+// out of sync with each other.
+// Every card ignores its own click once if a long-press just fired on it
+// (see the delegated pointer handlers below) — set on the element itself so
+// a cancelled delete confirm() can't be immediately followed by an
+// accidental open/navigate from the same gesture's trailing click.
+const LP_GUARD = "if(this.dataset.lp){delete this.dataset.lp;return;}";
+function renderSessionCard(kind, idx, prog){
+  if(kind==='daily'){
+    const e = DAILY[idx];
+    return `
+      <div class="log-card" data-kind="daily" data-date="${e.date}" data-pid="${e.pid||''}" style="--prog-color:${prog.color}" onclick="${LP_GUARD}event.stopPropagation();openDetail('daily',${idx})">
+        <div class="log-header">
+          <div class="log-name">${e.program||e.pid}</div>
+          <div class="log-date">${e.date}</div>
+        </div>
+        <div class="log-meta-row">
+          <span class="log-tag gold">${prog.name}</span>
+          <span class="log-tag">${e.doneSets} sets</span>
+          <span class="log-tag">${e.doneReps} reps</span>
+          <span class="log-tag gold">${e.pct}% complete</span>
+        </div>
+      </div>`;
+  }
+  const log = LOGS[idx];
+  const setsHtml = (log.sets||[]).slice(0,4).map(s=>`
+    <div class="set-row">
+      <span class="set-ex">${s.name}</span>
+      <span class="set-data">${s.weight?s.weight+' lb':'—'} × ${s.reps||'—'}</span>
+      ${s.pr?'<span class="set-pr">PR</span>':''}
+    </div>`).join('');
+  const moreSets = (log.sets||[]).length > 4 ? `<div style="font-size:11px;color:#475569;padding:6px 10px;">+${log.sets.length-4} more sets</div>` : '';
+  // Completed sessions open the real read-only Completed Workout page
+  // (the exact workout card that was completed, not a list-summary sheet) —
+  // only 'daily' (in-progress) entries still use the bottom-sheet path below.
+  return `
+    <div class="log-card" data-kind="finished" data-logid="${log.id||''}" style="--prog-color:${prog.color}" onclick="${LP_GUARD}event.stopPropagation();location.href='workout-detail.html?id='+encodeURIComponent('${log.id||''}')">
+      <div class="log-header">
+        <div class="log-name">${log.workoutName||'Workout'}</div>
+        <div class="log-date">${log.time||''}</div>
+      </div>
+      <div class="log-meta-row">
+        <span class="log-tag gold">${prog.name}</span>
+        <span class="log-tag">${(log.sets||[]).length} set${(log.sets||[]).length!==1?'s':''}</span>
+        ${log.duration?`<span class="log-tag">⏱ ${log.duration}</span>`:''}
+        ${log.prs?`<span class="log-tag gold">🏆 ${log.prs} PR${log.prs>1?'s':''}</span>`:''}
+      </div>
+      <div class="log-sets">${setsHtml}${moreSets}</div>
+    </div>`;
+}
+
+// ---- detail bottom sheet ----------------------------------------------------
+function closeDetail(){
+  document.getElementById('wlOverlay').classList.remove('open');
+}
+// Only live ('daily') sessions still use this sheet — completed ('finished')
+// sessions navigate straight to workout-detail.html (see renderSessionCard).
+function openDetail(kind, idx){
+  const body = document.getElementById('wlSheetBody');
+  const e = DAILY[idx];
+  const prog = resolveProgram(e.pid||'');
+  // All sets logged but "Finish Workout" was never tapped — PRs and the
+  // permanent history entry only get written at Finish, so this is still
+  // technically a live/unsaved session, not a completed one. Keep routing
+  // to the same resume destination (it's the only way to bank it), just
+  // stop calling it "in progress" once there's nothing left to do but save.
+  const isDone = e.pct>=100;
+  const statusLine = isDone ? 'all sets logged — not yet saved' : 'session in progress';
+  const note = isDone
+    ? 'Every set is logged, but this session isn\'t saved to your history yet — PRs are only calculated when you tap "Finish Workout." Resume it to finish and save.'
+    : 'This session only tracks aggregate progress until "Finish Workout" is tapped — resume it to see (and complete) the full exercise-by-exercise breakdown.';
+  const btnLabel = isDone ? '✓ Finish & save workout' : '▶ Resume workout';
+  body.innerHTML = `
+    <div class="wl-sheet-title">${e.program||e.pid}</div>
+    <div class="wl-sheet-sub">${e.date} · ${statusLine}</div>
+    <div class="wl-sheet-tags">
+      <span class="log-tag gold">${prog.name}</span>
+      <span class="log-tag">${e.exDone}/${e.exTotal} exercises</span>
+      <span class="log-tag">${e.doneSets} sets</span>
+      <span class="log-tag">${e.doneReps} reps</span>
+      <span class="log-tag gold">${e.pct}% complete</span>
+    </div>
+    <div class="wl-empty-note">${note}</div>
+    <a class="wl-resume-btn" href="${resumeHref(e.pid)}">${btnLabel}</a>`;
+  document.getElementById('wlOverlay').classList.add('open');
+}
+(function(){
+  const handle = document.getElementById('wlHandle');
+  const sheet = document.getElementById('wlSheet');
+  let startY = 0;
+  handle.addEventListener('touchstart', e=>{ startY=e.touches[0].clientY; sheet.style.transition='none'; }, {passive:true});
+  handle.addEventListener('touchmove', e=>{
+    const delta = e.touches[0].clientY - startY;
+    if(delta>0 && sheet.scrollTop===0) sheet.style.transform = `translateY(${delta}px)`;
+  }, {passive:true});
+  handle.addEventListener('touchend', e=>{
+    const delta = e.changedTouches[0].clientY - startY;
+    sheet.style.transition = '';
+    if(delta>=50) closeDetail(); else sheet.style.transform = '';
+  });
+  handle.addEventListener('click', closeDetail);
+})();
+
+// ---- per-card delete (long-press) ------------------------------------------
+function deleteFinished(logId){
+  if(!confirm('Delete this workout from your history? This cannot be undone.')) return;
+  localStorage.setItem(WL_KEY, JSON.stringify(getLogs().filter(l=>l.id!==logId)));
+  render();
+}
+function deleteDaily(date, pid){
+  if(!confirm('Delete this session from your history? This cannot be undone.')) return;
+  const store = getDaily();
+  delete store[date+'|'+pid];
+  localStorage.setItem(DAILY_KEY, JSON.stringify(store));
+  render();
+}
+// Long-press (not swipe) so it can't fight vertical page scroll or the
+// card's existing tap-to-open handler. Pointer Events cover touch + mouse.
+// A small move-tolerance cancels the timer on a real scroll/drag; the
+// LP_GUARD flag set on the element (above) swallows the trailing click that
+// follows pointerup even if the confirm() above was cancelled.
+(function(){
+  const LONG_PRESS_MS = 550, MOVE_TOLERANCE = 10;
+  let timer=null, card=null, startX=0, startY=0;
+  function clearPress(){ if(timer){clearTimeout(timer);timer=null;} card=null; }
+  document.addEventListener('pointerdown', e=>{
+    const c = e.target.closest && e.target.closest('.log-card[data-kind]');
+    if(!c) return;
+    card = c; startX = e.clientX; startY = e.clientY;
+    timer = setTimeout(()=>{
+      timer = null;
+      const c2 = card; card = null;
+      if(!c2) return;
+      c2.dataset.lp = '1';
+      try{ if(navigator.vibrate) navigator.vibrate(40); }catch(err){}
+      if(c2.dataset.kind==='finished') deleteFinished(c2.dataset.logid);
+      else deleteDaily(c2.dataset.date, c2.dataset.pid);
+    }, LONG_PRESS_MS);
+  });
+  document.addEventListener('pointermove', e=>{
+    if(!card) return;
+    if(Math.abs(e.clientX-startX)>MOVE_TOLERANCE || Math.abs(e.clientY-startY)>MOVE_TOLERANCE) clearPress();
+  });
+  document.addEventListener('pointerup', clearPress);
+  document.addEventListener('pointercancel', clearPress);
+})();
+
+// ---- Sessions tab (flat, most-recent-first) --------------------------------
+function renderSessionsTab(){
+  const content = document.getElementById('logContent');
+  if(!LOGS.length && !DAILY.length){
+    content.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">No workouts logged yet</div>
+        <div class="empty-sub">Complete a workout and tap "Finish Workout" to log it here. Your sets, weights, and PRs will be stored automatically.</div>
+        <a href="dashboard.html" class="empty-btn">← Back to Dashboard</a>
+      </div>`;
+    return;
+  }
+
+  // Split into Program Workouts vs Individual/Standalone Sessions (Bug: these
+  // used to render interleaved in one flat list with no visual way to tell
+  // them apart, and user-built custom programs — cprog-* — used to get
+  // lumped in with true one-off workouts here since resolveProgram() didn't
+  // recognize them yet). Bucket boundary reuses resolveProgram()'s own
+  // id==='bonus' check — the same test the Programs tab uses — so the two
+  // tabs can never disagree about what counts as a real program. Each bucket
+  // is sorted newest-first across both live ('daily') and banked
+  // ('finished') entries.
+  const buckets = { program: [], standalone: [] };
+  DAILY.forEach((e,i)=>{
+    const prog = resolveProgram(e.pid||'');
+    (prog.id==='bonus' ? buckets.standalone : buckets.program).push({kind:'daily', idx:i, ts:e.ts||0, prog});
+  });
+  LOGS.forEach((log,i)=>{
+    const prog = resolveProgram(log.pageId||'');
+    (prog.id==='bonus' ? buckets.standalone : buckets.program).push({kind:'finished', idx:i, ts:new Date(log.date).getTime()||0, prog});
+  });
+
+  function renderBucket(label, items){
+    if(!items.length) return '';
+    items.sort((a,b)=>b.ts-a.ts);
+    return `<div class="section-label">${label}</div>` +
+      items.map(it=>renderSessionCard(it.kind, it.idx, it.prog)).join('');
+  }
+
+  let html = `<div class="lp-hint">Tip: long-press any card to delete it</div>` +
+             renderBucket('🏋️ Program Workouts', buckets.program) +
+             renderBucket('📋 Individual / Standalone', buckets.standalone);
+
+  // Bug: this used to only ever appear when LOGS had entries and only ever
+  // cleared WL_KEY — a session tracked live but never explicitly Finished
+  // (mc_daily_v1) stuck around forever with no way to clear it at all once
+  // LOGS was already empty.
+  if(LOGS.length || DAILY.length) html += `<button class="clear-btn" onclick="clearLogs()">🗑 Clear All Workout Logs</button>`;
+  content.innerHTML = html;
+}
+
+// ---- Programs tab (aggregate per program, expand for nested sessions) -----
+// Only real programs (flagship, matched via mc-pm-data.js, or user-built
+// cprog-* programs resolved above) render here — the Individual/Standalone
+// bucket is a pile of unrelated one-offs, not a program, and showing it as
+// a fake "program" card was part of what made this tab feel mixed-up.
+let progOpen = {};   // progId -> bool, persists across re-renders in this tab
+function renderProgramsTab(){
+  const content = document.getElementById('logContent');
+  const groups = {};   // progId -> {prog, items:[{kind,idx,ts}]}
+  DAILY.forEach((e,i)=>{
+    const prog = resolveProgram(e.pid||'');
+    if(prog.id==='bonus') return;
+    (groups[prog.id]=groups[prog.id]||{prog,items:[]}).items.push({kind:'daily', idx:i, ts:e.ts||0});
+  });
+  LOGS.forEach((log,i)=>{
+    const prog = resolveProgram(log.pageId||'');
+    if(prog.id==='bonus') return;
+    const ts = new Date(log.date).getTime()||0;
+    (groups[prog.id]=groups[prog.id]||{prog,items:[]}).items.push({kind:'finished', idx:i, ts});
+  });
+
+  const progIds = Object.keys(groups);
+  if(!progIds.length){
+    content.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🏋️</div>
+        <div class="empty-title">No program activity yet</div>
+        <div class="empty-sub">Log a session under any program and it'll group here automatically.</div>
+        <a href="dashboard.html?tab=programs" class="empty-btn">← Browse Programs</a>
+      </div>`;
+    return;
+  }
+
+  const rows = progIds.map(id=>groups[id]).sort((a,b)=>{
+    const am = Math.max(...a.items.map(it=>it.ts)), bm = Math.max(...b.items.map(it=>it.ts));
+    return bm - am;
+  });
+
+  content.innerHTML = `<div class="lp-hint">Tip: expand a program and long-press any session to delete it</div>` + rows.map(g=>{
+    g.items.sort((a,b)=>b.ts-a.ts);
+    let totalSets = 0;
+    // Completion (X) = distinct calendar dates with at least one *finished*
+    // (banked) session under this program, capped at the program's total
+    // (Y = splits.length / custom-program day count). Matching against exact
+    // split names isn't reliable (page titles don't consistently mirror
+    // mc-pm-data.js's splits[] strings), so distinct-days-trained is the
+    // closest honest metric the saved data actually supports.
+    const finishedDates = new Set();
+    g.items.forEach(it=>{
+      if(it.kind==='daily'){
+        totalSets += DAILY[it.idx].doneSets||0;
+      } else {
+        const log = LOGS[it.idx];
+        totalSets += (log.sets||[]).length;
+        finishedDates.add(formatDate(log.date));
+      }
+    });
+    const lastTs = g.items[0].ts;
+    const lastLabel = lastTs ? formatDate(new Date(lastTs).toISOString()) : '—';
+    const isOpen = !!progOpen[g.prog.id];
+    const sessionsHtml = g.items.map(it=>renderSessionCard(it.kind, it.idx, g.prog)).join('');
+
+    const Y = g.prog.total;
+    let progressHtml;
+    if(Y){
+      const X = Math.min(finishedDates.size, Y);
+      const pct = Math.round((X/Y)*100);
+      progressHtml = `
+        <div class="prog-progress">
+          <div class="prog-progress-row">
+            <span class="prog-progress-count">${X} completed of ${Y}</span>
+            <span class="prog-progress-pct">${pct}%</span>
+          </div>
+          <div class="prog-bar-track"><div class="prog-bar-fill" style="width:${pct}%"></div></div>
+          ${X>=Y?'<div class="prog-complete-chip">✓ Completed</div>':''}
+        </div>`;
+    } else {
+      // No known total for this program (e.g. a custom program whose local
+      // record was deleted) — fall back to the plain aggregate line rather
+      // than showing a progress bar we can't actually back up.
+      progressHtml = `<div class="prog-meta">${g.items.length} session${g.items.length!==1?'s':''} · ${totalSets} set${totalSets!==1?'s':''} · last ${lastLabel}</div>`;
+    }
+
+    return `
+      <div class="prog-card${isOpen?' open':''}" style="--prog-color:${g.prog.color}" onclick="toggleProgram('${g.prog.id}')">
+        <div class="prog-header">
+          <div style="flex:1;">
+            <div class="prog-name">${g.prog.name}</div>
+            ${progressHtml}
+          </div>
+          <div class="prog-chev">▾</div>
+        </div>
+        <div class="prog-sessions">${sessionsHtml}</div>
+      </div>`;
+  }).join('');
+}
+function toggleProgram(id){
+  progOpen[id] = !progOpen[id];
+  renderProgramsTab();
+}
+
+// ---- tab switching ----------------------------------------------------------
+let activeTab = 'sessions';
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById('wlTabSessions').classList.toggle('active', tab==='sessions');
+  document.getElementById('wlTabPrograms').classList.toggle('active', tab==='programs');
+  if(tab==='sessions') renderSessionsTab(); else renderProgramsTab();
+}
+
+// ---- top-level render ---------------------------------------------------
+let LOGS = [], DAILY = [];
+function render(){
+  LOGS = getLogs();
+  DAILY = dailyEntries();
+
+  let totalSets = 0, totalPRs = 0;
+  LOGS.forEach(log=>{
+    if(log.sets) totalSets += log.sets.length;
+    if(log.prs) totalPRs += log.prs;
+  });
+  document.getElementById('statTotal').textContent = LOGS.length;
+  document.getElementById('statSets').textContent = totalSets;
+  document.getElementById('statPRs').textContent = totalPRs;
+
+  if(activeTab==='sessions') renderSessionsTab(); else renderProgramsTab();
+}
+
+function clearLogs(){
+  // Bug: this only ever removed WL_KEY (banked/finished logs) — mc_daily_v1
+  // (live sessions tracked before "Finish Workout," including ones that
+  // never got finished and just sat there indefinitely) was never touched,
+  // so "Clear All" visibly did nothing whenever ghost daily entries were
+  // what the user was actually trying to clear.
+  if(confirm('Clear all workout logs, including in-progress sessions? This cannot be undone.')){
+    localStorage.removeItem(WL_KEY);
+    localStorage.removeItem(DAILY_KEY);
+    render();
+  }
+}
+
+render();
+</script>
+<script>
+/* ── SMART BACK NAV ── */
+(function(){
+  var back = sessionStorage.getItem('mc_back_to');
+  if(!back) return;
+  // Find all back links pointing to index/home and redirect to dashboard
+  document.querySelectorAll('a').forEach(function(a){
+    var href = a.getAttribute('href')||'';
+    if(href === 'index.html' || href === '../' || href === '/' ||
+       href.includes('index') || a.textContent.trim().startsWith('←')){
+      a.href = back;
+      a.addEventListener('click', function(){
+        sessionStorage.removeItem('mc_back_to');
+      });
+    }
+  });
+})();
+</script>
+<script src="mc-nav.js"></script>
+<script src="mc-setlog.js"></script>
+<script src="mc-summary.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-backup-status.js"></script>
+</body>
+</html>

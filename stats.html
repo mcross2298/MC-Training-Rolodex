@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Stats — MC Training</title>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+<style>
+:root{--accent:#d4af37;--accent-rgb:212,175,55;}
+body{background:var(--body-bg,#0a0a0a);}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 18px;}
+.back{font-size:20px;color:var(--accent);text-decoration:none;-webkit-tap-highlight-color:transparent;}
+.topbar-title{font-size:15px;font-weight:900;color:#e2e8f0;}
+.topbar-sub{font-size:11px;color:#64748b;font-weight:600;}
+.topbar-icon{margin-left:auto;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;}
+.hero{padding:10px 18px 18px;}
+.hero-eyebrow{font-size:11px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+.hero-title{font-size:26px;font-weight:900;color:#fff;letter-spacing:-0.02em;margin:0 0 6px;}
+.hero-sub{font-size:13px;color:#64748b;line-height:1.5;margin:0;}
+.content{max-width:680px;margin:0 auto;padding:0 18px 90px;}
+.sec{margin-bottom:26px;}
+.sec-title{font-size:13px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.sec-title:after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(212,175,55,0.3),transparent);}
+.card{background:#0f0f0f;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:16px;}
+.muted{color:#64748b;font-size:12px;font-weight:600;}
+.empty{padding:22px 0;text-align:center;color:var(--muted);font-size:var(--fs-sm);font-weight:var(--fw-semi);}
+.mg-row{display:flex;align-items:center;gap:10px;padding:7px 0;}
+.mg-ico{width:22px;text-align:center;font-size:15px;flex-shrink:0;}
+.mg-name{width:84px;font-size:12px;font-weight:800;color:#cbd5e1;flex-shrink:0;}
+.mg-bar-wrap{flex:1;height:10px;border-radius:5px;background:rgba(255,255,255,0.05);overflow:hidden;}
+.mg-bar{height:100%;border-radius:5px;background:var(--accent);opacity:0.8;}
+.mg-val{width:60px;text-align:right;font-size:11px;font-weight:800;color:#94a3b8;flex-shrink:0;}
+.pr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.pr-row:last-child{border-bottom:none;}
+.pr-ico{font-size:15px;}
+.pr-name{flex:1;font-size:13px;font-weight:800;color:#e2e8f0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pr-wt{font-size:13px;font-weight:900;color:var(--accent);flex-shrink:0;}
+.pr-date{font-size:11px;font-weight:700;color:#64748b;flex-shrink:0;width:56px;text-align:right;}
+.streak-line{margin-top:10px;text-align:center;font-size:12px;font-weight:800;color:#a3e635;}
+.stats-top{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:26px;}
+.stat-cell{background:#0f0f0f;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 8px;text-align:center;}
+.stat-num{font-size:20px;font-weight:900;color:var(--accent);}
+.stat-lbl{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-top:4px;}
+
+/* Sand light mode (Phase 6, Stats page). Flat hardcoded hex here (no
+   Onyx token system on this page), so each dark value gets a direct
+   light counterpart. --accent (#d4af37 gold) is left as-is — it
+   already reads fine against a light card. */
+html[data-theme="light"] body{background:#f5f2ec;}
+html[data-theme="light"] .topbar-title{color:#1c1a17;}
+html[data-theme="light"] .topbar-sub,
+html[data-theme="light"] .hero-sub,
+html[data-theme="light"] .muted,
+html[data-theme="light"] .empty,
+html[data-theme="light"] .mg-val,
+html[data-theme="light"] .pr-date,
+html[data-theme="light"] .sec-title,
+html[data-theme="light"] .stat-lbl{color:#6b6459;}
+html[data-theme="light"] .hero-title,
+html[data-theme="light"] .mg-name,
+html[data-theme="light"] .pr-name{color:#1c1a17;}
+html[data-theme="light"] .card,
+html[data-theme="light"] .stat-cell{background:#efe9db;border-color:rgba(28,26,23,.08);}
+html[data-theme="light"] .mg-bar-wrap{background:rgba(28,26,23,.08);}
+html[data-theme="light"] .pr-row{border-bottom-color:rgba(28,26,23,.08);}
+html[data-theme="light"] .topbar-icon{background:rgba(28,26,23,.05);border-color:rgba(28,26,23,.12);}
+html[data-theme="light"] .topbar-icon svg *{stroke:#6b6459;}
+html[data-theme="light"] .theme-icon-dark{display:none;}
+html[data-theme="light"] .theme-icon-light{display:block!important;}
+</style>
+<script src="mc-theme.js"></script>
+<script src="mc-appearance.js"></script>
+</head><body>
+
+<div class="topbar">
+  <a href="dashboard.html" class="back">←</a>
+  <div>
+    <div class="topbar-title">Stats</div>
+    <div class="topbar-sub">Your training, charted</div>
+  </div>
+  <div class="topbar-icon mc-theme-toggle" onclick="if(window.MC_APPEARANCE)MC_APPEARANCE.toggle();" style="cursor:pointer;display:flex;align-items:center;justify-content:center;width:40px;height:40px;" title="Toggle light/dark mode" role="button" tabindex="0" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+    <svg class="theme-icon-dark" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" stroke="#c9c9cf" stroke-width="2" stroke-linejoin="round"/></svg>
+    <svg class="theme-icon-light" width="17" height="17" viewBox="0 0 24 24" fill="none" style="display:none;"><circle cx="12" cy="12" r="4.5" stroke="#c9c9cf" stroke-width="2"/><path d="M12 2.5v2.5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#c9c9cf" stroke-width="2" stroke-linecap="round"/></svg>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">📈 Stats Hub</div>
+  <h1 class="hero-title">Numbers Don't Lie</h1>
+  <p class="hero-sub">Volume, PRs, tonnage and consistency — built from every set you've logged.</p>
+</div>
+
+<div class="content">
+  <div class="stats-top" id="statsTop"></div>
+
+  <a href="wrapped.html" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:14px 16px;
+     border-radius:14px;background:rgba(var(--accent-rgb),0.08);border:1px solid rgba(var(--accent-rgb),0.3);
+     text-decoration:none;color:inherit;">
+    <span style="font-size:20px;">🎁</span>
+    <span style="flex:1;">
+      <span style="display:block;font-size:14px;font-weight:900;color:var(--accent);">MC Wrapped</span>
+      <span style="display:block;font-size:11px;font-weight:700;color:#94a3b8;margin-top:2px;">Your month and year, summed up — save the card, send it</span>
+    </span>
+    <span style="color:var(--accent);font-weight:900;">→</span>
+  </a>
+
+  <a href="workout-logs.html" style="display:flex;align-items:center;gap:12px;margin-bottom:26px;padding:14px 16px;
+     border-radius:14px;background:rgba(var(--accent-rgb),0.08);border:1px solid rgba(var(--accent-rgb),0.3);
+     text-decoration:none;color:inherit;">
+    <span style="font-size:20px;">📋</span>
+    <span style="flex:1;">
+      <span style="display:block;font-size:14px;font-weight:900;color:var(--accent);">Workout History</span>
+      <span style="display:block;font-size:11px;font-weight:700;color:#94a3b8;margin-top:2px;">Every logged session, set by set</span>
+    </span>
+    <span style="color:var(--accent);font-weight:900;">→</span>
+  </a>
+
+  <div class="sec">
+    <div class="sec-title">🗓️ Consistency</div>
+    <div class="card" id="heatmapCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">💪 Volume by Muscle Group <span class="muted" style="margin-left:auto;">last 30 days</span></div>
+    <div class="card" id="muscleCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">🏗️ Monthly Tonnage</div>
+    <div class="card" id="tonnageCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">⚖️ Bodyweight</div>
+    <div class="card" id="bodyCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">🥇 Verified Maxes <a class="muted" style="margin-left:auto;text-decoration:none;color:var(--accent);font-weight:800;" href="max-out.html">Test a max →</a></div>
+    <div class="card" id="maxCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">🏆 PR Timeline</div>
+    <div class="card" id="prCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">🔁 My Substitutions</div>
+    <div class="card" id="subsCard"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div id="backupStatus" style="display:none;"></div>
+</div>
+
+<script src="mc-nav.js"></script>
+<script src="mc-chart.js"></script>
+<script src="mc-muscle-map.js"></script>
+<script src="mc-stats.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-body.js"></script>
+<script src="mc-pm-data.js"></script>
+<script src="mc-swap-manager.js"></script>
+<script src="mc-live-tracker.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-backup-status.js"></script>
+<script src="mc-sw-update.js"></script>
+</body></html>

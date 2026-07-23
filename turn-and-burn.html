@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>30 Minute Turn & Burn</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:240px;color:#e2e8f0;}
+
+/* ── DEEP CRIMSON + DARK SLATE SHELL ───────────────────────────────── */
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:60px 20px 24px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:27px;font-weight:900;color:#fff;margin-bottom:10px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+.content{max-width:680px;margin:22px auto 0;padding:0 16px;}
+
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:18px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+
+/* ── SECTION HEADINGS ── */
+.sec-head{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#fdba74;text-transform:uppercase;margin:20px 0 10px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(249,115,22,0.4),transparent);}
+.sec-head .sh-num{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 10px rgba(220,38,38,0.35);}
+
+/* ── DARK SLATE CARDS · HIGH-CONTRAST WHITE BORDERS ── */
+.card{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:14px;margin-bottom:10px;box-shadow:0 8px 28px rgba(0,0,0,0.4);position:relative;overflow:hidden;}
+.card.dim{border-color:rgba(248,250,252,0.14);opacity:0.72;}
+.card.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);}
+.card.done{border-color:rgba(52,211,153,0.85);box-shadow:0 8px 28px rgba(16,185,129,0.2);}
+.card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px;}
+.card-icon{font-size:26px;flex-shrink:0;line-height:1;}
+.card-head-main{flex:1;min-width:0;}
+.card-name{font-size:16px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.card-sub{font-size:12px;color:#94a3b8;font-weight:700;margin-top:3px;line-height:1.5;}
+
+/* ── STATUS BADGES (orange / crimson) ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:900;letter-spacing:0.06em;padding:4px 10px;border-radius:8px;white-space:nowrap;text-transform:uppercase;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.work{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 12px rgba(220,38,38,0.4);animation:badgePulse 1s ease-in-out infinite;}
+.badge.rest{background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.15);color:#94a3b8;border:1px solid rgba(148,163,184,0.25);}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.78;}}
+
+/* ── EMBEDDED COUNTDOWN (matches the main app stopwatch styling) ── */
+.cd-box{background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:13px;margin-top:11px;text-align:center;}
+.cd-mini-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+.cd-disp{font-size:42px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;margin-bottom:6px;}
+.cd-disp.running{color:#fb923c;}
+.cd-disp.done{color:#34d399;}
+.cd-prog{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin:12px 0 14px;}
+.cd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:3px;transition:width 0.25s linear;}
+.cd-prog-fill.done{background:#34d399;}
+.cd-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.cd-btn{padding:10px 22px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.cd-btn.go{background:rgba(52,211,153,0.16);color:#34d399;border:1px solid rgba(52,211,153,0.35);}
+.cd-btn.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.cd-btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.12);}
+
+/* ── SPLIT PICKER ── */
+.split-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.split-opt{background:rgba(0,0,0,0.25);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:11px 11px;cursor:pointer;text-align:left;transition:all 0.15s;font-family:inherit;color:inherit;}
+.split-opt:active{transform:scale(0.98);}
+.split-opt.sel{border-color:#f97316;background:rgba(249,115,22,0.12);box-shadow:0 4px 18px rgba(220,38,38,0.25);}
+.split-opt .so-tag{font-size:10px;font-weight:900;letter-spacing:0.12em;color:#fdba74;text-transform:uppercase;}
+.split-opt .so-title{font-size:14px;font-weight:900;color:#fff;margin:5px 0 4px;}
+.split-opt .so-desc{font-size:11px;color:#94a3b8;line-height:1.5;font-weight:600;}
+
+/* ── UNDER / ON / OVER LOGGER ── */
+.uo-wrap{margin-top:14px;border-top:1px solid rgba(255,255,255,0.07);padding-top:14px;}
+.uo-label{font-size:11px;font-weight:900;letter-spacing:0.14em;color:#fdba74;text-transform:uppercase;margin-bottom:4px;}
+.uo-target{font-size:11px;color:#94a3b8;margin-bottom:10px;font-weight:600;}
+.uo-target strong{color:#fff;}
+.uo-seg{display:flex;gap:6px;}
+.uo-seg button{flex:1;padding:9px 4px;border-radius:9px;border:1.5px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.25);color:#94a3b8;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+.uo-seg button.sel-under{border-color:#0ea5e9;background:rgba(14,165,233,0.16);color:#7dd3fc;}
+.uo-seg button.sel-on{border-color:#34d399;background:rgba(52,211,153,0.16);color:#6ee7b7;}
+.uo-seg button.sel-over{border-color:#f97316;background:rgba(249,115,22,0.16);color:#fdba74;}
+.uo-count{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.uo-count label{font-size:11px;color:#94a3b8;font-weight:700;}
+.uo-input{flex:1;max-width:130px;padding:9px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:9px;color:#fff;font-size:14px;font-weight:800;text-align:center;font-family:inherit;outline:none;}
+.uo-input:focus{border-color:rgba(249,115,22,0.6);}
+
+/* ── BURPEE INTERVAL RUNNER ── */
+.bp-card{background:linear-gradient(155deg,#160a0a,#0c1320);border:1.5px solid rgba(248,250,252,0.5);border-radius:18px;padding:15px 14px;margin-bottom:10px;box-shadow:0 10px 34px rgba(0,0,0,0.45);}
+.bp-card.work{border-color:rgba(220,38,38,0.9);box-shadow:0 10px 40px rgba(220,38,38,0.35);}
+.bp-card.rest{border-color:rgba(14,165,233,0.7);box-shadow:0 10px 34px rgba(14,165,233,0.22);}
+.bp-card.done{border-color:rgba(52,211,153,0.85);}
+.bp-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;}
+.bp-title{font-size:16px;font-weight:900;color:#fff;}
+.bp-swap{font-size:11px;font-weight:800;color:#94a3b8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:5px 10px;cursor:pointer;font-family:inherit;letter-spacing:0.03em;}
+.bp-swap:active{color:#fff;}
+.bp-meta{font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:14px;}
+.bp-roundline{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.bp-round{font-size:13px;font-weight:900;color:#fdba74;letter-spacing:0.08em;text-transform:uppercase;}
+.bp-disp{font-size:58px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:0.95;text-align:center;margin:4px 0 2px;}
+.bp-disp.work{color:#f87171;}
+.bp-disp.rest{color:#38bdf8;}
+.bp-disp.done{color:#34d399;}
+.bp-phaselabel{text-align:center;font-size:12px;font-weight:900;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+
+/* counter (work phase) */
+.bp-counter{display:none;}
+.bp-card.work .bp-counter{display:block;}
+.bp-counter-lbl{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;}
+.bp-count-row{display:flex;align-items:center;justify-content:center;gap:14px;}
+.bp-count-btn{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:23px;font-weight:900;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;}
+.bp-count-btn:active{transform:scale(0.92);}
+.bp-count-num{font-size:48px;font-weight:900;color:#fb923c;font-variant-numeric:tabular-nums;line-height:1;min-width:84px;text-align:center;cursor:pointer;user-select:none;border-radius:14px;padding:4px 8px;}
+.bp-count-num:active{background:rgba(249,115,22,0.12);}
+.bp-tap-hint{text-align:center;font-size:11px;color:#475569;margin-top:8px;font-style:italic;}
+.bp-count-edit{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+.bp-count-edit input{width:90px;padding:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:9px;color:#fff;font-size:14px;font-weight:800;text-align:center;font-family:inherit;outline:none;}
+.bp-count-edit input:focus{border-color:rgba(249,115,22,0.6);}
+.bp-count-edit button{padding:8px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#cbd5e1;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}
+
+/* rest bar (rest phase) */
+.bp-restbar{display:none;margin:4px 0 6px;}
+.bp-card.rest .bp-restbar{display:block;}
+.bp-restbar-track{height:22px;background:rgba(255,255,255,0.07);border-radius:11px;overflow:hidden;}
+.bp-restbar-fill{height:100%;width:0%;background:linear-gradient(90deg,#0ea5e9,#0369a1);border-radius:11px;transition:width 0.25s linear;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;}
+.bp-restbar-fill span{font-size:11px;font-weight:900;color:#fff;letter-spacing:0.06em;}
+.bp-rest-note{text-align:center;font-size:11px;color:#7dd3fc;margin-top:8px;font-weight:700;letter-spacing:0.04em;}
+
+.bp-ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;}
+.bp-ctrl{padding:11px 20px;border-radius:11px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.bp-ctrl.go{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.bp-ctrl.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.bp-ctrl.skip{background:rgba(14,165,233,0.14);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3);}
+.bp-ctrl.reset{background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid rgba(255,255,255,0.12);}
+
+.bp-scores{margin-top:16px;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;}
+.bp-scores-lbl{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;}
+.bp-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.bp-chip{font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:var(--muted);font-variant-numeric:tabular-nums;}
+.bp-chip.filled{border-color:rgba(249,115,22,0.45);background:rgba(249,115,22,0.1);color:#fdba74;}
+.bp-chip.current{border-color:#f87171;background:rgba(220,38,38,0.18);color:#fff;}
+
+/* ── OPTIONAL BURNOUT (expandable) ── */
+.burn-card{background:linear-gradient(155deg,#111a2b,#0c1320);border:1.5px dashed rgba(248,250,252,0.4);border-radius:16px;margin-bottom:14px;overflow:hidden;}
+.burn-card.done{border-style:solid;border-color:rgba(52,211,153,0.85);}
+.burn-head{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none;}
+.burn-icon{font-size:24px;}
+.burn-head-main{flex:1;min-width:0;}
+.burn-name{font-size:15px;font-weight:900;color:#fff;}
+.burn-opt-tag{font-size:10px;font-weight:900;letter-spacing:0.14em;color:#fdba74;text-transform:uppercase;}
+.burn-chev{font-size:13px;color:var(--muted);transition:transform 0.25s;}
+.burn-card.open .burn-chev{transform:rotate(180deg);}
+.burn-body{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.burn-card.open .burn-body{max-height:680px;}
+.burn-inner{padding:4px 18px 18px;}
+.burn-sel-lbl{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px;}
+.burn-stepper{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:6px;}
+.burn-step-btn{width:48px;height:48px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:24px;font-weight:900;cursor:pointer;font-family:inherit;}
+.burn-step-btn:active{transform:scale(0.92);}
+.burn-goal-input{width:120px;padding:10px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:34px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.burn-goal-input:focus{border-color:#f97316;}
+.burn-goal-unit{text-align:center;font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:14px;}
+.burn-hint{text-align:center;font-size:11px;color:#475569;font-style:italic;margin-bottom:14px;}
+
+.burn-chunks{border-top:1px solid rgba(255,255,255,0.07);padding-top:12px;margin-top:4px;}
+.burn-chunk-lbl{font-size:11px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.burn-chunk-prog{font-size:11px;color:#fdba74;font-weight:800;}
+.burn-chunk-add{display:flex;gap:8px;margin-bottom:10px;}
+.burn-chunk-add input{flex:1;padding:9px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:9px;color:#fff;font-size:14px;font-weight:800;text-align:center;font-family:inherit;outline:none;}
+.burn-chunk-add input:focus{border-color:rgba(249,115,22,0.6);}
+.burn-chunk-add button{padding:9px 14px;border-radius:9px;border:1px solid rgba(249,115,22,0.4);background:rgba(249,115,22,0.12);color:#fdba74;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.burn-chunk-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;}
+.burn-chunk-row span{flex:1;color:#cbd5e1;font-weight:700;}
+.burn-chunk-row .bcr-rm{color:#f87171;cursor:pointer;font-weight:900;padding:0 6px;}
+
+.burn-complete{width:100%;margin-top:16px;padding:14px;border-radius:12px;border:1.5px solid rgba(52,211,153,0.4);background:rgba(52,211,153,0.1);color:#6ee7b7;font-size:14px;font-weight:900;letter-spacing:0.04em;cursor:pointer;font-family:inherit;}
+.burn-card.done .burn-complete{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;border-color:transparent;}
+
+/* ── LIVE SUMMARY DRAWER (sticky, above nav) ── */
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:#fdba74;display:flex;align-items:center;gap:6px;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:var(--muted);transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:340px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+/* top progress bar */
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">🔥 30 Min · Turn & Burn</div>
+      <div class="title">30 Minute Turn &amp; Burn</div>
+      <div><span class="schedule">Jump Rope · Burpees · Burnout</span></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="intro-warn"><strong>⚠️ No quitting.</strong> Two embedded timers run the whole session — 15 minutes of rope, then 10 rounds of max-effort burpees. Push every round like it's your last.</div>
+
+    <!-- ── 1 · JUMP ROPE ─────────────────────────────── -->
+    <div class="sec-head"><span class="sh-num">1</span> Jump Rope · 15 Minutes</div>
+
+    <div class="card active" id="ropePickerCard">
+      <div class="card-top">
+        <div class="card-icon">🪢</div>
+        <div class="card-head-main">
+          <div class="card-name">Attack the Volume</div>
+          <div class="card-sub">Choose how you want to break up your 15 minutes of rope before the burpees.</div>
+        </div>
+      </div>
+      <div class="split-pick">
+        <button class="split-opt" id="ropeOptA" onclick="ROPE.pick('A')">
+          <div class="so-tag">Option A</div>
+          <div class="so-title">15 Min Straight</div>
+          <div class="so-desc">All 15 minutes as one continuous warm-up.</div>
+        </button>
+        <button class="split-opt" id="ropeOptB" onclick="ROPE.pick('B')">
+          <div class="so-tag">Option B</div>
+          <div class="so-title">10 + 5 Split</div>
+          <div class="so-desc">10-min warm-up now, 5-min finisher after the burpees.</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- rope warm-up card injected here -->
+    <div id="ropeCards"></div>
+
+    <!-- ── 2 · BURPEE INTERVALS ──────────────────────── -->
+    <div class="sec-head"><span class="sh-num">2</span> Live Burpee Intervals</div>
+    <div id="burpeeMount"></div>
+
+    <!-- ── 3 · JUMP ROPE FINISHER (Option B only, after burpees) ── -->
+    <div class="sec-head" id="ropeFinSec" style="display:none;"><span class="sh-num">3</span> Jump Rope · Finisher</div>
+    <div id="ropeFinisherMount"></div>
+
+    <!-- ── OPTIONAL BURNOUT ──────────────────────────── -->
+    <div class="sec-head"><span class="sh-num" id="burnoutNum">3</span> Optional Burnout</div>
+    <div id="burnoutMount"></div>
+
+  </div>
+</div>
+
+<!-- ── LIVE SUMMARY DRAWER ── -->
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title">📊 Workout Summary</div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qRope">0<small style="font-size:11px;color:#94a3b8;font-weight:700;">/15</small></div><div class="sum-quick-l">Rope Min</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qBurpee">0</div><div class="sum-quick-l">Burpees</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">🪢</span><span class="sum-line-nm" id="dRopeNm">Jump Rope</span><span class="sum-line-v" id="dRope">0 <small>/ 15 min</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">💀</span><span class="sum-line-nm" id="dBurpeeNm">Burpees · 10 rounds</span><span class="sum-line-v" id="dBurpee">0 <small>total</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🦵</span><span class="sum-line-nm">Walking Lunges (burnout)</span><span class="sum-line-v" id="dLunge">— <small>skipped</small></span></div>
+      <button class="sum-reset" onclick="resetSession()">↺ Reset Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   30 MIN TURN & BURN — interactive, state-driven engine
+   =================================================================== */
+
+/* ── shared countdown helper ──────────────────────────────────────── */
+function fmt(sec){
+  sec=Math.max(0,sec);
+  var m=Math.floor(sec/60), s=sec%60;
+  return m+':'+String(s).padStart(2,'0');
+}
+function buzz(pattern){
+  try{ if(navigator.vibrate) navigator.vibrate(pattern||[200,100,200]); }catch(e){}
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.18,0.36].forEach(function(t,i){
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=i===2?880:660;
+      g.gain.setValueAtTime(0.35,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);
+      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.22);
+    });
+  }catch(e){}
+}
+
+/* ── reusable embedded Countdown ──────────────────────────────────── */
+function Countdown(totalSec, hooks){
+  this.total=totalSec; this.remaining=totalSec;
+  this.running=false; this.endAt=0; this.iv=null;
+  this.onTick=hooks.onTick||function(){};
+  this.onDone=hooks.onDone||function(){};
+}
+Countdown.prototype.start=function(){
+  if(this.running||this.remaining<=0) return;
+  this.running=true;
+  this.endAt=Date.now()+this.remaining*1000;
+  var self=this;
+  this.iv=setInterval(function(){ self._tick(); },200);
+  this._tick();
+};
+Countdown.prototype._tick=function(){
+  this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));
+  this.onTick(this.remaining,this.total,this.running);
+  if(this.remaining<=0){ this._clear(); this.running=false; this.onDone(); }
+};
+Countdown.prototype._clear=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} };
+Countdown.prototype.pause=function(){
+  if(!this.running) return;
+  this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));
+  this.running=false; this._clear();
+  this.onTick(this.remaining,this.total,false);
+};
+Countdown.prototype.reset=function(){
+  this._clear(); this.running=false; this.remaining=this.total;
+  this.onTick(this.remaining,this.total,false);
+};
+Countdown.prototype.elapsed=function(){ return this.total-this.remaining; };
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODULE 1 — JUMP ROPE (split picker → embedded countdown cards)
+   ════════════════════════════════════════════════════════════════ */
+var ROPE = {
+  split:null,            // 'A' | 'B'
+  PACE:100,              // target standard: ~100 jumps / minute
+  timers:{},             // id -> Countdown
+  log:{},                // id -> 'under'|'on'|'over'
+
+  pick:function(split){
+    this.split=split;
+    document.getElementById('ropeOptA').classList.toggle('sel',split==='A');
+    document.getElementById('ropeOptB').classList.toggle('sel',split==='B');
+    this.render();
+    updateSummary();
+  },
+
+  render:function(){
+    var host=document.getElementById('ropeCards');
+    var finHost=document.getElementById('ropeFinisherMount');
+    var finSec=document.getElementById('ropeFinSec');
+    var burnoutNum=document.getElementById('burnoutNum');
+    this.timers={};
+    finHost.innerHTML='';
+    if(this.split==='A'){
+      host.innerHTML=this._cardHTML('all','Continuous Warm-Up','15:00 straight through',15*60);
+      this._wire('all',15*60);
+      finSec.style.display='none';
+      burnoutNum.textContent='3';
+    } else if(this.split==='B'){
+      host.innerHTML=this._cardHTML('warm','Warm-Up','First 10 minutes',10*60);
+      // the 5-min finisher lives below the burpee block and unlocks once burpees are done
+      finHost.innerHTML=this._cardHTML('fin','Finisher','Final 5 minutes — unlocks after your burpees',5*60,true);
+      this._wire('warm',10*60);
+      this._wire('fin',5*60);
+      this._lock('fin',true);
+      finSec.style.display='';
+      burnoutNum.textContent='4';
+    }
+  },
+
+  _cardHTML:function(id,name,sub,sec,locked){
+    return ''+
+    '<div class="card '+(locked?'dim':'active')+'" id="ropecard-'+id+'">'+
+      '<div class="card-top">'+
+        '<div class="card-icon">🪢</div>'+
+        '<div class="card-head-main">'+
+          '<div class="card-name">'+name+' '+(locked?'<span class="badge idle" id="rope-lockbadge-'+id+'">🔒 Locked</span>':'')+'</div>'+
+          '<div class="card-sub">'+sub+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="cd-box">'+
+        '<div class="cd-mini-label">⏱️ Countdown</div>'+
+        '<div class="cd-disp" id="rope-disp-'+id+'">'+fmt(sec)+'</div>'+
+        '<div class="cd-prog"><div class="cd-prog-fill" id="rope-fill-'+id+'"></div></div>'+
+        '<div class="cd-btns">'+
+          '<button class="cd-btn go" id="rope-go-'+id+'" onclick="ROPE.toggle(\''+id+'\')">▶ Start</button>'+
+          '<button class="cd-btn ghost" onclick="ROPE.reset(\''+id+'\')">↺ Reset</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="uo-wrap">'+
+        '<div class="uo-label">📏 Pace Log</div>'+
+        '<div class="uo-target">Target standard: <strong>~'+this.PACE+' jumps/min</strong>. Log how you held the pace.</div>'+
+        '<div class="uo-seg">'+
+          '<button id="rope-under-'+id+'" onclick="ROPE.setLog(\''+id+'\',\'under\')">▼ Under</button>'+
+          '<button id="rope-on-'+id+'" onclick="ROPE.setLog(\''+id+'\',\'on\')">● On Target</button>'+
+          '<button id="rope-over-'+id+'" onclick="ROPE.setLog(\''+id+'\',\'over\')">▲ Over</button>'+
+        '</div>'+
+        '<div class="uo-count">'+
+          '<label>Actual jumps/min:</label>'+
+          '<input class="uo-input" type="number" inputmode="numeric" placeholder="'+this.PACE+'" '+
+            'id="rope-jpm-'+id+'" oninput="ROPE.autoLog(\''+id+'\',this.value)" onfocus="this.select()">'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  },
+
+  _wire:function(id,sec){
+    var self=this;
+    this.timers[id]=new Countdown(sec,{
+      onTick:function(rem,total,running){
+        var d=document.getElementById('rope-disp-'+id);
+        var f=document.getElementById('rope-fill-'+id);
+        if(d){ d.textContent=fmt(rem); d.className='cd-disp'+(running?' running':'')+(rem<=0?' done':''); }
+        if(f){ f.style.width=Math.round(((total-rem)/total)*100)+'%'; }
+        updateSummary();
+      },
+      onDone:function(){
+        buzz([200,100,200,100,400]);
+        var d=document.getElementById('rope-disp-'+id);
+        var f=document.getElementById('rope-fill-'+id);
+        if(d){ d.textContent='DONE'; d.className='cd-disp done'; }
+        if(f){ f.className='cd-prog-fill done'; f.style.width='100%'; }
+        var card=document.getElementById('ropecard-'+id);
+        if(card){ card.classList.remove('active'); card.classList.add('done'); }
+        var go=document.getElementById('rope-go-'+id);
+        if(go){ go.textContent='✓ Done'; go.className='cd-btn ghost'; }
+        updateSummary();
+      }
+    });
+  },
+
+  _lock:function(id,locked){
+    var card=document.getElementById('ropecard-'+id);
+    var go=document.getElementById('rope-go-'+id);
+    var badge=document.getElementById('rope-lockbadge-'+id);
+    if(!card) return;
+    card.classList.toggle('dim',locked);
+    if(!locked && !card.classList.contains('done')) card.classList.add('active');
+    if(go) go.disabled=locked;
+    if(go) go.style.opacity=locked?'0.4':'1';
+    if(badge){
+      if(locked){ badge.className='badge idle'; badge.textContent='🔒 Locked'; }
+      else { badge.className='badge crimson'; badge.textContent='🔓 Unlocked'; }
+    }
+  },
+
+  toggle:function(id){
+    var t=this.timers[id]; if(!t) return;
+    var go=document.getElementById('rope-go-'+id);
+    var card=document.getElementById('ropecard-'+id);
+    if(t.running){
+      t.pause();
+      if(go){ go.textContent='▶ Resume'; go.className='cd-btn go'; }
+    } else {
+      if(t.remaining<=0) return;
+      t.start();
+      if(go){ go.textContent='⏸ Pause'; go.className='cd-btn pause'; }
+      if(card && !card.classList.contains('done')){ card.classList.add('active'); }
+    }
+  },
+
+  reset:function(id){
+    var t=this.timers[id]; if(!t) return;
+    t.reset();
+    var go=document.getElementById('rope-go-'+id);
+    var card=document.getElementById('ropecard-'+id);
+    if(go){ go.textContent='▶ Start'; go.className='cd-btn go'; go.disabled=false; go.style.opacity='1'; }
+    if(card){ card.classList.remove('done'); }
+    updateSummary();
+  },
+
+  setLog:function(id,val){
+    this.log[id]=val;
+    ['under','on','over'].forEach(function(k){
+      var b=document.getElementById('rope-'+k+'-'+id);
+      if(b) b.className=(k===val?'sel-'+k:'');
+    });
+  },
+
+  autoLog:function(id,v){
+    v=parseInt(v,10);
+    if(isNaN(v)) return;
+    if(v<this.PACE-5) this.setLog(id,'under');
+    else if(v>this.PACE+5) this.setLog(id,'over');
+    else this.setLog(id,'on');
+  },
+
+  totalMinutes:function(){
+    var sec=0;
+    for(var k in this.timers){ sec+=this.timers[k].elapsed(); }
+    return sec/60;
+  }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODULE 2 — BURPEE INTERVAL RUNNER  (10 × 1min ON / 30s REST)
+   ════════════════════════════════════════════════════════════════ */
+var BURPEE = {
+  ROUNDS:10, WORK:60, REST:30,
+  movement:'Burpees',
+  round:0,                       // 0-based active round
+  phase:'idle',                  // idle | work | rest | done
+  counts:new Array(10).fill(0),
+  timer:null,
+
+  mount:function(){
+    document.getElementById('burpeeMount').innerHTML =
+    '<div class="bp-card" id="bpCard">'+
+      '<div class="bp-top">'+
+        '<div class="bp-title" id="bpTitle">💀 Burpees</div>'+
+        '<button class="bp-swap" onclick="BURPEE.swap()">⇄ Swap</button>'+
+      '</div>'+
+      '<div class="bp-meta">10 rounds · 1:00 max effort / 0:30 rest · ~15 min</div>'+
+      '<div class="bp-roundline">'+
+        '<span class="bp-round" id="bpRound">Ready · Round 1 / 10</span>'+
+        '<span class="badge idle" id="bpPhaseBadge">Idle</span>'+
+      '</div>'+
+      '<div class="bp-disp" id="bpDisp">1:00</div>'+
+      '<div class="bp-phaselabel" id="bpPhaseLabel">Press start to begin</div>'+
+
+      '<div class="bp-counter">'+
+        '<div class="bp-counter-lbl">Burpees this round — tap the number</div>'+
+        '<div class="bp-count-row">'+
+          '<button class="bp-count-btn" onclick="BURPEE.inc(-1)">−</button>'+
+          '<div class="bp-count-num" id="bpCount" onclick="BURPEE.inc(1)">0</div>'+
+          '<button class="bp-count-btn" onclick="BURPEE.inc(1)">+</button>'+
+        '</div>'+
+        '<div class="bp-count-edit">'+
+          '<input type="number" inputmode="numeric" id="bpCountInput" placeholder="set #" onfocus="this.select()">'+
+          '<button onclick="BURPEE.setExact()">Set</button>'+
+        '</div>'+
+        '<div class="bp-tap-hint">Tap the big number to add one rep</div>'+
+      '</div>'+
+
+      '<div class="bp-restbar">'+
+        '<div class="bp-restbar-track"><div class="bp-restbar-fill" id="bpRestFill"><span id="bpRestSpan"></span></div></div>'+
+        '<div class="bp-rest-note">Catch your breath — next round loads automatically</div>'+
+      '</div>'+
+
+      '<div class="bp-ctrls" id="bpCtrls">'+
+        '<button class="bp-ctrl go" id="bpGo" onclick="BURPEE.startOrPause()">▶ Start Block</button>'+
+        '<button class="bp-ctrl skip" onclick="BURPEE.skip()">⤳ Skip</button>'+
+        '<button class="bp-ctrl reset" onclick="BURPEE.reset()">↺ Reset</button>'+
+      '</div>'+
+
+      '<div class="bp-scores">'+
+        '<div class="bp-scores-lbl">Round Scores</div>'+
+        '<div class="bp-chips" id="bpChips"></div>'+
+      '</div>'+
+    '</div>';
+    this.renderChips();
+  },
+
+  swap:function(){
+    var name=prompt('Swap the burpee movement for this block:', this.movement);
+    if(name && name.trim()){
+      this.movement=name.trim();
+      document.getElementById('bpTitle').textContent='💀 '+this.movement;
+      document.getElementById('dBurpeeNm').textContent=this.movement+' · 10 rounds';
+    }
+  },
+
+  startOrPause:function(){
+    if(this.phase==='idle' || this.phase==='done'){
+      if(this.phase==='done') this.reset();
+      this.round=0; this._enterWork();
+    } else if(this.timer && this.timer.running){
+      this.timer.pause();
+      document.getElementById('bpGo').textContent='▶ Resume';
+      document.getElementById('bpGo').className='bp-ctrl pause';
+    } else if(this.timer){
+      this.timer.start();
+      document.getElementById('bpGo').textContent='⏸ Pause';
+      document.getElementById('bpGo').className='bp-ctrl pause';
+    }
+  },
+
+  _setPhaseUI:function(){
+    var card=document.getElementById('bpCard');
+    var disp=document.getElementById('bpDisp');
+    var badge=document.getElementById('bpPhaseBadge');
+    var label=document.getElementById('bpPhaseLabel');
+    var round=document.getElementById('bpRound');
+    card.className='bp-card '+(this.phase==='idle'?'':this.phase);
+    disp.className='bp-disp '+(this.phase==='idle'?'':this.phase);
+    if(this.phase==='work'){
+      badge.className='badge work'; badge.textContent='🔥 Max Effort';
+      label.textContent='WORK — GO ALL OUT';
+      round.textContent='Round '+(this.round+1)+' / 10';
+    } else if(this.phase==='rest'){
+      badge.className='badge rest'; badge.textContent='💧 Rest';
+      label.textContent='REST — 30 seconds';
+      round.textContent='Round '+(this.round+1)+' / 10 done';
+    } else if(this.phase==='done'){
+      badge.className='badge green'; badge.textContent='✓ Complete';
+      label.textContent='BLOCK COMPLETE';
+      round.textContent='All 10 rounds done';
+    }
+    var go=document.getElementById('bpGo');
+    go.textContent='⏸ Pause'; go.className='bp-ctrl pause';
+  },
+
+  _enterWork:function(){
+    this.phase='work';
+    this.counts[this.round]=this.counts[this.round]||0;
+    document.getElementById('bpCount').textContent=this.counts[this.round];
+    var input=document.getElementById('bpCountInput'); if(input) input.value='';
+    this._setPhaseUI();
+    this.renderChips();
+    buzz([300]);
+    var self=this;
+    this.timer=new Countdown(this.WORK,{
+      onTick:function(rem){ document.getElementById('bpDisp').textContent=fmt(rem); },
+      onDone:function(){ self._workDone(); }
+    });
+    this.timer.start();
+  },
+
+  _workDone:function(){
+    // score for this round is already saved live via the counter
+    buzz([200,100,200,100,400]);
+    this._enterRest();
+  },
+
+  _enterRest:function(){
+    this.phase='rest';
+    this._setPhaseUI();
+    var fill=document.getElementById('bpRestFill');
+    var span=document.getElementById('bpRestSpan');
+    fill.style.width='0%';
+    var self=this;
+    this.timer=new Countdown(this.REST,{
+      onTick:function(rem,total){
+        document.getElementById('bpDisp').textContent=fmt(rem);
+        var pct=Math.round(((total-rem)/total)*100);
+        fill.style.width=pct+'%';
+        span.textContent=rem+'s';
+      },
+      onDone:function(){ self._restDone(); }
+    });
+    this.timer.start();
+  },
+
+  _restDone:function(){
+    buzz([300]);
+    this.round++;
+    if(this.round>=this.ROUNDS){ this._finish(); }
+    else { this._enterWork(); }
+  },
+
+  _finish:function(){
+    this.phase='done';
+    this.timer=null;
+    document.getElementById('bpDisp').textContent='✓';
+    this._setPhaseUI();
+    var go=document.getElementById('bpGo');
+    go.textContent='↺ Run Again'; go.className='bp-ctrl go';
+    this.renderChips();
+    buzz([200,100,200,100,200,100,500]);
+    // Option B: finishing the burpees unlocks the jump-rope finisher below
+    if(ROPE.split==='B') ROPE._lock('fin',false);
+    updateSummary();
+  },
+
+  skip:function(){
+    if(this.phase==='work'){ if(this.timer) this.timer.pause(); this._workDone(); }
+    else if(this.phase==='rest'){ if(this.timer) this.timer.pause(); this._restDone(); }
+  },
+
+  reset:function(){
+    if(this.timer){ this.timer.pause(); this.timer=null; }
+    this.round=0; this.phase='idle';
+    this.counts=new Array(10).fill(0);
+    var card=document.getElementById('bpCard');
+    card.className='bp-card';
+    document.getElementById('bpDisp').textContent='1:00';
+    document.getElementById('bpDisp').className='bp-disp';
+    document.getElementById('bpCount').textContent='0';
+    document.getElementById('bpPhaseBadge').className='badge idle';
+    document.getElementById('bpPhaseBadge').textContent='Idle';
+    document.getElementById('bpPhaseLabel').textContent='Press start to begin';
+    document.getElementById('bpRound').textContent='Ready · Round 1 / 10';
+    var go=document.getElementById('bpGo');
+    go.textContent='▶ Start Block'; go.className='bp-ctrl go';
+    this.renderChips();
+    updateSummary();
+  },
+
+  inc:function(n){
+    if(this.phase!=='work') return;
+    this.counts[this.round]=Math.max(0,(this.counts[this.round]||0)+n);
+    document.getElementById('bpCount').textContent=this.counts[this.round];
+    this.renderChips();
+    updateSummary();
+  },
+
+  setExact:function(){
+    if(this.phase!=='work') return;
+    var input=document.getElementById('bpCountInput');
+    var v=parseInt(input.value,10);
+    if(isNaN(v)||v<0) return;
+    this.counts[this.round]=v;
+    document.getElementById('bpCount').textContent=v;
+    input.value='';
+    this.renderChips();
+    updateSummary();
+  },
+
+  renderChips:function(){
+    var host=document.getElementById('bpChips');
+    var html='';
+    for(var i=0;i<this.ROUNDS;i++){
+      var cls='bp-chip';
+      if(this.phase==='work' && i===this.round) cls+=' current';
+      else if(this.counts[i]>0) cls+=' filled';
+      html+='<span class="'+cls+'">R'+(i+1)+': '+(this.counts[i]||0)+'</span>';
+    }
+    host.innerHTML=html;
+  },
+
+  total:function(){
+    return this.counts.reduce(function(a,b){ return a+(b||0); },0);
+  }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   MODULE 3 — OPTIONAL BURNOUT (custom Walking Lunge rep selector)
+   ════════════════════════════════════════════════════════════════ */
+var BURN = {
+  goal:100,
+  chunks:[],        // logged rep chunks the user breaks the set into
+  done:false,
+
+  mount:function(){
+    document.getElementById('burnoutMount').innerHTML =
+    '<div class="burn-card" id="burnCard">'+
+      '<div class="burn-head" onclick="BURN.toggle()">'+
+        '<div class="burn-icon">🦵</div>'+
+        '<div class="burn-head-main">'+
+          '<div class="burn-opt-tag">Optional · Finisher</div>'+
+          '<div class="burn-name">Walking Lunge Burnout</div>'+
+        '</div>'+
+        '<div class="burn-chev">▼</div>'+
+      '</div>'+
+      '<div class="burn-body">'+
+        '<div class="burn-inner">'+
+          '<div class="burn-sel-lbl">Choose your total rep goal</div>'+
+          '<div class="burn-stepper">'+
+            '<button class="burn-step-btn" onclick="BURN.bump(-5)">−</button>'+
+            '<input class="burn-goal-input" id="burnGoal" type="number" inputmode="numeric" value="100" oninput="BURN.setGoal(this.value)" onfocus="this.select()">'+
+            '<button class="burn-step-btn" onclick="BURN.bump(5)">+</button>'+
+          '</div>'+
+          '<div class="burn-goal-unit">walking lunges (reps)</div>'+
+          '<div class="burn-hint">Most go 100–200. Pick any total — break it into sets however you like.</div>'+
+
+          '<div class="burn-chunks">'+
+            '<div class="burn-chunk-lbl"><span>Break it up (optional)</span><span class="burn-chunk-prog" id="burnProg">0 / 100 logged</span></div>'+
+            '<div class="burn-chunk-add">'+
+              '<input id="burnChunkInput" type="number" inputmode="numeric" placeholder="reps in this set" onfocus="this.select()">'+
+              '<button onclick="BURN.addChunk()">+ Log Set</button>'+
+            '</div>'+
+            '<div id="burnChunkList"></div>'+
+          '</div>'+
+
+          '<button class="burn-complete" id="burnComplete" onclick="BURN.toggleDone()">○ Mark Burnout Complete</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  },
+
+  toggle:function(){ document.getElementById('burnCard').classList.toggle('open'); },
+
+  setGoal:function(v){
+    v=parseInt(v,10);
+    this.goal=(isNaN(v)||v<1)?0:v;
+    this.refresh();
+  },
+  bump:function(n){
+    this.goal=Math.max(0,this.goal+n);
+    document.getElementById('burnGoal').value=this.goal;
+    this.refresh();
+  },
+
+  addChunk:function(){
+    var input=document.getElementById('burnChunkInput');
+    var v=parseInt(input.value,10);
+    if(isNaN(v)||v<=0) return;
+    this.chunks.push(v);
+    input.value='';
+    this.refresh();
+  },
+  removeChunk:function(i){ this.chunks.splice(i,1); this.refresh(); },
+
+  logged:function(){ return this.chunks.reduce(function(a,b){ return a+b; },0); },
+
+  toggleDone:function(){
+    this.done=!this.done;
+    var card=document.getElementById('burnCard');
+    var btn=document.getElementById('burnComplete');
+    card.classList.toggle('done',this.done);
+    btn.textContent=this.done?'✓ Burnout Complete':'○ Mark Burnout Complete';
+    this.refresh();
+  },
+
+  refresh:function(){
+    var list=document.getElementById('burnChunkList');
+    list.innerHTML=this.chunks.map(function(c,i){
+      return '<div class="burn-chunk-row"><span>Set '+(i+1)+' — '+c+' reps</span>'+
+        '<span class="bcr-rm" onclick="BURN.removeChunk('+i+')">✕</span></div>';
+    }).join('');
+    document.getElementById('burnProg').textContent=this.logged()+' / '+this.goal+' logged';
+    updateSummary();
+  },
+
+  // value reported to the live summary
+  summaryValue:function(){
+    if(this.done) return {v:this.goal, label:'reps ✓ done'};
+    var lg=this.logged();
+    if(lg>0) return {v:lg, label:'/ '+this.goal+' reps'};
+    return null;
+  }
+};
+
+
+/* ════════════════════════════════════════════════════════════════
+   LIVE WORKOUT SUMMARY  +  TOP PROGRESS BAR
+   ════════════════════════════════════════════════════════════════ */
+function updateSummary(){
+  // ── Jump rope minutes ──
+  var ropeMin=ROPE.totalMinutes();
+  var ropeStr=ROPE.split ? ropeMin.toFixed(1) : '0';
+  document.getElementById('qRope').innerHTML=ropeStr+'<small style="font-size:11px;color:#94a3b8;font-weight:700;">/15</small>';
+  var ropeDetailNm='Jump Rope';
+  if(ROPE.split==='A') ropeDetailNm='Jump Rope · 15 min straight';
+  else if(ROPE.split==='B') ropeDetailNm='Jump Rope · 10 + 5 split';
+  document.getElementById('dRopeNm').textContent=ropeDetailNm;
+  document.getElementById('dRope').innerHTML=ropeStr+' <small>/ 15 min</small>';
+
+  // ── Burpee total ──
+  var bt=BURPEE.total();
+  document.getElementById('qBurpee').textContent=bt;
+  document.getElementById('dBurpee').innerHTML=bt+' <small>total reps</small>';
+
+  // ── Lunge burnout ──
+  var ls=BURN.summaryValue();
+  var dl=document.getElementById('dLunge');
+  if(ls) dl.innerHTML=ls.v+' <small>'+ls.label+'</small>';
+  else dl.innerHTML='— <small>skipped</small>';
+
+  updateProgress();
+}
+
+function updateProgress(){
+  // weighted: rope 40%, burpees 50%, burnout 10%
+  var ropePct=Math.min(1, ROPE.totalMinutes()/15)*40;
+  var bpPct=Math.min(1, BURPEE.round/BURPEE.ROUNDS + (BURPEE.phase==='done'?1:0))*50;
+  if(BURPEE.phase==='done') bpPct=50;
+  var burnPct=(BURN.done?1:(BURN.logged()>0?0.5:0))*10;
+  var pct=Math.round(ropePct+bpPct+burnPct);
+  var fill=document.getElementById('progFill');
+  if(fill) fill.style.width=Math.min(100,pct)+'%';
+}
+
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+
+function resetSession(){
+  if(!confirm('Reset the whole session? This clears rope timers, burpee scores and the burnout.')) return;
+  // rope
+  ROPE.split=null; ROPE.log={}; ROPE.timers={};
+  document.getElementById('ropeOptA').classList.remove('sel');
+  document.getElementById('ropeOptB').classList.remove('sel');
+  document.getElementById('ropeCards').innerHTML='';
+  document.getElementById('ropeFinisherMount').innerHTML='';
+  document.getElementById('ropeFinSec').style.display='none';
+  document.getElementById('burnoutNum').textContent='3';
+  // burpees
+  BURPEE.reset();
+  // burnout
+  BURN.goal=100; BURN.chunks=[]; BURN.done=false;
+  BURN.mount();
+  updateSummary();
+}
+
+/* keep elapsed rope/burpee values fresh once per second while anything runs */
+setInterval(updateSummary,1000);
+
+/* ── BOOT ── */
+BURPEE.mount();
+BURN.mount();
+updateSummary();
+</script>
+
+<script src="mc-nav.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>

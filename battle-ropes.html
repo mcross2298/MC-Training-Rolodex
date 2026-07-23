@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Battle Ropes</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:210px;color:#e2e8f0;}
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:52px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:23px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+.content{max-width:680px;margin:16px auto 0;padding:0 16px;}
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+.sec-head{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#fdba74;text-transform:uppercase;margin:14px 0 8px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(249,115,22,0.4),transparent);}
+
+/* config */
+.cfg-card{background:linear-gradient(155deg,#111a2b,#0c1320);border:1.5px solid rgba(248,250,252,0.5);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 8px 28px rgba(0,0,0,0.4);}
+.cfg-label{font-size:13px;font-weight:900;color:#fff;margin-bottom:3px;}
+.cfg-help{font-size:11.5px;color:#94a3b8;font-weight:600;margin-bottom:14px;line-height:1.5;}
+.cfg-opts{display:flex;flex-direction:column;gap:9px;}
+.cfg-opt{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.25);border:1.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 13px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;transition:all 0.15s;}
+.cfg-opt:active{transform:scale(0.99);}
+.cfg-opt.sel{border-color:#f97316;background:rgba(249,115,22,0.12);box-shadow:0 4px 18px rgba(220,38,38,0.25);}
+.cfg-opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.cfg-opt.sel .cfg-opt-radio{border-color:#f97316;}
+.cfg-opt.sel .cfg-opt-radio::after{content:'';width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#f97316,#dc2626);}
+.cfg-opt-main{flex:1;min-width:0;}
+.cfg-opt-title{font-size:13.5px;font-weight:900;color:#fff;}
+.cfg-opt-desc{font-size:11.5px;color:#94a3b8;font-weight:600;margin-top:2px;line-height:1.45;}
+.cfg-start{width:100%;margin-top:6px;padding:16px;border-radius:14px;border:none;font-size:15px;font-weight:900;letter-spacing:0.04em;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 8px 26px rgba(220,38,38,0.4);}
+.cfg-start:disabled{background:rgba(255,255,255,0.06);color:#475569;box-shadow:none;cursor:not-allowed;}
+.cfg-start:not(:disabled):active{transform:scale(0.99);}
+
+/* step cards */
+.pstep{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:11px 12px;margin-bottom:9px;box-shadow:0 8px 26px rgba(0,0,0,0.4);transition:border-color .2s,opacity .2s;}
+.pstep.locked{border-color:rgba(248,250,252,0.12);opacity:0.5;pointer-events:none;}
+.pstep.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);opacity:1;}
+.pstep.done{border-color:rgba(52,211,153,0.8);box-shadow:0 6px 22px rgba(16,185,129,0.18);opacity:0.92;}
+.pstep-top{display:flex;align-items:center;gap:12px;}
+.pstep-stepnum{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;font-size:12px;font-weight:900;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(220,38,38,0.4);}
+.pstep.done .pstep-stepnum{background:linear-gradient(135deg,#34d399,#059669);}
+.pstep-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.pstep-main{flex:1;min-width:0;}
+.pstep-name{font-size:14px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pstep-target{font-size:11.5px;color:#94a3b8;font-weight:700;margin-top:2px;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;letter-spacing:0.06em;padding:4px 9px;border-radius:8px;white-space:nowrap;text-transform:uppercase;flex-shrink:0;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.work{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;animation:badgePulse 1s ease-in-out infinite;}
+.badge.rest{background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;}
+.badge.emom{background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.14);color:#94a3b8;border:1px solid rgba(148,163,184,0.22);}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.78;}}
+
+/* runner */
+.rn-wrap{margin-top:12px;}
+.rn-roundline{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;}
+.rn-move{font-size:12.5px;font-weight:900;color:#fdba74;letter-spacing:0.01em;line-height:1.3;}
+.rn-disp{font-size:46px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:0.95;text-align:center;margin:4px 0 2px;}
+.rn-disp.work{color:#f87171;}.rn-disp.rest{color:#38bdf8;}.rn-disp.emom{color:#c084fc;}.rn-disp.done{color:#34d399;}
+.rn-phaselabel{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.rn-counter{display:none;margin:0 0 10px;}
+.rn-wrap.emom .rn-counter{display:block;}
+.rn-counter-lbl{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#c084fc;margin-bottom:6px;}
+.rn-count-row{display:flex;align-items:center;justify-content:center;gap:14px;}
+.rn-count-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:20px;font-weight:900;cursor:pointer;font-family:inherit;}
+.rn-count-btn:active{transform:scale(0.92);}
+.rn-count-num{font-size:38px;font-weight:900;color:#c084fc;font-variant-numeric:tabular-nums;line-height:1;min-width:64px;text-align:center;}
+.rn-ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.rn-ctrl{padding:9px 16px;border-radius:11px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.rn-ctrl.go{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.rn-ctrl.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.rn-ctrl.skip{background:rgba(14,165,233,0.14);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3);}
+.rn-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;justify-content:center;}
+.rn-chip{font-size:10.5px;font-weight:800;padding:4px 8px;border-radius:7px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:var(--muted);}
+.rn-chip.done{border-color:rgba(52,211,153,0.45);background:rgba(52,211,153,0.12);color:#6ee7b7;}
+.rn-chip.current{border-color:#f87171;background:rgba(220,38,38,0.18);color:#fff;}
+
+/* embedded countdown (finisher) */
+.cd-box{background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px;margin-top:10px;text-align:center;}
+.cd-mini-label{font-size:11px;font-weight:900;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+.cd-disp{font-size:38px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;}
+.cd-disp.running{color:#fb923c;}.cd-disp.done{color:#34d399;}
+.cd-prog{height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;margin:11px 0 12px;}
+.cd-prog-fill{height:100%;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);border-radius:3px;transition:width 0.25s linear;}
+.cd-prog-fill.done{background:#34d399;}
+.cd-btns{display:flex;gap:8px;justify-content:center;}
+.cd-btn{padding:8px 16px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.cd-btn.go{background:rgba(52,211,153,0.16);color:#34d399;border:1px solid rgba(52,211,153,0.35);}
+.cd-btn.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.cd-btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.12);}
+.pstep-complete{width:100%;margin-top:12px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;letter-spacing:0.03em;font-family:inherit;background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.pstep-complete:active{transform:scale(0.99);}
+.pstep-complete:disabled{background:rgba(255,255,255,0.05);color:#475569;cursor:not-allowed;}
+
+.done-banner{display:none;background:linear-gradient(135deg,#34d399,#059669);border-radius:16px;padding:18px;text-align:center;margin-bottom:16px;box-shadow:0 8px 30px rgba(16,185,129,0.4);}
+.done-banner.show{display:block;}
+.done-banner .db-t{font-size:20px;font-weight:900;color:#06281d;}
+.done-banner .db-s{font-size:13px;font-weight:700;color:#06281d;opacity:0.85;margin-top:4px;}
+
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);display:none;}
+.sum-drawer.live{display:block;}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#fdba74;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:var(--muted);transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:340px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">🪢 Conditioning</div>
+      <div class="title">Battle Ropes</div>
+      <div><span class="schedule">Configurable Live Engine</span></div>
+    </div>
+  </div>
+  <div class="content">
+
+    <div id="configScreen">
+      <div class="intro-warn"><strong>Pick your level.</strong> The live timeline, rope interval timers, EMOM and finisher all build around your choice. 8 rope movements × 2 rounds, an EMOM block, then a jump-rope finisher.</div>
+      <div class="sec-head">Choose Your Level</div>
+      <div class="cfg-card">
+        <div class="cfg-label">🪢 Battle Rope Level</div>
+        <div class="cfg-help">From Basic intervals up to Advanced burpee EMOMs.</div>
+        <div class="cfg-opts" id="lvlOpts"></div>
+      </div>
+      <button class="cfg-start" id="cfgStart" onclick="CFG.start()" disabled>Build My Session →</button>
+    </div>
+
+    <div id="liveScreen" style="display:none;">
+      <div class="intro-warn"><span id="cfgRecap" style="color:#fdba74;font-weight:800;"></span> · <a href="#" onclick="CFG.reconfigure();return false;" style="color:#fca5a5;font-weight:800;">⚙ Change level</a></div>
+      <div class="done-banner" id="doneBanner">
+        <div class="db-t">🏆 Session Complete</div>
+        <div class="db-s">Ropes, EMOM and finisher all logged. Check your totals.</div>
+      </div>
+      <div id="timelineMount"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title"><span id="sumTitleText">📊 Summary</span> · <span id="sumStep">Step 0 / 0</span></div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qMin">0</div><div class="sum-quick-l">Active Min</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qReps">0</div><div class="sum-quick-l">EMOM Reps</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">🪢</span><span class="sum-line-nm">Rope Sets</span><span class="sum-line-v" id="dRope">0 <small>/ 0</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">⏱️</span><span class="sum-line-nm">Active Time (ropes + finisher)</span><span class="sum-line-v" id="dMin">0:00</span></div>
+      <div class="sum-line"><span class="sum-line-ico" id="dEmomIco">💪</span><span class="sum-line-nm" id="dEmomNm">EMOM Reps</span><span class="sum-line-v" id="dEmom">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">🏁</span><span class="sum-line-nm">Jump Rope Finisher</span><span class="sum-line-v" id="dFin">0 <small>/ 0 min</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">✅</span><span class="sum-line-nm">Steps Complete</span><span class="sum-line-v" id="dSteps">0 <small>/ 0</small></span></div>
+      <button class="sum-reset" onclick="resetAll()">↺ Reset Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function fmt(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function buzz(p){
+  try{ if(navigator.vibrate) navigator.vibrate(p||[200,100,200]); }catch(e){}
+  try{ var ctx=new (window.AudioContext||window.webkitAudioContext)();[0,0.18,0.36].forEach(function(t,i){var o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=i===2?880:660;g.gain.setValueAtTime(0.32,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);});}catch(e){}
+}
+function Countdown(totalSec,hooks){ this.total=totalSec;this.remaining=totalSec;this.running=false;this.endAt=0;this.iv=null;this.onTick=hooks.onTick||function(){};this.onDone=hooks.onDone||function(){}; }
+Countdown.prototype.start=function(){ if(this.running||this.remaining<=0)return;this.running=true;this.endAt=Date.now()+this.remaining*1000;var s=this;this.iv=setInterval(function(){s._tick();},200);this._tick(); };
+Countdown.prototype._tick=function(){ this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.onTick(this.remaining,this.total,this.running);if(this.remaining<=0){this._clear();this.running=false;this.onDone();} };
+Countdown.prototype._clear=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} };
+Countdown.prototype.pause=function(){ if(!this.running)return;this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.running=false;this._clear();this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.reset=function(){ this._clear();this.running=false;this.remaining=this.total;this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.elapsed=function(){ return this.total-this.remaining; };
+
+function pSec(s){ var m=s.match(/(\d+(?:\.\d+)?)\s*min/); var sc=s.match(/(\d+)\s*sec/); if(m)return Math.round(parseFloat(m[1])*60); if(sc)return parseInt(sc[1]); return parseInt(s)||30; }
+
+var ROPE_MOVEMENTS=[
+  'Alternating Waves (Small/Fast)','Double Arm Waves (Small/Fast)','Alternating Waves 2.0 (Large)','Double Arm Waves 2.0 (Large)',
+  'Snake Waves (Small/Fast)','Snake Waves (Large)','Clockwise Waves','Counter-Clockwise Waves'
+];
+var LEVELS=[
+  {id:'basic',label:'Phase 1 · Basic',rounds:2,workOn:'30 sec',workOff:'30 sec',emom:{reps:25,exercise:'Push-Ups',duration:10,placement:'after_ropes'},fin:5,desc:'30s on / 30s off · standalone 10-min push-up EMOM'},
+  {id:'inter',label:'Intermediate',rounds:2,workOn:'1 min',workOff:'30 sec',emom:{reps:25,exercise:'Push-Ups',duration:10,placement:'after_ropes'},fin:5,desc:'1 min on / 30s off · standalone 10-min push-up EMOM'},
+  {id:'adv1',label:'Advanced L1',rounds:2,workOn:'30 sec',workOff:'1 min',emom:{reps:20,exercise:'Push-Ups',placement:'between_sets'},fin:5,desc:'30s on / 1 min off · 20 push-ups between each set'},
+  {id:'adv2',label:'Advanced L2',rounds:2,workOn:'1 min',workOff:'1 min',emom:{reps:20,exercise:'Push-Ups',placement:'between_sets'},fin:5,desc:'1 min on / 1 min off · 20 push-ups between each set'},
+  {id:'adv3',label:'Advanced L3',rounds:2,workOn:'30 sec',workOff:'1 min',emom:{reps:8,exercise:'Burpees',placement:'between_sets'},fin:5,desc:'30s on / 1 min off · 8 burpees between each set'}
+];
+
+/* ── CONFIG ── */
+var CFG={
+  lvl:null,
+  init:function(){
+    document.getElementById('lvlOpts').innerHTML=LEVELS.map(function(L,i){
+      return '<button class="cfg-opt" data-i="'+i+'" onclick="CFG.pick('+i+')"><span class="cfg-opt-radio"></span>'+
+        '<span class="cfg-opt-main"><span class="cfg-opt-title">'+L.label+'</span>'+
+        '<span class="cfg-opt-desc">'+L.desc+'</span></span></button>';
+    }).join('');
+  },
+  pick:function(i){ this.lvl=i; document.querySelectorAll('#lvlOpts .cfg-opt').forEach(function(b){ b.classList.toggle('sel',parseInt(b.dataset.i)===i); }); document.getElementById('cfgStart').disabled=false; },
+  start:function(){
+    if(this.lvl==null)return;
+    var L=LEVELS[this.lvl];
+    document.getElementById('configScreen').style.display='none';
+    document.getElementById('liveScreen').style.display='block';
+    document.getElementById('sumDrawer').classList.add('live');
+    document.getElementById('cfgRecap').textContent=L.label+' · 8 moves × '+L.rounds+' rounds · '+L.emom.reps+' '+L.emom.exercise+' EMOM · '+L.fin+'-min finisher';
+    BR.build(L); BR.render(); updateSummary();
+  },
+  reconfigure:function(){ if(!confirm('Change level? This resets your current session.'))return; resetAll(true); }
+};
+
+/* ── ENGINE ── */
+var BR={
+  L:null, steps:[], activeIdx:0, complete:false,
+  build:function(L){
+    this.L=L; this.complete=false; this.activeIdx=0;
+    var steps=[{key:'rope',type:'rope',icon:'🪢',name:'Battle Rope Movements'}];
+    if(L.emom.placement==='after_ropes') steps.push({key:'emom',type:'emom',icon:'💪',name:'EMOM — '+L.emom.reps+' '+L.emom.exercise});
+    steps.push({key:'fin',type:'timed',icon:'🏁',name:'Jump Rope Finisher',sec:L.fin*60});
+    steps.forEach(function(s,i){ s.idx=i; s.done=false; });
+    this.steps=steps;
+    ROPE.reset(L); EMOM.reset(L);
+    var fs=this._k('fin'); fs.timer=null;
+  },
+  render:function(){
+    var html='';
+    this.steps.forEach(function(st){ html+=BR.stepHTML(st); });
+    document.getElementById('timelineMount').innerHTML=html;
+    var fs=this._k('fin'); BR.wireFinisher(fs);
+    ROPE.init(); if(this._k('emom')) EMOM.init();
+    this.refreshStates();
+  },
+  stepHTML:function(st){
+    var n=st.idx+1, inner, target;
+    if(st.type==='rope'){ target=this.L.rounds+' rounds × 8 moves · '+this.L.workOn+' on / '+this.L.workOff+' off'; inner=ROPE.html(); }
+    else if(st.type==='emom'){ target=this.L.emom.duration+'-min EMOM · '+this.L.emom.reps+' '+this.L.emom.exercise+'/min'; inner=EMOM.html(); }
+    else { target=this.L.fin+'-min steady jump rope · cool down'; inner='<div class="cd-box"><div class="cd-mini-label">⏱️ Countdown</div>'+
+      '<div class="cd-disp" id="cd-disp-fin">'+fmt(st.sec)+'</div>'+
+      '<div class="cd-prog"><div class="cd-prog-fill" id="cd-fill-fin"></div></div>'+
+      '<div class="cd-btns"><button class="cd-btn go" id="cd-go-fin" onclick="BR.finToggle()">▶ Start</button>'+
+      '<button class="cd-btn ghost" onclick="BR.finReset()">↺ Reset</button></div></div>'+
+      '<button class="pstep-complete" id="done-fin" onclick="BR.completeFin()" disabled>✓ Finisher Complete</button>'; }
+    return '<div class="pstep locked" id="step-'+st.key+'">'+
+      '<div class="pstep-top"><div class="pstep-stepnum">'+n+'</div><div class="pstep-ico">'+st.icon+'</div>'+
+      '<div class="pstep-main"><div class="pstep-name">'+st.name+'</div><div class="pstep-target">'+target+'</div></div>'+
+      '<span class="badge idle" id="badge-'+st.key+'">Locked</span></div>'+inner+'</div>';
+  },
+  wireFinisher:function(st){
+    st.timer=new Countdown(st.sec,{
+      onTick:function(rem,total,running){ var d=document.getElementById('cd-disp-fin'),f=document.getElementById('cd-fill-fin'); if(d){d.textContent=fmt(rem);d.className='cd-disp'+(running?' running':'')+(rem<=0?' done':'');} if(f){f.style.width=Math.round(((total-rem)/total)*100)+'%';} updateSummary(); },
+      onDone:function(){ buzz([200,100,200,100,400]); var d=document.getElementById('cd-disp-fin'),f=document.getElementById('cd-fill-fin'); if(d){d.textContent='DONE';d.className='cd-disp done';} if(f){f.className='cd-prog-fill done';f.style.width='100%';} }
+    });
+  },
+  finToggle:function(){ var st=this._k('fin'); if(this.steps[this.activeIdx]!==st||!st.timer)return; var go=document.getElementById('cd-go-fin'); if(st.timer.running){st.timer.pause();if(go){go.textContent='▶ Resume';go.className='cd-btn go';}} else {st.timer.start();if(go){go.textContent='⏸ Pause';go.className='cd-btn pause';}} },
+  finReset:function(){ var st=this._k('fin'); if(!st.timer)return; st.timer.reset(); var go=document.getElementById('cd-go-fin');if(go){go.textContent='▶ Start';go.className='cd-btn go';} updateSummary(); },
+  completeFin:function(){ var st=this._k('fin'); if(!st||st.done||this.steps[this.activeIdx]!==st)return; if(st.timer)st.timer.pause(); st.done=true; buzz([200]); this.advance(); updateSummary(); },
+
+  completeCore:function(key){ var st=this._k(key); if(!st||st.done)return; st.done=true; this.advance(); updateSummary(); },
+  advance:function(){ var ni=this.activeIdx; while(ni<this.steps.length&&this.steps[ni].done)ni++; this.activeIdx=ni; this.refreshStates(); if(ni<this.steps.length)this.scrollTo(this.steps[ni].key); else this.finish(); },
+  finish:function(){ this.complete=true; document.getElementById('doneBanner').classList.add('show'); document.getElementById('sumTitleText').textContent='🏆 Complete'; buzz([200,100,200,100,500]); updateSummary(); },
+  refreshStates:function(){
+    var self=this;
+    this.steps.forEach(function(st,i){
+      var card=document.getElementById('step-'+st.key); if(!card)return;
+      var state=st.done?'done':((i===self.activeIdx&&!self.complete)?'active':'locked');
+      card.className='pstep '+state;
+      var btn=document.getElementById('done-'+st.key); if(btn)btn.disabled=(state!=='active');
+      var badge=document.getElementById('badge-'+st.key);
+      if(badge){ if(st.done){badge.className='badge green';badge.textContent='✓ Done';}else if(state==='active'){badge.className='badge crimson';badge.textContent='● Active';}else{badge.className='badge idle';badge.textContent='Locked';} }
+    });
+  },
+  isActive:function(key){ var st=this.steps[this.activeIdx]; return st&&st.key===key; },
+  scrollTo:function(key){ try{var el=document.getElementById('step-'+key);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} },
+  _k:function(key){ for(var i=0;i<this.steps.length;i++)if(this.steps[i].key===key)return this.steps[i]; return null; },
+  stepsDone:function(){ return this.steps.filter(function(s){return s.done;}).length; },
+  emomReps:function(){ return ROPE.liveEmom() + EMOM.liveReps(); }
+};
+
+/* ── ROPE interval runner (with between-sets EMOM) ── */
+var ROPE={
+  L:null, total:0, idx:0, phase:'idle', timer:null, elapsed:0, emomReps:0, curCount:0, workSec:30, offSec:30, betweenEmom:false,
+  reset:function(L){ if(this.timer){this.timer.pause();this.timer=null;} this.L=L; this.idx=0; this.phase='idle'; this.elapsed=0; this.emomReps=0; this.curCount=0;
+    if(L){ this.total=L.rounds*8; this.workSec=pSec(L.workOn); this.offSec=pSec(L.workOff); this.betweenEmom=(L.emom.placement==='between_sets'); } },
+  html:function(){
+    var L=this.L;
+    return '<div class="rn-wrap" id="ropeWrap">'+
+      '<div class="rn-roundline"><span class="rn-move" id="ropeMove">Ready · '+ROPE_MOVEMENTS[0]+'</span>'+
+      '<span class="badge idle" id="ropePhase">Idle</span></div>'+
+      '<div class="rn-disp" id="ropeDisp">'+fmt(this.workSec)+'</div>'+
+      '<div class="rn-phaselabel" id="ropeLabel">Press start</div>'+
+      '<div class="rn-counter" id="ropeCounter"><div class="rn-counter-lbl" id="ropeCounterLbl">EMOM</div>'+
+        '<div class="rn-count-row"><button class="rn-count-btn" onclick="ROPE.inc(-1)">−</button>'+
+        '<div class="rn-count-num" id="ropeCount">0</div>'+
+        '<button class="rn-count-btn" onclick="ROPE.inc(1)">+</button></div></div>'+
+      '<div class="rn-ctrls"><button class="rn-ctrl go" id="ropeGo" onclick="ROPE.startOrPause()">▶ Start Ropes</button>'+
+      '<button class="rn-ctrl skip" onclick="ROPE.skip()">⤳ Skip</button></div>'+
+      '<div class="rn-chips" id="ropeChips"></div></div>';
+  },
+  init:function(){ this.renderChips(); },
+  startOrPause:function(){
+    if(!BR.isActive('rope'))return;
+    if(this.phase==='idle'){ this.idx=0; this._work(); }
+    else if(this.timer&&this.timer.running){ this.timer.pause(); var g=document.getElementById('ropeGo');if(g){g.textContent='▶ Resume';g.className='rn-ctrl go';} }
+    else if(this.timer){ this.timer.start(); var g2=document.getElementById('ropeGo');if(g2){g2.textContent='⏸ Pause';g2.className='rn-ctrl pause';} }
+  },
+  _isEmomOff:function(){ return this.betweenEmom && this.idx < 8; },   // EMOM between sets, round 1 only
+  _move:function(){ return ROPE_MOVEMENTS[this.idx%8]; },
+  _round:function(){ return Math.floor(this.idx/8); },
+  _ui:function(){
+    var wrap=document.getElementById('ropeWrap'),disp=document.getElementById('ropeDisp'),badge=document.getElementById('ropePhase'),label=document.getElementById('ropeLabel'),move=document.getElementById('ropeMove'),go=document.getElementById('ropeGo'),clbl=document.getElementById('ropeCounterLbl');
+    wrap.className='rn-wrap'+(this.phase==='emom'?' emom':'');
+    disp.className='rn-disp '+(this.phase==='idle'?'':this.phase);
+    if(this.phase==='work'){ badge.className='badge work';badge.textContent='🔥 Work';label.textContent='WORK — '+this._move();move.textContent='Set '+(this.idx+1)+' / '+this.total+' · R'+(this._round()+1)+' · '+this._move();if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(this.phase==='off'){ badge.className='badge rest';badge.textContent='💧 Off';label.textContent='REST';move.textContent='Set '+(this.idx+1)+' / '+this.total+' done';if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(this.phase==='emom'){ badge.className='badge emom';badge.textContent='⚡ EMOM';label.textContent='EMOM — '+this.L.emom.reps+' '+this.L.emom.exercise;move.textContent='Set '+(this.idx+1)+' / '+this.total+' · between-set EMOM';if(clbl)clbl.textContent=this.L.emom.reps+' '+this.L.emom.exercise+' — tap to adjust';if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(this.phase==='done'){ badge.className='badge green';badge.textContent='✓ Done';label.textContent='ALL ROPE SETS DONE';move.textContent=this.total+' sets complete';disp.textContent='✓'; }
+    this.renderChips();
+  },
+  _work:function(){
+    this.phase='work'; this._ui(); buzz([300]); var self=this;
+    this.timer=new Countdown(this.workSec,{ onTick:function(rem){ document.getElementById('ropeDisp').textContent=fmt(rem); self._track(self.workSec-rem,0); }, onDone:function(){ buzz([200,100,200]); self._off(); } });
+    this.timer.start();
+  },
+  _off:function(){
+    var emom=this._isEmomOff();
+    this.phase=emom?'emom':'off';
+    if(emom){ this.curCount=this.L.emom.reps; document.getElementById('ropeCount').textContent=this.curCount; }
+    this._ui(); var self=this;
+    this.timer=new Countdown(this.offSec,{ onTick:function(rem){ document.getElementById('ropeDisp').textContent=fmt(rem); self._track(self.workSec, self.offSec-rem); }, onDone:function(){ self._advance(); } });
+    this.timer.start();
+  },
+  _track:function(workDone,offDone){ this.elapsed=this.idx*(this.workSec+this.offSec)+workDone+offDone; updateSummary(); },
+  _advance:function(){
+    if(this.phase==='emom'){ this.emomReps+=this.curCount; this.curCount=0; }
+    buzz([300]); this.idx++;
+    if(this.idx>=this.total) this._finish(); else this._work();
+  },
+  _finish:function(){ this.phase='done'; this.timer=null; this.elapsed=this.total*(this.workSec+this.offSec); this._ui(); buzz([200,100,200,100,500]); BR.completeCore('rope'); },
+  skip:function(){
+    if(!BR.isActive('rope'))return;
+    if(this.phase==='work'){ if(this.timer)this.timer.pause(); this._off(); }
+    else if(this.phase==='off'||this.phase==='emom'){ if(this.timer)this.timer.pause(); this._advance(); }
+  },
+  inc:function(n){ if(this.phase!=='emom')return; this.curCount=Math.max(0,this.curCount+n); document.getElementById('ropeCount').textContent=this.curCount; updateSummary(); },
+  renderChips:function(){ var host=document.getElementById('ropeChips'); if(!host)return; var h=''; for(var i=0;i<this.total;i++){ var cls='rn-chip'; if(this.phase!=='idle'&&i<this.idx)cls+=' done'; else if(this.phase==='done')cls+=' done'; else if(this.phase!=='idle'&&i===this.idx)cls+=' current'; h+='<span class="'+cls+'">'+(i+1)+'</span>'; } host.innerHTML=h; },
+  doneSets:function(){ return this.phase==='done'?this.total:this.idx; },
+  liveEmom:function(){ return this.emomReps + (this.phase==='emom'?this.curCount:0); }
+};
+
+/* ── standalone EMOM engine (after_ropes) ── */
+var EMOM={
+  L:null, minute:0, duration:0, phase:'idle', timer:null, reps:0, curCount:0, target:0, exercise:'',
+  reset:function(L){ if(this.timer){this.timer.pause();this.timer=null;} this.L=L; this.minute=0; this.phase='idle'; this.reps=0; this.curCount=0;
+    if(L&&L.emom){ this.duration=L.emom.duration||0; this.target=L.emom.reps; this.exercise=L.emom.exercise; } },
+  html:function(){
+    return '<div class="rn-wrap emom" id="emomWrap">'+
+      '<div class="rn-roundline"><span class="rn-move" id="emomMove">Ready · Minute 1 / '+this.duration+'</span>'+
+      '<span class="badge idle" id="emomPhase">Idle</span></div>'+
+      '<div class="rn-disp" id="emomDisp">1:00</div>'+
+      '<div class="rn-phaselabel" id="emomLabel">'+this.target+' '+this.exercise+' every minute</div>'+
+      '<div class="rn-counter" style="display:block"><div class="rn-counter-lbl" id="emomCounterLbl">'+this.target+' '+this.exercise+' — tap to adjust</div>'+
+        '<div class="rn-count-row"><button class="rn-count-btn" onclick="EMOM.inc(-1)">−</button>'+
+        '<div class="rn-count-num" id="emomCount">0</div>'+
+        '<button class="rn-count-btn" onclick="EMOM.inc(1)">+</button></div></div>'+
+      '<div class="rn-ctrls"><button class="rn-ctrl go" id="emomGo" onclick="EMOM.startOrPause()">▶ Start EMOM</button>'+
+      '<button class="rn-ctrl skip" onclick="EMOM.skip()">⤳ Skip Minute</button></div>'+
+      '<div class="rn-chips" id="emomChips"></div></div>';
+  },
+  init:function(){ this.renderChips(); },
+  startOrPause:function(){
+    if(!BR.isActive('emom'))return;
+    if(this.phase==='idle'){ this.minute=0; this._minute(); }
+    else if(this.timer&&this.timer.running){ this.timer.pause(); var g=document.getElementById('emomGo');if(g){g.textContent='▶ Resume';g.className='rn-ctrl go';} }
+    else if(this.timer){ this.timer.start(); var g2=document.getElementById('emomGo');if(g2){g2.textContent='⏸ Pause';g2.className='rn-ctrl pause';} }
+  },
+  _minute:function(){
+    this.phase='work'; this.curCount=this.target; document.getElementById('emomCount').textContent=this.curCount;
+    var badge=document.getElementById('emomPhase'),label=document.getElementById('emomLabel'),move=document.getElementById('emomMove'),go=document.getElementById('emomGo'),disp=document.getElementById('emomDisp');
+    badge.className='badge emom';badge.textContent='⚡ Min '+(this.minute+1);label.textContent=this.target+' '+this.exercise+' — go!';move.textContent='Minute '+(this.minute+1)+' / '+this.duration;disp.className='rn-disp emom';if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';}
+    this.renderChips(); buzz([300]); var self=this;
+    this.timer=new Countdown(60,{ onTick:function(rem){ document.getElementById('emomDisp').textContent=fmt(rem); updateSummary(); }, onDone:function(){ self._next(); } });
+    this.timer.start();
+  },
+  _next:function(){ this.reps+=this.curCount; this.curCount=0; buzz([200,100,200]); this.minute++; if(this.minute>=this.duration)this._finish(); else this._minute(); },
+  _finish:function(){ this.phase='done'; this.timer=null; var badge=document.getElementById('emomPhase'),label=document.getElementById('emomLabel'),move=document.getElementById('emomMove'),disp=document.getElementById('emomDisp'); badge.className='badge green';badge.textContent='✓ Done';label.textContent='EMOM COMPLETE';move.textContent=this.duration+' minutes done';disp.textContent='✓';disp.className='rn-disp done'; this.renderChips(); buzz([200,100,200,100,500]); BR.completeCore('emom'); },
+  skip:function(){ if(!BR.isActive('emom'))return; if(this.phase==='work'){ if(this.timer)this.timer.pause(); this._next(); } },
+  inc:function(n){ if(this.phase!=='work')return; this.curCount=Math.max(0,this.curCount+n); document.getElementById('emomCount').textContent=this.curCount; updateSummary(); },
+  renderChips:function(){ var host=document.getElementById('emomChips'); if(!host)return; var h=''; for(var i=0;i<this.duration;i++){ var cls='rn-chip'; if(this.phase!=='idle'&&i<this.minute)cls+=' done'; else if(this.phase==='done')cls+=' done'; else if(this.phase!=='idle'&&i===this.minute)cls+=' current'; h+='<span class="'+cls+'">'+(i+1)+'</span>'; } host.innerHTML=h; },
+  liveReps:function(){ return this.reps + (this.phase==='work'?this.curCount:0); }
+};
+
+/* ── SUMMARY ── */
+function fmtClock(sec){ var m=Math.floor(sec/60),s=Math.round(sec)%60; return m+':'+String(s).padStart(2,'0'); }
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+function updateSummary(){
+  if(!BR.L) return;
+  var fin=BR._k('fin'); var finSec=fin?(fin.done?fin.sec:(fin.timer?fin.timer.elapsed():0)):0;
+  var sec=ROPE.elapsed+finSec;
+  var emomReps=ROPE.liveEmom()+EMOM.liveReps();
+  document.getElementById('qMin').textContent=(sec/60).toFixed(1);
+  document.getElementById('qReps').textContent=emomReps;
+  document.getElementById('dRope').innerHTML=ROPE.doneSets()+' <small>/ '+ROPE.total+' sets</small>';
+  document.getElementById('dMin').textContent=fmtClock(sec);
+  document.getElementById('dEmomIco').textContent=(BR.L.emom.exercise==='Burpees'?'💀':'💪');
+  document.getElementById('dEmomNm').textContent='EMOM '+BR.L.emom.exercise;
+  document.getElementById('dEmom').innerHTML=emomReps+' <small>reps</small>';
+  document.getElementById('dFin').innerHTML=Math.round(finSec/60*10)/10+' <small>/ '+BR.L.fin+' min</small>';
+  var done=BR.stepsDone(), total=BR.steps.length;
+  document.getElementById('dSteps').innerHTML=done+' <small>/ '+total+'</small>';
+  document.getElementById('sumStep').textContent='Step '+(BR.complete?total:Math.min(BR.activeIdx+1,total))+' / '+total;
+  var fill=document.getElementById('progFill'); if(fill)fill.style.width=Math.round((done/total)*100)+'%';
+}
+function resetAll(toConfig){
+  if(toConfig!==true){ if(!confirm('Reset the session? All timers and reps will clear.'))return; }
+  if(ROPE.timer)ROPE.timer.pause(); if(EMOM.timer)EMOM.timer.pause();
+  var fin=BR._k('fin'); if(fin&&fin.timer)fin.timer.pause();
+  document.getElementById('liveScreen').style.display='none';
+  document.getElementById('configScreen').style.display='block';
+  document.getElementById('sumDrawer').classList.remove('live','open');
+  document.getElementById('doneBanner').classList.remove('show');
+  document.getElementById('timelineMount').innerHTML='';
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('sumTitleText').textContent='📊 Summary';
+  document.getElementById('sumStep').textContent='Step 0 / 0';
+  CFG.lvl=null; document.querySelectorAll('#lvlOpts .cfg-opt').forEach(function(b){b.classList.remove('sel');});
+  document.getElementById('cfgStart').disabled=true;
+  BR.L=null; BR.steps=[]; BR.activeIdx=0; BR.complete=false;
+}
+setInterval(function(){ if(BR.L) updateSummary(); },1000);
+
+CFG.init();
+</script>
+<script src="mc-nav.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>

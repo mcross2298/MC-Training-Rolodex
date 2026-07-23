@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Everything Under the Kitchen Sink</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111;
+    --border: #1e1e1e;
+    --text: #e5e5e5;
+    --muted: #6b7280;
+    --accent: #f59e0b;
+    --accent-dim: rgba(245,158,11,0.12);
+    --accent-glow: rgba(245,158,11,0.25);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 60px; }
+
+  .page-wrap { max-width: 680px; margin: 0 auto; padding: 0 16px; }
+
+  .back-nav { padding: 16px 0 0; }
+  .back-nav a { color: var(--muted); text-decoration: none; font-size: 13px; letter-spacing: 0.02em; }
+  .back-nav a:hover { color: var(--accent); }
+
+  .program-header {
+    margin-top: 20px;
+    padding: 24px 20px;
+    background: linear-gradient(135deg, #1c1002, #0a0a0a);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-top: 3px solid var(--accent);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .program-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .program-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .program-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+  .program-header h1 {
+    font-size: clamp(22px, 5vw, 28px); font-weight: 900; line-height: 1.1;
+    color: #fff; margin-bottom: 10px; letter-spacing: -0.02em;
+  }
+  .program-tagline { font-size: 14px; color: var(--muted); line-height: 1.55; margin-bottom: 18px; }
+  .program-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .meta-badge {
+    background: var(--accent-dim); border: 1px solid var(--accent-glow);
+    color: var(--accent); font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 20px; letter-spacing: 0.04em;
+  }
+  .designer-credit { font-size: 12px; color: var(--muted); margin-top: 14px; }
+
+  .guide-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-dim); border: 1px solid var(--accent-glow);
+    color: var(--accent); font-size: 12px; font-weight: 700;
+    padding: 9px 16px; border-radius: 8px; text-decoration: none;
+    margin-top: 16px; transition: background 0.15s;
+  }
+  .guide-link:hover { background: rgba(245,158,11,0.2); }
+
+  .modules-label {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    margin: 28px 0 12px;
+  }
+
+  /* ── Hub cards ── */
+  .hub-card {
+    background: var(--surface);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-top: 3px solid var(--accent);
+    border-radius: 14px; padding: 0;
+    text-decoration: none; color: var(--text);
+    display: block; margin-bottom: 16px;
+    transition: border-color 0.15s;
+    overflow: hidden;
+  }
+  .hub-card:hover { border-color: rgba(245,158,11,0.5); }
+
+  .hub-card.ie-split {
+    border-color: rgba(249,115,22,0.25);
+    border-top-color: #f97316;
+  }
+  .hub-card.ie-split:hover { border-color: rgba(249,115,22,0.5); }
+
+  .hub-card-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 20px; border-bottom: 1px solid rgba(245,158,11,0.1);
+  }
+  .hub-card.ie-split .hub-card-header { border-bottom-color: rgba(249,115,22,0.1); }
+
+  .hub-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .hub-icon.ie { background: rgba(249,115,22,0.12); }
+
+  .hub-title { font-size: 16px; font-weight: 800; color: #e2e8f0; margin-bottom: 3px; }
+  .hub-sub { font-size: 12px; color: var(--muted); }
+
+  .hub-cta {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+  .hub-card.ie-split .hub-cta { color: #f97316; }
+
+  .hub-splits {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 0 20px 16px;
+  }
+  .split-pill {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid rgba(245,158,11,0.25);
+    color: #fbbf24; background: rgba(245,158,11,0.08);
+  }
+  .split-pill.shldr { border-color: rgba(139,92,246,0.25); color: #c084fc; background: rgba(139,92,246,0.08); }
+  .split-pill.back  { border-color: rgba(8,145,178,0.25);  color: #38bdf8; background: rgba(8,145,178,0.08); }
+  .split-pill.legs  { border-color: rgba(22,163,74,0.25);  color: #4ade80; background: rgba(22,163,74,0.08); }
+  .split-pill.cond  { border-color: rgba(217,119,6,0.25);  color: #fbbf24; background: rgba(217,119,6,0.08); }
+  .split-pill.push  { border-color: rgba(225,29,72,0.25);  color: #fb7185; background: rgba(225,29,72,0.08); }
+  .split-pill.pull  { border-color: rgba(8,145,178,0.25);  color: #38bdf8; background: rgba(8,145,178,0.08); }
+
+  /* ── SAND LIGHT MODE (Phase 7) ────────────────────────────────────── */
+  html[data-theme="light"] {
+    --bg: #f5f2ec;
+    --surface: #efe9db;
+    --border: rgba(28,26,23,0.12);
+    --text: #1c1a17;
+    --muted: #6b6459;
+    --accent-dim: rgba(245,158,11,0.16);
+    --accent-glow: rgba(245,158,11,0.32);
+  }
+  html[data-theme="light"] .program-header { background: linear-gradient(135deg, rgba(245,158,11,0.14), #faf7f0); }
+  html[data-theme="light"] .program-header h1,
+  html[data-theme="light"] .hub-title { color: #1c1a17; }
+  html[data-theme="light"] .split-pill { color: #8a6d1a; }
+  html[data-theme="light"] .split-pill.shldr { color: #7c3aed; }
+  html[data-theme="light"] .split-pill.back,
+  html[data-theme="light"] .split-pill.pull { color: #0369a1; }
+  html[data-theme="light"] .split-pill.legs { color: #15803d; }
+  html[data-theme="light"] .split-pill.cond { color: #8a6d1a; }
+  html[data-theme="light"] .split-pill.push { color: #be123c; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
+<noscript><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/></noscript>
+<link rel="stylesheet" href="mc-program-landing.css"/>
+<link rel="stylesheet" href="mc-surprise.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="back-nav">
+    <a href="dashboard.html">← Programs</a>
+  </div>
+
+  <div id="programStatus"></div>
+
+  <!-- Program Header -->
+  <div class="program-header">
+    <div class="program-eyebrow">🔥 Flagship Program</div>
+    <span class="program-icon">🔥</span>
+    <h1>Everything Under the Kitchen Sink</h1>
+    <p class="program-tagline">Six distinct training splits under one roof — the complete MC arsenal, station-anchored for commercial gym efficiency. Pick your split and get to work.</p>
+    <div class="program-meta">
+      <span class="meta-badge">6 Splits</span>
+      <span class="meta-badge">Station-Anchored</span>
+    </div>
+    <div class="designer-credit">✍️ Designed by Mike Cross</div>
+    <a class="guide-link" href="ks-instructions.html">📋 Program Guide &amp; Instructions →</a>
+    <button type="button" class="mc-surprise-btn" data-mc-surprise style="--sp-accent:#e0a03c"><span class="mc-surprise-ico">🎲</span>Surprise Me</button>
+  </div>
+
+  <!-- Split 1 -->
+  <div class="modules-label">Split 1 — 5-On 2-Off · Station-Anchored</div>
+  <a href="kitchen-sink.html" class="hub-card">
+    <div class="hub-card-header">
+      <div class="hub-icon">🔥</div>
+      <div>
+        <div class="hub-title">Everything Under the Kitchen Sink</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill">💪 Chest &amp; Biceps</span>
+      <span class="split-pill shldr">🏋️ Shoulders &amp; Triceps</span>
+      <span class="split-pill back">🏋️ Back &amp; Traps</span>
+      <span class="split-pill legs">🦵 Legs</span>
+      <span class="split-pill cond">⚡ Conditioning Day</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 1</span>
+      <span>→</span>
+    </div>
+  </a>
+
+  <details class="mc-split-picker-other">
+    <summary>Other splits (5)</summary>
+    <div class="mc-split-picker-other-body">
+
+  <!-- Split 2 -->
+  <div class="modules-label">Split 2 — 3-On 1-Off · PPL + Conditioning</div>
+  <a href="cat-ie.html" class="hub-card ie-split">
+    <div class="hub-card-header">
+      <div class="hub-icon ie">🔩</div>
+      <div>
+        <div class="hub-title">Iron Engine</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill push">💪 Push</span>
+      <span class="split-pill pull">🏋️ Pull</span>
+      <span class="split-pill legs">🦵 Legs</span>
+      <span class="split-pill cond">⚡ Conditioning ×3</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 2</span>
+      <span>→</span>
+    </div>
+  </a>
+
+  <!-- Split 3 -->
+  <div class="modules-label">Split 3 — 3-On 1-Off 2-On · Station-Anchored</div>
+  <a href="kitchen-sink-s3.html" class="hub-card">
+    <div class="hub-card-header">
+      <div class="hub-icon">💥</div>
+      <div>
+        <div class="hub-title">Split 3 — 3-On 1-Off 2-On</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill">💪 Chest &amp; Arms</span>
+      <span class="split-pill shldr">🏋️ Back &amp; Shoulders</span>
+      <span class="split-pill legs">🦵 Legs</span>
+      <span class="split-pill cond">⚡ Conditioning ×2</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 3</span>
+      <span>→</span>
+    </div>
+  </a>
+
+  <!-- Split 4 -->
+  <div class="modules-label">Split 4 — 5-On 2-Off · Station-Anchored</div>
+  <a href="kitchen-sink-s4.html" class="hub-card">
+    <div class="hub-card-header">
+      <div class="hub-icon">🦵</div>
+      <div>
+        <div class="hub-title">Split 4 — 5-On 2-Off</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill legs">🦵 Legs (Quad)</span>
+      <span class="split-pill">💪 Chest</span>
+      <span class="split-pill back">🏋️ Back &amp; Biceps</span>
+      <span class="split-pill shldr">🦵 Legs (Glutes/Hammies)</span>
+      <span class="split-pill cond">🏅 Shoulders &amp; Triceps</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 4</span>
+      <span>→</span>
+    </div>
+  </a>
+
+  <!-- Split 5 -->
+  <div class="modules-label">Split 5 — 3-On 2-Off · Upper / Lower / Full Body</div>
+  <a href="kitchen-sink-s5.html" class="hub-card">
+    <div class="hub-card-header">
+      <div class="hub-icon">⚡</div>
+      <div>
+        <div class="hub-title">Split 5 — 3-On 2-Off</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill">💪 Upper Body</span>
+      <span class="split-pill legs">🦵 Lower Body</span>
+      <span class="split-pill shldr">⚡ Full Body</span>
+      <span class="split-pill cond">😴 Rest · 🚶 Active Rest</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 5</span>
+      <span>→</span>
+    </div>
+  </a>
+
+  <!-- Split 6 -->
+  <div class="modules-label">Split 6 — 4-On 1-Off 2-On · High-Frequency Hypertrophy</div>
+  <a href="kitchen-sink-s6.html" class="hub-card">
+    <div class="hub-card-header">
+      <div class="hub-icon">⚡</div>
+      <div>
+        <div class="hub-title">Split 6 — 4-On 1-Off 2-On</div>
+        <div class="hub-sub">10 exercises/session · Tri-Set · Cluster · Drop Set · Finisher</div>
+      </div>
+    </div>
+    <div class="hub-splits">
+      <span class="split-pill push">💪 Chest</span>
+      <span class="split-pill back">🏋️ Back</span>
+      <span class="split-pill legs">🦵 Legs</span>
+      <span class="split-pill shldr">🏅 Shoulders &amp; Biceps</span>
+      <span class="split-pill cond">😴 Rest</span>
+      <span class="split-pill push">💪 Chest &amp; Triceps</span>
+      <span class="split-pill">⚡ Legs &amp; Back</span>
+    </div>
+    <div class="hub-cta">
+      <span>Open Split 6</span>
+      <span>→</span>
+    </div>
+  </a>
+
+    </div>
+  </details>
+
+</div>
+
+<script>window.MC_SURPRISE = { sel: '.hub-card' };</script>
+<script src="mc-surprise.js"></script>
+<script src="mc-nav.js"></script>
+<script src="mc-program-status.js"></script>
+<script>
+MCProgramStatus.mount(document.getElementById('programStatus'), {
+  name: 'Everything Under the Kitchen Sink',
+  accent: '#f59e0b',
+  splits: [
+    { title: 'Everything Under the Kitchen Sink', href: 'kitchen-sink.html' },
+    { title: 'Iron Engine', href: 'cat-ie.html' },
+    { title: 'Split 3', href: 'kitchen-sink-s3.html' },
+    { title: 'Split 4', href: 'kitchen-sink-s4.html' },
+    { title: 'Split 5', href: 'kitchen-sink-s5.html' },
+    { title: 'Split 6', href: 'kitchen-sink-s6.html' }
+  ],
+  startHref: 'kitchen-sink.html'
+});
+</script>
+</body>
+</html>

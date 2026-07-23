@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MC Training">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>The Popeye</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:#070a12;min-height:100vh;padding-bottom:210px;color:#e2e8f0;}
+.app{background:linear-gradient(160deg,#3f0a0a 0%,#1a0f1a 38%,#0f172a 100%);min-height:100vh;}
+.back-link{position:absolute;top:18px;left:18px;color:#fca5a5;text-decoration:none;font-size:13px;font-weight:700;background:rgba(220,38,38,0.18);padding:6px 14px;border-radius:20px;border:1px solid rgba(248,113,113,0.4);z-index:10;}
+.back-link:active{background:rgba(220,38,38,0.35);}
+.header{background:linear-gradient(90deg,#7f1d1d,#3f0a0a);padding:52px 20px 18px;border-bottom:1px solid rgba(255,255,255,0.1);position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:0.25em;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;}
+.title{font-size:23px;font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-0.02em;}
+.schedule{display:inline-block;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.5);border-radius:6px;padding:5px 14px;font-size:12px;color:#fed7aa;font-weight:700;letter-spacing:0.04em;}
+.content{max-width:680px;margin:16px auto 0;padding:0 16px;}
+.intro-warn{background:rgba(220,38,38,0.1);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;color:#fecaca;font-size:12.5px;line-height:1.6;}
+.intro-warn strong{color:#fff;}
+.sec-head{font-size:11px;font-weight:900;letter-spacing:0.2em;color:#fdba74;text-transform:uppercase;margin:14px 0 8px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(249,115,22,0.4),transparent);}
+
+/* step cards */
+.pstep{background:linear-gradient(155deg,#111a2b,#0c1320);border-radius:16px;border:1.5px solid rgba(248,250,252,0.5);padding:11px 12px;margin-bottom:9px;box-shadow:0 8px 26px rgba(0,0,0,0.4);transition:border-color .2s,opacity .2s;}
+.pstep.locked{border-color:rgba(248,250,252,0.12);opacity:0.5;pointer-events:none;}
+.pstep.active{border-color:rgba(251,146,60,0.9);box-shadow:0 8px 32px rgba(220,38,38,0.28);opacity:1;}
+.pstep.done{border-color:rgba(52,211,153,0.8);box-shadow:0 6px 22px rgba(16,185,129,0.18);opacity:0.92;}
+.pstep-top{display:flex;align-items:center;gap:12px;}
+.pstep-stepnum{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;font-size:12px;font-weight:900;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 12px rgba(220,38,38,0.4);}
+.pstep.done .pstep-stepnum{background:linear-gradient(135deg,#34d399,#059669);}
+.pstep-ico{font-size:24px;flex-shrink:0;line-height:1;}
+.pstep-main{flex:1;min-width:0;}
+.pstep-name{font-size:14px;font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.pstep-target{font-size:11.5px;color:#94a3b8;font-weight:700;margin-top:2px;}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:900;letter-spacing:0.06em;padding:4px 9px;border-radius:8px;white-space:nowrap;text-transform:uppercase;flex-shrink:0;}
+.badge.crimson{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 2px 10px rgba(220,38,38,0.3);}
+.badge.work{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;animation:badgePulse 1s ease-in-out infinite;}
+.badge.rest{background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;}
+.badge.green{background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.badge.idle{background:rgba(148,163,184,0.14);color:#94a3b8;border:1px solid rgba(148,163,184,0.22);}
+@keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:0.78;}}
+
+/* interval runner (rice bucket) */
+.rn-wrap{margin-top:12px;}
+.rn-roundline{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.rn-move{font-size:13px;font-weight:900;color:#fdba74;letter-spacing:0.02em;}
+.rn-disp{font-size:46px;font-weight:900;color:#e2e8f0;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;line-height:0.95;text-align:center;margin:4px 0 2px;}
+.rn-disp.work{color:#f87171;}
+.rn-disp.rest{color:#38bdf8;}
+.rn-disp.done{color:#34d399;}
+.rn-phaselabel{text-align:center;font-size:11px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.rn-ctrls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.rn-ctrl{padding:9px 16px;border-radius:11px;border:none;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:0.06em;font-family:inherit;}
+.rn-ctrl.go{background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.rn-ctrl.pause{background:rgba(251,146,60,0.16);color:#fb923c;border:1px solid rgba(251,146,60,0.35);}
+.rn-ctrl.skip{background:rgba(14,165,233,0.14);color:#7dd3fc;border:1px solid rgba(14,165,233,0.3);}
+.rn-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.rn-chip{font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:var(--muted);}
+.rn-chip.done{border-color:rgba(52,211,153,0.45);background:rgba(52,211,153,0.12);color:#6ee7b7;}
+.rn-chip.current{border-color:#f87171;background:rgba(220,38,38,0.18);color:#fff;}
+
+/* rep cards */
+.rep-body{margin-top:12px;}
+.rep-stepper{display:flex;align-items:center;justify-content:center;gap:14px;}
+.rep-step-btn{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.3);color:#fff;font-size:22px;font-weight:900;cursor:pointer;font-family:inherit;}
+.rep-step-btn:active{transform:scale(0.92);}
+.rep-input{width:100px;padding:8px;background:rgba(0,0,0,0.3);border:1.5px solid rgba(249,115,22,0.4);border-radius:12px;color:#fff;font-size:24px;font-weight:900;text-align:center;font-family:inherit;outline:none;font-variant-numeric:tabular-nums;}
+.rep-input:focus{border-color:#f97316;}
+.rep-unit{text-align:center;font-size:11px;color:#94a3b8;font-weight:700;margin-top:8px;}
+.pstep-complete{width:100%;margin-top:13px;padding:13px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-weight:900;letter-spacing:0.03em;font-family:inherit;background:linear-gradient(135deg,#34d399,#059669);color:#06281d;}
+.pstep-complete:active{transform:scale(0.99);}
+.pstep-complete:disabled{background:rgba(255,255,255,0.05);color:#475569;cursor:not-allowed;}
+
+/* completion banner */
+.done-banner{display:none;background:linear-gradient(135deg,#34d399,#059669);border-radius:16px;padding:18px;text-align:center;margin-bottom:16px;box-shadow:0 8px 30px rgba(16,185,129,0.4);}
+.done-banner.show{display:block;}
+.done-banner .db-t{font-size:20px;font-weight:900;color:#06281d;}
+.done-banner .db-s{font-size:13px;font-weight:700;color:#06281d;opacity:0.85;margin-top:4px;}
+
+/* summary drawer */
+.sum-drawer{position:fixed;left:0;right:0;bottom:60px;z-index:120;background:rgba(8,12,20,0.97);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-top:1.5px solid rgba(248,113,113,0.4);box-shadow:0 -8px 30px rgba(0,0,0,0.55);}
+.sum-handle{display:flex;align-items:center;gap:12px;padding:11px 16px calc(11px + env(safe-area-inset-bottom));cursor:pointer;user-select:none;}
+.sum-handle-title{font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:#fdba74;}
+.sum-quick{margin-left:auto;display:flex;gap:14px;align-items:center;}
+.sum-quick-item{text-align:right;}
+.sum-quick-v{font-size:17px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;line-height:1;}
+.sum-quick-l{font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;margin-top:2px;}
+.sum-chev{font-size:12px;color:var(--muted);transition:transform 0.25s;}
+.sum-drawer.open .sum-chev{transform:rotate(180deg);}
+.sum-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+.sum-drawer.open .sum-detail{max-height:320px;}
+.sum-detail-inner{padding:4px 16px 16px;}
+.sum-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+.sum-line:last-child{border-bottom:none;}
+.sum-line-ico{font-size:17px;width:24px;text-align:center;flex-shrink:0;}
+.sum-line-nm{font-size:13px;font-weight:700;color:#cbd5e1;flex:1;}
+.sum-line-v{font-size:14px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;}
+.sum-line-v small{font-size:11px;color:#94a3b8;font-weight:700;}
+.sum-reset{width:100%;margin-top:12px;padding:11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:0.04em;}
+
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;width:0%;background:linear-gradient(90deg,#f97316,#dc2626);transition:width 0.4s ease;border-radius:0 2px 2px 0;}
+</style>
+<link rel="stylesheet" href="base.css?v=68"/>
+<link rel="stylesheet" href="conditioning-elite.css"/>
+<link rel="stylesheet" href="mc-nav.css"/>
+  <link rel="stylesheet" href="mc-light.css">
+</head>
+<body class="cond-elite">
+<div class="prog-bar-wrap"><div class="prog-bar-fill" id="progFill"></div></div>
+<div class="app">
+  <div class="header">
+    <a href="cat-faint.html" class="back-link">← Back</a>
+    <div class="header-inner">
+      <div class="eyebrow">💪 Forearm &amp; Grip</div>
+      <div class="title">The Popeye</div>
+      <div><span class="schedule">Live Grip Builder</span></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="intro-warn"><strong>Rice Bucket + Wrist Rolls.</strong> The Rice Bucket runs as an automated 30-sec on / 30-sec off circuit through all 9 grips. Then log your wrist rolls. Complete each card in order.</div>
+    <div class="done-banner" id="doneBanner">
+      <div class="db-t">🏆 Grip Work Complete</div>
+      <div class="db-s">Rice bucket circuit done and rolls logged. Check your totals.</div>
+    </div>
+    <div id="timelineMount"></div>
+  </div>
+</div>
+
+<div class="sum-drawer" id="sumDrawer">
+  <div class="sum-handle" onclick="toggleDrawer()">
+    <div class="sum-handle-title"><span id="sumTitleText">📊 Summary</span> · <span id="sumStep">Step 0 / 0</span></div>
+    <div class="sum-quick">
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qMin">0</div><div class="sum-quick-l">Grip Min</div></div>
+      <div class="sum-quick-item"><div class="sum-quick-v" id="qReps">0</div><div class="sum-quick-l">Roll Reps</div></div>
+      <span class="sum-chev">▲</span>
+    </div>
+  </div>
+  <div class="sum-detail">
+    <div class="sum-detail-inner">
+      <div class="sum-line"><span class="sum-line-ico">🌾</span><span class="sum-line-nm">Rice Bucket Circuit</span><span class="sum-line-v" id="dRice">0 <small>/ 9 grips</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">⏱️</span><span class="sum-line-nm">Active Grip Time</span><span class="sum-line-v" id="dMin">0:00</span></div>
+      <div class="sum-line"><span class="sum-line-ico">🔄</span><span class="sum-line-nm">Wrist Roll Reps</span><span class="sum-line-v" id="dReps">0 <small>reps</small></span></div>
+      <div class="sum-line"><span class="sum-line-ico">✅</span><span class="sum-line-nm">Steps Complete</span><span class="sum-line-v" id="dSteps">0 <small>/ 0</small></span></div>
+      <button class="sum-reset" onclick="resetAll()">↺ Reset Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function fmt(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60),s=sec%60; return m+':'+String(s).padStart(2,'0'); }
+function buzz(p){
+  try{ if(navigator.vibrate) navigator.vibrate(p||[200,100,200]); }catch(e){}
+  try{ var ctx=new (window.AudioContext||window.webkitAudioContext)();[0,0.18,0.36].forEach(function(t,i){var o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=i===2?880:660;g.gain.setValueAtTime(0.32,ctx.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.22);o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.22);});}catch(e){}
+}
+function Countdown(totalSec,hooks){ this.total=totalSec;this.remaining=totalSec;this.running=false;this.endAt=0;this.iv=null;this.onTick=hooks.onTick||function(){};this.onDone=hooks.onDone||function(){}; }
+Countdown.prototype.start=function(){ if(this.running||this.remaining<=0)return;this.running=true;this.endAt=Date.now()+this.remaining*1000;var s=this;this.iv=setInterval(function(){s._tick();},200);this._tick(); };
+Countdown.prototype._tick=function(){ this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.onTick(this.remaining,this.total,this.running);if(this.remaining<=0){this._clear();this.running=false;this.onDone();} };
+Countdown.prototype._clear=function(){ if(this.iv){clearInterval(this.iv);this.iv=null;} };
+Countdown.prototype.pause=function(){ if(!this.running)return;this.remaining=Math.max(0,Math.round((this.endAt-Date.now())/1000));this.running=false;this._clear();this.onTick(this.remaining,this.total,false); };
+Countdown.prototype.elapsed=function(){ return this.total-this.remaining; };
+
+var RICE_BUCKET=[
+  "Crab Grabbers","Deep Dives (fingers together)","Dive and Cup","Side Dive and Cup",
+  "Twists (CW / palms open)","Twists (CCW / palms open)","Twists (CW / fists)","Twists (CCW / fists)","Motorcycles (fists)"
+];
+var WORK=30, REST=30;
+
+/* ── ENGINE ── */
+var POP={
+  steps:[], activeIdx:0, complete:false,
+  build:function(){
+    this.steps=[
+      {key:'rice',type:'circuit',icon:'🌾',name:'Rice Bucket Circuit',done:false},
+      {key:'wr-f',type:'rep',icon:'🔄',name:'Wrist Rolls — Forward',reps:10,note:'5–10 lb',done:false,loggedReps:0},
+      {key:'wr-b',type:'rep',icon:'🔄',name:'Wrist Rolls — Backward',reps:10,note:'5–10 lb',done:false,loggedReps:0}
+    ];
+    this.steps.forEach(function(s,i){ s.idx=i; });
+    this.activeIdx=0; this.complete=false;
+  },
+  render:function(){
+    var html='';
+    this.steps.forEach(function(st){ html+=POP.stepHTML(st); });
+    document.getElementById('timelineMount').innerHTML=html;
+    RICE.init();
+    this.refreshStates();
+  },
+  stepHTML:function(st){
+    var n=st.idx+1, inner, target;
+    if(st.type==='circuit'){
+      target='9 grips · 30s on / 30s off';
+      inner=RICE.html();
+    } else {
+      target=st.reps+' reps · '+st.note;
+      inner='<div class="rep-body"><div class="rep-stepper">'+
+        '<button class="rep-step-btn" onclick="POP.repBump('+st.idx+',-1)">−</button>'+
+        '<input class="rep-input" id="rep-inp-'+st.idx+'" type="number" inputmode="numeric" placeholder="'+st.reps+'" oninput="updateSummary()" onfocus="this.select()">'+
+        '<button class="rep-step-btn" onclick="POP.repBump('+st.idx+',1)">+</button>'+
+        '</div><div class="rep-unit">target '+st.reps+' reps · '+st.note+'</div></div>'+
+        '<button class="pstep-complete" id="done-'+st.idx+'" onclick="POP.completeRep('+st.idx+')" disabled>✓ Set Complete</button>';
+    }
+    return '<div class="pstep locked" id="step-'+st.key+'">'+
+      '<div class="pstep-top"><div class="pstep-stepnum">'+n+'</div><div class="pstep-ico">'+st.icon+'</div>'+
+      '<div class="pstep-main"><div class="pstep-name">'+st.name+'</div><div class="pstep-target">'+target+'</div></div>'+
+      '<span class="badge idle" id="badge-'+st.key+'">Locked</span></div>'+inner+'</div>';
+  },
+  repBump:function(i,n){ var inp=document.getElementById('rep-inp-'+i);if(!inp)return;var cur=parseInt(inp.value,10);if(isNaN(cur))cur=this.steps[i].reps;inp.value=Math.max(0,cur+n);updateSummary(); },
+  completeRep:function(i){
+    var st=this.steps[i]; if(!st||st.done)return; if(this.steps[this.activeIdx]!==st)return;
+    var inp=document.getElementById('rep-inp-'+i); var v=inp?parseInt(inp.value,10):NaN;
+    st.loggedReps=isNaN(v)?st.reps:v; if(inp){inp.value=st.loggedReps;inp.disabled=true;}
+    st.done=true; buzz([200]); this.advance(); updateSummary();
+  },
+  completeCircuit:function(){ var st=this.steps[this.activeIdx]; if(!st||st.key!=='rice'||st.done)return; st.done=true; this.advance(); updateSummary(); },
+  advance:function(){ var ni=this.activeIdx; while(ni<this.steps.length&&this.steps[ni].done)ni++; this.activeIdx=ni; this.refreshStates(); if(ni<this.steps.length)this.scrollTo(this.steps[ni].key); else this.finish(); },
+  finish:function(){ this.complete=true; document.getElementById('doneBanner').classList.add('show'); document.getElementById('sumTitleText').textContent='🏆 Complete'; buzz([200,100,200,100,500]); updateSummary(); },
+  refreshStates:function(){
+    var self=this;
+    this.steps.forEach(function(st,i){
+      var card=document.getElementById('step-'+st.key); if(!card)return;
+      var state=st.done?'done':((i===self.activeIdx&&!self.complete)?'active':'locked');
+      card.className='pstep '+state;
+      var btn=document.getElementById('done-'+st.idx); if(btn)btn.disabled=(state!=='active');
+      var badge=document.getElementById('badge-'+st.key);
+      if(badge){ if(st.done){badge.className='badge green';badge.textContent='✓ Done';}else if(state==='active'){badge.className='badge crimson';badge.textContent='● Active';}else{badge.className='badge idle';badge.textContent='Locked';} }
+    });
+  },
+  isCircuitActive:function(){ var st=this.steps[this.activeIdx]; return st&&st.key==='rice'; },
+  scrollTo:function(key){ try{var el=document.getElementById('step-'+key);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} },
+  stepsDone:function(){ return this.steps.filter(function(s){return s.done;}).length; },
+  rollReps:function(){ var r=0; this.steps.forEach(function(s){ if(s.type==='rep'&&s.done)r+=s.loggedReps; }); var act=this.steps[this.activeIdx]; if(act&&!act.done&&act.type==='rep'){var inp=document.getElementById('rep-inp-'+act.idx);if(inp&&inp.value!=='')r+=parseInt(inp.value,10)||0;} return r; }
+};
+
+/* ── RICE BUCKET interval runner ── */
+var RICE={
+  move:0, phase:'idle', timer:null, elapsed:0,
+  reset:function(){ if(this.timer){this.timer.pause();this.timer=null;} this.move=0;this.phase='idle';this.elapsed=0; },
+  html:function(){
+    return '<div class="rn-wrap" id="riceWrap">'+
+      '<div class="rn-roundline"><span class="rn-move" id="riceMove">Ready · '+RICE_BUCKET[0]+'</span>'+
+      '<span class="badge idle" id="ricePhase">Idle</span></div>'+
+      '<div class="rn-disp" id="riceDisp">0:30</div>'+
+      '<div class="rn-phaselabel" id="riceLabel">Press start to begin the circuit</div>'+
+      '<div class="rn-ctrls"><button class="rn-ctrl go" id="riceGo" onclick="RICE.startOrPause()">▶ Start Circuit</button>'+
+      '<button class="rn-ctrl skip" onclick="RICE.skip()">⤳ Skip</button></div>'+
+      '<div class="rn-chips" id="riceChips"></div></div>';
+  },
+  init:function(){ this.renderChips(); },
+  startOrPause:function(){
+    if(!POP.isCircuitActive())return;
+    if(this.phase==='idle'){ this.move=0; this._enterWork(); }
+    else if(this.timer&&this.timer.running){ this.timer.pause(); var g=document.getElementById('riceGo'); if(g){g.textContent='▶ Resume';g.className='rn-ctrl go';} }
+    else if(this.timer){ this.timer.start(); var g2=document.getElementById('riceGo'); if(g2){g2.textContent='⏸ Pause';g2.className='rn-ctrl pause';} }
+  },
+  _ui:function(){
+    var wrap=document.getElementById('riceWrap'),disp=document.getElementById('riceDisp'),badge=document.getElementById('ricePhase'),label=document.getElementById('riceLabel'),move=document.getElementById('riceMove'),go=document.getElementById('riceGo');
+    disp.className='rn-disp '+(this.phase==='idle'?'':this.phase);
+    if(this.phase==='work'){ badge.className='badge work';badge.textContent='🌾 Grip';label.textContent='WORK — '+RICE_BUCKET[this.move];move.textContent='Grip '+(this.move+1)+' / 9 · '+RICE_BUCKET[this.move];if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(this.phase==='rest'){ badge.className='badge rest';badge.textContent='💧 Off';label.textContent='REST — shake it out';move.textContent='Grip '+(this.move+1)+' / 9 done';if(go){go.textContent='⏸ Pause';go.className='rn-ctrl pause';} }
+    else if(this.phase==='done'){ badge.className='badge green';badge.textContent='✓ Done';label.textContent='CIRCUIT COMPLETE';move.textContent='All 9 grips done';disp.textContent='✓'; }
+  },
+  _enterWork:function(){
+    this.phase='work'; this._ui(); this.renderChips(); buzz([300]); var self=this;
+    this.timer=new Countdown(WORK,{ onTick:function(rem){ document.getElementById('riceDisp').textContent=fmt(rem); self.elapsed=self._base()+(WORK-rem); updateSummary(); }, onDone:function(){ buzz([200,100,200]); self._enterRest(); } });
+    this.timer.start();
+  },
+  _enterRest:function(){
+    this.phase='rest'; this._ui(); var self=this;
+    this.timer=new Countdown(REST,{ onTick:function(rem){ document.getElementById('riceDisp').textContent=fmt(rem); self.elapsed=self._base()+WORK+(REST-rem); updateSummary(); }, onDone:function(){ buzz([300]); self.move++; if(self.move>=RICE_BUCKET.length)self._finish(); else self._enterWork(); } });
+    this.timer.start();
+  },
+  _base:function(){ return this.move*(WORK+REST); },
+  _finish:function(){ this.phase='done'; this.timer=null; this.elapsed=RICE_BUCKET.length*(WORK+REST); this._ui(); this.renderChips(); buzz([200,100,200,100,500]); POP.completeCircuit(); },
+  skip:function(){ if(!POP.isCircuitActive())return; if(this.phase==='work'){ if(this.timer)this.timer.pause(); this._enterRest(); } else if(this.phase==='rest'){ if(this.timer)this.timer.pause(); this.move++; if(this.move>=RICE_BUCKET.length)this._finish(); else this._enterWork(); } },
+  renderChips:function(){ var host=document.getElementById('riceChips'); if(!host)return; var h=''; for(var i=0;i<RICE_BUCKET.length;i++){ var cls='rn-chip'; if(this.phase!=='idle'&&i<this.move)cls+=' done'; else if(this.phase!=='idle'&&this.phase!=='done'&&i===this.move)cls+=' current'; else if(this.phase==='done')cls+=' done'; h+='<span class="'+cls+'">'+(i+1)+'</span>'; } host.innerHTML=h; },
+  doneCount:function(){ return this.phase==='done'?RICE_BUCKET.length:this.move; },
+  minutes:function(){ return this.elapsed/60; }
+};
+
+/* ── SUMMARY ── */
+function fmtClock(sec){ var m=Math.floor(sec/60),s=Math.round(sec)%60; return m+':'+String(s).padStart(2,'0'); }
+function toggleDrawer(){ document.getElementById('sumDrawer').classList.toggle('open'); }
+function updateSummary(){
+  var sec=RICE.elapsed, mins=sec/60, reps=POP.rollReps();
+  document.getElementById('qMin').textContent=mins.toFixed(1);
+  document.getElementById('qReps').textContent=reps;
+  document.getElementById('dRice').innerHTML=RICE.doneCount()+' <small>/ 9 grips</small>';
+  document.getElementById('dMin').textContent=fmtClock(sec);
+  document.getElementById('dReps').innerHTML=reps+' <small>reps</small>';
+  var done=POP.stepsDone(), total=POP.steps.length;
+  document.getElementById('dSteps').innerHTML=done+' <small>/ '+total+'</small>';
+  document.getElementById('sumStep').textContent='Step '+(POP.complete?total:Math.min(POP.activeIdx+1,total))+' / '+total;
+  var fill=document.getElementById('progFill'); if(fill)fill.style.width=Math.round((done/total)*100)+'%';
+}
+function resetAll(){
+  if(!confirm('Reset the session? All timers and logged reps will clear.')) return;
+  RICE.reset(); POP.build(); POP.render(); updateSummary();
+  document.getElementById('doneBanner').classList.remove('show');
+  document.getElementById('sumTitleText').textContent='📊 Summary';
+}
+setInterval(updateSummary,1000);
+
+/* boot */
+POP.build(); POP.render(); updateSummary();
+</script>
+<script src="mc-nav.js"></script>
+<script src="conditioning-data.js"></script>
+<script src="mc-input-sheet.js"></script>
+<script src="mc-cond.js"></script>
+</body>
+</html>

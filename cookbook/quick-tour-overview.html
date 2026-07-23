@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1E2022" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mike's Cookbook" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<title>Executive Summary · Mike's Cookbook</title>
+<link rel="stylesheet" href="cookbook.css" />
+<style>
+/* ── Executive Summary — cookbook design system (cream cards on slate,
+      terracotta accent, serif headings). Mirrors the MC Training summary
+      structure for cross-app continuity. ── */
+*{box-sizing:border-box;}
+body{background:var(--bg);min-height:100vh;color:var(--on-dark);overflow-x:hidden;padding-bottom:48px;}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+
+/* TOP BAR */
+.es-top{display:flex;align-items:center;gap:12px;padding:18px 16px 12px;position:sticky;top:0;z-index:20;
+  background:linear-gradient(to bottom,var(--bg) 80%,transparent);}
+.es-back{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:var(--bg-elev);border:1px solid var(--line-dark);color:var(--accent);font-size:17px;text-decoration:none;}
+.es-top-info{flex:1;min-width:0;}
+.es-top-title{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:-0.01em;}
+.es-top-sub{font-size:12px;color:var(--on-dark-dim);margin-top:1px;}
+
+/* HERO */
+.es-hero{position:relative;border-radius:18px;overflow:hidden;margin-bottom:14px;
+  background:linear-gradient(135deg,var(--surface),var(--surface-2));
+  border:1px solid rgba(var(--accent-rgb),0.25);box-shadow:0 10px 30px rgba(0,0,0,0.35);padding:24px 20px 20px;}
+.es-hero-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 25% 25%,rgba(var(--accent-rgb),0.18) 0%,transparent 62%);}
+.es-eyebrow{font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;position:relative;}
+.es-hero h1{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:-0.01em;line-height:1.15;margin-bottom:10px;position:relative;color:var(--ink);}
+.es-hero p{font-size:14px;line-height:1.6;color:var(--ink-dim);position:relative;}
+.es-stat-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;position:relative;}
+.es-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+  color:var(--accent);background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.32);border-radius:20px;padding:5px 11px;}
+
+/* JUMP CHIPS */
+.es-jump-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.es-jump-row::-webkit-scrollbar{display:none;}
+.es-jump{flex-shrink:0;font-size:12px;font-weight:700;color:var(--on-dark);text-decoration:none;
+  background:var(--bg-elev);border:1px solid var(--line-dark);border-radius:20px;padding:7px 13px;}
+.es-jump:active{border-color:var(--accent);color:var(--accent);}
+
+/* SECTIONS */
+.es-sec{margin-bottom:26px;scroll-margin-top:74px;}
+.es-sec-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.es-sec-num{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);
+  color:var(--accent);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.es-sec-title{font-family:var(--serif);font-size:20px;font-weight:700;letter-spacing:-0.01em;color:var(--on-dark);}
+.es-lede{font-size:13px;color:var(--on-dark-dim);line-height:1.55;margin-bottom:14px;}
+
+/* CARDS */
+.es-cards{display:flex;flex-direction:column;gap:9px;}
+.es-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px 13px 18px;overflow:hidden;}
+.es-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(to bottom,var(--rail,var(--accent)),transparent 130%);}
+.es-card-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.es-card-name{font-size:14.5px;font-weight:800;letter-spacing:-0.01em;color:var(--ink);}
+.es-card-tag{font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--rail,var(--accent));
+  background:rgba(0,0,0,0.04);border:1px solid var(--line);border-radius:14px;padding:2px 8px;}
+.es-card-tx{font-size:12.5px;line-height:1.55;color:var(--ink-dim);}
+.es-card-tx b{color:var(--ink);font-weight:700;}
+
+/* CHECK LIST */
+.es-ticks{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:4px;padding:0;}
+.es-ticks li{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.55;color:var(--on-dark);}
+.es-ticks .chk{color:var(--accent);font-weight:800;flex-shrink:0;}
+.es-ticks b{color:var(--on-dark);font-weight:700;}
+
+/* COACH NOTE */
+.es-note{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;position:relative;}
+.es-note::before{content:'👩‍🍳 FROM THE KITCHEN';position:absolute;top:-9px;left:14px;font-size:9px;font-weight:800;letter-spacing:0.1em;color:var(--accent);background:var(--bg);padding:0 7px;}
+.es-note p{font-size:13.5px;line-height:1.6;color:var(--ink);margin:0;}
+
+/* DIVIDER LABEL */
+.es-tier{font-size:11px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--on-dark-dim);margin:16px 0 10px;display:flex;align-items:center;gap:8px;}
+.es-tier.flag{color:var(--accent);}
+.es-tier::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line-dark),transparent);}
+
+/* PALETTE SWATCHES */
+.es-swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.es-swatch{display:inline-flex;align-items:center;gap:7px;background:var(--bg-elev);border:1px solid var(--line-dark);border-radius:20px;
+  padding:5px 12px 5px 7px;font-size:11.5px;font-weight:700;color:var(--on-dark);}
+.es-swatch .sw{width:14px;height:14px;border-radius:50%;}
+
+/* FOOT CTAs */
+.es-foot{margin-top:30px;}
+.es-cta{display:flex;align-items:center;gap:10px;text-decoration:none;background:var(--bg-elev);border:1px solid rgba(var(--accent-rgb),0.32);border-radius:14px;padding:13px 15px;margin-bottom:10px;}
+.es-cta:active{background:rgba(var(--accent-rgb),0.14);}
+.es-cta-ico{font-size:19px;}
+.es-cta-body{flex:1;min-width:0;}
+.es-cta-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+.es-cta-nm{font-size:13.5px;font-weight:600;color:var(--on-dark);margin-top:1px;}
+.es-cta-arrow{color:var(--accent);font-size:16px;flex-shrink:0;}
+.es-cta.solid{background:var(--accent);border-color:var(--accent);justify-content:center;}
+.es-cta.solid .es-cta-nm{color:#fff;font-size:15px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="es-top">
+  <a href="quick-tour.html" class="es-back" aria-label="Back to Quick Tour">←</a>
+  <div class="es-top-info">
+    <div class="es-top-title">Executive Summary</div>
+    <div class="es-top-sub">The whole cookbook, end to end — one read</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ── HERO ── -->
+  <div class="es-hero">
+    <div class="es-hero-glow"></div>
+    <div class="es-eyebrow">Mike's Cookbook · The Big Picture</div>
+    <h1>Heirloom recipes &amp; performance plates, in your pocket</h1>
+    <p>Mike's Cookbook is a tactile, installable cooking app built for the kitchen. Whole-food, low-carb recipes on a two-meals-a-day rhythm, every dish scalable to any serving count, per-serving macros on tap, a weekly planner that merges into one smart grocery list, and a built-in macro tracker with barcode lookup. This page is the full end-to-end — read it once and you'll know exactly what the app can do. Sign in and it also links up with the <b>4 Weeks to Open</b> workout app — one account, so your planned meals and training day both show up on the other app's Home screen.</p>
+    <div class="es-stat-row">
+      <span class="es-chip">📖 318 recipes</span>
+      <span class="es-chip">🔢 1–12 serving scaling</span>
+      <span class="es-chip">📊 Macro tracker</span>
+      <span class="es-chip">📲 Offline-ready PWA</span>
+      <span class="es-chip">🏋️ Linked to 4 Weeks to Open</span>
+    </div>
+  </div>
+
+  <!-- ── JUMP NAV ── -->
+  <div class="es-jump-row">
+    <a class="es-jump" href="#hub">🏠 The Hub</a>
+    <a class="es-jump" href="#recipes">📖 Recipes</a>
+    <a class="es-jump" href="#detail">🔢 Scaling &amp; Macros</a>
+    <a class="es-jump" href="#planner">🗓️ Planner</a>
+    <a class="es-jump" href="#tracker">📊 Macro Tracker</a>
+    <a class="es-jump" href="#yours">❤ Make It Yours</a>
+    <a class="es-jump" href="#look">🎨 The Look</a>
+  </div>
+
+  <!-- ── 1 · THE HUB ── -->
+  <div class="es-sec" id="hub">
+    <div class="es-sec-head"><div class="es-sec-num">1</div><div class="es-sec-title">Home — the hub &amp; spokes</div></div>
+    <p class="es-lede">A hub-and-spoke app with no bottom tab bar. Home is the hub; you open a spoke screen and a “‹ Home” arrow always brings you back, so you can't get lost.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>This Week hero</b> — the weekly meal planner, front and center, reflecting your live plan.</span></li>
+      <li><span class="chk">✓</span><span><b>Browse modules</b> — Categories, Recipes, Macro Tracker, Mike's Favorites, your saved Favorites, and Add Recipe, each a tap away.</span></li>
+      <li><span class="chk">✓</span><span><b>Uniform back-nav</b> — every spoke carries a “‹ Home” arrow; recipe and collection pages get a floating 🏠 Home button.</span></li>
+      <li><span class="chk">✓</span><span><b>Deep-linkable</b> — the active screen mirrors to the URL (e.g. <b>#recipes</b>, <b>#tracker</b>), so reloads and shared links land in the right place.</span></li>
+      <li><span class="chk">✓</span><span><b>🏋️ Workout app link</b> — the icon beside search opens 4 Weeks to Open; one sign-in works in both apps.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 2 · RECIPES ── -->
+  <div class="es-sec" id="recipes">
+    <div class="es-sec-head"><div class="es-sec-num">2</div><div class="es-sec-title">Recipes, collections &amp; categories</div></div>
+    <p class="es-lede">Two ways to find a dish: browse curated collections, or sort everything by dish type. Live search filters by name, tag, or ingredient.</p>
+
+    <div class="es-tier flag">★ Collections</div>
+    <div class="es-cards">
+      <div class="es-card" style="--rail:#C87A53;">
+        <div class="es-card-top"><span class="es-card-name">Two Meals a Day</span><span class="es-card-tag">Live · Primal</span></div>
+        <div class="es-card-tx">Primal, high-protein plates built for two-meal eating windows — <b>heavy on meat, eggs and vegetables</b>, light on the clock. The flagship collection.</div>
+      </div>
+      <div class="es-card" style="--rail:#D9A05B;">
+        <div class="es-card-top"><span class="es-card-name">High-Protein Meal Prep</span><span class="es-card-tag">Live · Sub-tabs</span></div>
+        <div class="es-card-tx">The biggest collection — split into <b>Chicken, Beef &amp; Steak, Pasta Dishes, Seafood, and Bowls &amp; Other</b> sub-tabs so you can narrow in without scrolling the whole grid.</div>
+      </div>
+      <div class="es-card" style="--rail:#B23A48;">
+        <div class="es-card-top"><span class="es-card-name">Desserts</span><span class="es-card-tag">Live · Sub-tabs</span></div>
+        <div class="es-card-tx">Sub-tabbed into <b>Indulgent, Protein, and Ninja Creami</b> — sweet endings for both the treat-yourself and the macro-conscious plate.</div>
+      </div>
+      <div class="es-card" style="--rail:#7D8C77;">
+        <div class="es-card-top"><span class="es-card-name">Chipotle Copycats</span><span class="es-card-tag">Live</span></div>
+        <div class="es-card-tx">Fast-casual favorites, made at home — the <b>Chipotle-style bowls and burritos</b> without the drive.</div>
+      </div>
+      <div class="es-card" style="--rail:#C87A53;">
+        <div class="es-card-top"><span class="es-card-name">Salsas</span><span class="es-card-tag">Live</span></div>
+        <div class="es-card-tx">Fresh salsas and dips to top anything on the plate.</div>
+      </div>
+      <div class="es-card" style="--rail:#B08D57;">
+        <div class="es-card-top"><span class="es-card-name">Kelli Cross' Recipes</span><span class="es-card-tag">Coming soon · Heritage</span></div>
+        <div class="es-card-tx">Cherished <b>heirloom hand-me-downs</b> from Kelli's kitchen — the family recipes worth passing on.</div>
+      </div>
+      <div class="es-card" style="--rail:#B23A48;">
+        <div class="es-card-top"><span class="es-card-name">Carnivore</span><span class="es-card-tag">Coming soon · Carnivore</span></div>
+        <div class="es-card-tx">Zero-carb, meat-forward performance plates — <b>beef, organs, eggs and fat</b> for full carnivore eating.</div>
+      </div>
+    </div>
+
+    <div class="es-tier">Browse by dish type</div>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Nine categories</b> — Breakfast · Salads &amp; Slaws · Soups, Stews &amp; Chilis · Casseroles &amp; Bakes · Skillets &amp; Stir-Fries · Grilled &amp; Sheet-Pan · Sandwiches · Desserts · Salsas &amp; Dips.</span></li>
+      <li><span class="chk">✓</span><span><b>Sub-tabs inside a collection</b> — the larger collections (High-Protein Meal Prep, Desserts) add a sticky sub-tab bar to filter their grid further, alongside search.</span></li>
+      <li><span class="chk">✓</span><span><b>Live search</b> — filter recipes instantly by name, tag, or ingredient from the Recipes screen.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 3 · SCALING & MACROS ── -->
+  <div class="es-sec" id="detail">
+    <div class="es-sec-head"><div class="es-sec-num">3</div><div class="es-sec-title">Serving scaling &amp; the macro view</div></div>
+    <p class="es-lede">The heart of every recipe page: scale the dish to your table and read it three ways across swipeable tabs.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Serving stepper (1–12)</b> — recipes are authored at 2 and 4 servings; any other count is <b>scaled live</b> from the native tier, rescaling every ingredient quantity on the fly.</span></li>
+      <li><span class="chk">✓</span><span><b>Per-serving macros</b> — the Overview &amp; Macros tab shows calories and the protein / fat / carb breakdown <b>per single serving</b>, constant no matter how many you cook for.</span></li>
+      <li><span class="chk">✓</span><span><b>Clean grocery list</b> — the Grocery tab groups items by aisle (Meat · Dairy · Produce · Pantry) as a clean shopping list — <b>no fiddly exact amounts</b>, because you buy standard packages.</span></li>
+      <li><span class="chk">✓</span><span><b>Step-by-step method</b> — the Recipe tab carries the numbered instructions with per-ingredient prep notes. Swipe between all three tabs.</span></li>
+      <li><span class="chk">✓</span><span><b>Check-off state per serving</b> — tick groceries and steps as you go; progress is saved on-device, keyed to each recipe <b>and</b> serving count.</span></li>
+      <li><span class="chk">✓</span><span><b>Cooking Mode</b> — ▸ Start Cooking on the Recipe tab opens a full-screen, one-step-at-a-time view (screen kept awake) with an opt-in <b>🎙️ voice control</b> toggle: "next step," "previous step," "read ingredients" (spoken aloud), all hands-free.</span></li>
+    </ul>
+    <div class="es-note"><p>Cook for one tonight and six on Sunday from the same recipe — the quantities follow you, and the macros stay honest per plate.</p></div>
+  </div>
+
+  <!-- ── 4 · PLANNER ── -->
+  <div class="es-sec" id="planner">
+    <div class="es-sec-head"><div class="es-sec-num">4</div><div class="es-sec-title">This Week planner &amp; grocery list</div></div>
+    <p class="es-lede">Plan the week's meals and the app turns them into one smart shopping trip.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Build the week</b> — add the recipes you're cooking and the planner tracks your meals and recipe count from the Home hero.</span></li>
+      <li><span class="chk">✓</span><span><b>One combined grocery list</b> — every planned recipe's ingredients <b>merged and grouped by aisle</b>, so you shop once for the whole week.</span></li>
+      <li><span class="chk">✓</span><span><b>Check off as you shop</b> — the plan remembers which items are already in the cart.</span></li>
+      <li><span class="chk">✓</span><span><b>✨ Smart Week</b> — auto-suggests a 5-meal combo whose ingredients overlap, so perishable Produce, Meat and Dairy get used up instead of going to waste. Shuffle for another combo, or add all 5 in one tap. Signed in with the workout app linked, it also leans higher-protein on your real established training days and lighter on rest days, learned from your logged workout history.</span></li>
+      <li><span class="chk">✓</span><span><b>⏱️ Time Check</b> — a precursor to Smart Week: assign each day Quick (&lt;30 min), Standard (~1 hr), or No rush, and it generates the whole day-by-day meal grid to match your schedule.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 5 · MACRO TRACKER ── -->
+  <div class="es-sec" id="tracker">
+    <div class="es-sec-head"><div class="es-sec-num">5</div><div class="es-sec-title">The macro tracker</div></div>
+    <p class="es-lede">A full day-tracker built into the cookbook, so eating and cooking live side by side.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Daily macro dashboard</b> — calories, protein, fat and carbs tracked against your goals, logged by the hour, with a tappable day calendar.</span></li>
+      <li><span class="chk">✓</span><span><b>Food search + barcode scanner</b> — look up foods in a large database, or scan a label: the scanner <b>detects the barcode and pulls the nutrition in automatically</b>. No match or offline? It falls back to manual entry.</span></li>
+      <li><span class="chk">✓</span><span><b>Tappable nutrition-facts sheet</b> — full macro breakdown and micronutrients, a <b>grams / oz unit toggle</b>, and a keypad for a custom quantity or multiple. Macros recalculate live as you adjust.</span></li>
+      <li><span class="chk">✓</span><span><b>Favorite foods</b> — star the staples and quick-log them in a couple of taps; log a cookbook recipe straight into your day, too.</span></li>
+      <li><span class="chk">✓</span><span><b>Optional sign-in, cross-device sync</b> — tap the 👤 icon on Home to sign in with an invited account, and your tracker, meal plan, macro history and My Recipes follow you across devices, reconciling with the same account in the 4 Weeks to Open workout app if you use both. Stay signed out and everything keeps working exactly as before, fully offline on this device.</span></li>
+      <li><span class="chk">✓</span><span><b>Manual backup file</b> — the same 👤 sheet has Export data / Import data, so even without an account you have a way to save and restore your cookbook data.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 6 · MAKE IT YOURS ── -->
+  <div class="es-sec" id="yours">
+    <div class="es-sec-head"><div class="es-sec-num">6</div><div class="es-sec-title">Make it yours</div></div>
+    <p class="es-lede">Save what you love and add your own — your recipes behave exactly like the built-ins.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Personal Favorites</b> — tap the ❤ on any recipe (Home, collection, or detail — they all share one list) and it collects on the Home Favorites card.</span></li>
+      <li><span class="chk">✓</span><span><b>Mike's Favorites</b> — a curated, shipped-to-everyone shortlist of the dishes Mike has actually made and loved, distinct from your personal hearts.</span></li>
+      <li><span class="chk">✓</span><span><b>Add your own recipe</b> — create a dish or save a family hand-me-down into your library; it's fully searchable, categorized, plannable, and favoritable like every built-in recipe.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 7 · YOUR DATA ── -->
+  <div class="es-sec" id="data">
+    <div class="es-sec-head"><div class="es-sec-num">7</div><div class="es-sec-title">Offline-first, on your device</div></div>
+    <p class="es-lede">Built to work at the counter with flaky Wi-Fi, with everything saved locally.</p>
+    <ul class="es-ticks">
+      <li><span class="chk">✓</span><span><b>Installs like a native app</b> — Add to Home Screen and it launches full-screen, no browser bar. A service worker caches the app so recipes, scaling, grocery lists and macros keep working offline.</span></li>
+      <li><span class="chk">✓</span><span><b>On-device first</b> — favorites, your weekly plan, grocery check-offs, recipe check-off state, your added recipes, and tracker logs all save locally. Private and instant.</span></li>
+      <li><span class="chk">✓</span><span><b>Seamless updates</b> — the app self-activates new versions and an update toast lets you refresh, so fixes reach you without a manual reinstall.</span></li>
+    </ul>
+  </div>
+
+  <!-- ── 8 · THE LOOK ── -->
+  <div class="es-sec" id="look">
+    <div class="es-sec-head"><div class="es-sec-num">8</div><div class="es-sec-title">The look — warm, tactile &amp; premium</div></div>
+    <p class="es-lede">A design built for a phone held in floury hands.</p>
+    <p class="es-lede" style="color:var(--on-dark);">Deep slate surfaces carry warm <b style="color:var(--accent);">cream recipe cards</b> and serif headings for a heirloom-cookbook feel. <b style="color:var(--accent);">Terracotta</b> is the signature accent — calls to action, active states, and recipe theming — with muted <b style="color:var(--sage);">sage</b> as the calm second voice. Each recipe can carry its own accent, theming its detail page end to end. Large tap targets, swipeable tabs, and reduced-motion / safe-area support keep it comfortable in a real kitchen.</p>
+    <div class="es-swatches">
+      <span class="es-swatch"><span class="sw" style="background:#C87A53;"></span>Terracotta · accent</span>
+      <span class="es-swatch"><span class="sw" style="background:#7D8C77;"></span>Sage · second voice</span>
+      <span class="es-swatch"><span class="sw" style="background:#D9A05B;"></span>Amber · recipes</span>
+      <span class="es-swatch"><span class="sw" style="background:#F9F8F6;"></span>Cream · cards</span>
+      <span class="es-swatch"><span class="sw" style="background:#FF5A6E;"></span>Rose · favorites</span>
+    </div>
+  </div>
+
+  <!-- ── FOOT ── -->
+  <div class="es-foot">
+    <div class="es-note" style="margin-bottom:18px;"><p>That's the whole kitchen — recipes to cook from, scaling and macros on every dish, a planner that builds your cart, a tracker to keep you honest, and a library you can grow yourself. Take the guided tour for the hands-on version, or skip the line and go cook.</p></div>
+    <a class="es-cta" href="quick-tour.html">
+      <div class="es-cta-ico">🎬</div>
+      <div class="es-cta-body"><div class="es-cta-lbl">Hands-on version</div><div class="es-cta-nm">Take the 3-minute guided tour</div></div>
+      <div class="es-cta-arrow">→</div>
+    </a>
+    <a class="es-cta solid" href="index.html"><div class="es-cta-nm">🍳 Go to my Cookbook</div></a>
+  </div>
+
+</div>
+</body>
+</html>
