@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1E2022" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mike's Cookbook" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<title>Device Check · Mike's Cookbook</title>
+<link rel="stylesheet" href="cookbook.css" />
+<style>
+/* ── Device Check — the real-device half of the audit's verification.
+      Deliberately loads the same script set index.html does, so the module
+      and boot-cost checks below measure the real app, not a stripped page. ── */
+*{box-sizing:border-box;}
+body{background:var(--bg);min-height:100vh;color:var(--on-dark);
+  padding:0 16px calc(40px + env(safe-area-inset-bottom));overflow-x:hidden;}
+.dg-top{padding:calc(18px + env(safe-area-inset-top)) 0 10px;}
+.dg-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);}
+.dg-title{font-family:var(--serif);font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:4px;}
+.dg-sub{font-size:13px;color:var(--on-dark-dim);margin-top:4px;line-height:1.5;}
+.dg-actions{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap;}
+.dg-btn{flex:1 1 auto;min-height:48px;padding:0 16px;border-radius:12px;cursor:pointer;
+  font-family:var(--sans);font-size:14px;font-weight:700;border:1px solid rgba(var(--accent-rgb),.4);
+  background:var(--bg-elev);color:var(--accent);}
+.dg-btn:active{background:rgba(var(--accent-rgb),.14);}
+.dg-btn.solid{background:var(--accent);border-color:var(--accent);color:#fff;}
+.dg-summary{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px;}
+.dg-pill{font-family:var(--sans);font-size:12px;font-weight:800;letter-spacing:.05em;
+  padding:6px 12px;border-radius:20px;border:1px solid var(--line-dark);color:var(--on-dark-dim);}
+.dg-pill.pass{background:rgba(125,140,119,.18);color:#9BBF8F;border-color:rgba(125,140,119,.5);}
+.dg-pill.fail{background:rgba(178,58,72,.18);color:#E58B95;border-color:rgba(178,58,72,.5);}
+.dg-pill.warn{background:rgba(224,164,88,.16);color:#E0A458;border-color:rgba(224,164,88,.45);}
+.dg-group{margin-top:22px;}
+.dg-group-h{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--on-dark-dim);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.dg-group-h::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line-dark),transparent);}
+.dg-row{display:flex;gap:10px;align-items:flex-start;background:var(--surface);
+  border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:7px;}
+.dg-mark{flex-shrink:0;width:22px;height:22px;border-radius:7px;display:flex;align-items:center;
+  justify-content:center;font-size:12px;font-weight:800;margin-top:1px;}
+.dg-mark.pass{background:rgba(125,140,119,.2);color:#4E7A42;}
+.dg-mark.fail{background:rgba(178,58,72,.2);color:#B23A48;}
+.dg-mark.warn{background:rgba(224,164,88,.22);color:#8A5B12;}
+.dg-mark.info{background:rgba(0,0,0,.06);color:var(--ink-dim);}
+.dg-body{flex:1;min-width:0;}
+.dg-name{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.4;}
+.dg-detail{font-size:12.5px;color:var(--ink-dim);margin-top:2px;line-height:1.45;word-break:break-word;}
+.dg-report{width:100%;min-height:180px;margin-top:14px;padding:12px;border-radius:12px;
+  background:var(--bg-elev);border:1px solid var(--line-dark);color:var(--on-dark-dim);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;}
+.dg-foot{margin-top:20px;font-size:12px;color:var(--on-dark-dim);line-height:1.55;}
+.dg-foot a{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="dg-top">
+  <div class="dg-eyebrow">Mike's Cookbook · Device Check</div>
+  <h1 class="dg-title">Is this device healthy?</h1>
+  <p class="dg-sub">Run this on each device and in each mode you care about — browser and
+  installed — then screenshot the result or tap <b>Copy report</b>.</p>
+</div>
+
+<div class="dg-summary" id="summary"></div>
+
+<div class="dg-actions">
+  <button class="dg-btn solid" id="rerun" type="button">↻ Re-run checks</button>
+  <button class="dg-btn" id="copy" type="button">Copy report</button>
+  <a class="dg-btn" href="index.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;">‹ Back to app</a>
+</div>
+
+<div id="out"></div>
+
+<textarea class="dg-report" id="report" readonly aria-label="Plain-text report"></textarea>
+
+<p class="dg-foot">
+  Boot cost is <code>window.__mcBoot.data</code> — how long <code>recipes-index.js</code>
+  (149&nbsp;KB) takes to fetch, parse and execute on <em>this</em> device. This is the number that
+  gates first paint. Audit finding C-06 modelled the old <code>recipes-data.js</code>
+  (1.04&nbsp;MB, parsed in full before anything drew) at 73–244&nbsp;ms with simulated CPU
+  throttling; CI initiative 5 replaced it with this index plus detail shards loaded on demand,
+  so the figure below should now be a fraction of that range.
+</p>
+
+<!-- audit C-06: boot instrument. Same two marks index.html carries. -->
+<script>window.__mcBoot={t0:performance.now()};</script>
+<script src="recipes-index.js"></script>
+<script src="mc-data.js"></script>
+<script>if(window.__mcBoot)window.__mcBoot.data=performance.now()-window.__mcBoot.t0;</script>
+<script src="user-recipes.js"></script>
+<script src="mc-bridge.js"></script>
+<script src="mc-fav.js"></script>
+<script src="mc-cards.js"></script>
+<script src="mc-grocery.js"></script>
+<script src="mc-recipe-form.js"></script>
+<script src="mc-install.js"></script>
+<script src="mc-supabase.js"></script>
+<script src="mc-sync.js"></script>
+<script src="mc-export.js"></script>
+<script src="cookbook-sw.js"></script>
+
+<script>
+(function () {
+  "use strict";
+  var out = document.getElementById("out");
+  var summaryEl = document.getElementById("summary");
+  var reportEl = document.getElementById("report");
+  var lines = [];
+
+  function group(title) {
+    var g = document.createElement("div");
+    g.className = "dg-group";
+    var h = document.createElement("div");
+    h.className = "dg-group-h";
+    h.textContent = title;
+    g.appendChild(h);
+    out.appendChild(g);
+    lines.push("", "## " + title);
+    return g;
+  }
+  // state: "pass" | "fail" | "warn" | "info"
+  function row(g, state, name, detail) {
+    var r = document.createElement("div");
+    r.className = "dg-row";
+    var m = document.createElement("div");
+    m.className = "dg-mark " + state;
+    m.textContent = state === "pass" ? "✓" : state === "fail" ? "✕" : state === "warn" ? "!" : "·";
+    var b = document.createElement("div");
+    b.className = "dg-body";
+    var n = document.createElement("div");
+    n.className = "dg-name";
+    n.textContent = name;
+    b.appendChild(n);
+    if (detail) {
+      var d = document.createElement("div");
+      d.className = "dg-detail";
+      d.textContent = detail;
+      b.appendChild(d);
+    }
+    r.appendChild(m); r.appendChild(b);
+    g.appendChild(r);
+    lines.push("[" + state.toUpperCase().padEnd(4) + "] " + name + (detail ? "  — " + detail : ""));
+    return state;
+  }
+
+  function fmtBytes(n) {
+    if (n == null) return "unknown";
+    if (n > 1048576) return (n / 1048576).toFixed(1) + " MB";
+    if (n > 1024) return (n / 1024).toFixed(0) + " KB";
+    return n + " B";
+  }
+
+  async function run() {
+    out.innerHTML = "";
+    lines = [];
+    var counts = { pass: 0, fail: 0, warn: 0, info: 0 };
+    function tally(s) { counts[s] = (counts[s] || 0) + 1; return s; }
+
+    lines.push("Mike's Cookbook — device check", new Date().toISOString());
+
+    /* ── Environment ─────────────────────────────────────────────────── */
+    var g = group("Environment");
+    var standalone = window.matchMedia("(display-mode: standalone)").matches ||
+                     window.navigator.standalone === true;
+    tally(row(g, standalone ? "pass" : "info",
+      standalone ? "Running as an installed app" : "Running in a browser tab",
+      standalone ? "display-mode: standalone" :
+        "Install it and re-run to check the installed path too."));
+    tally(row(g, "info", "User agent", navigator.userAgent));
+    tally(row(g, "info", "Viewport",
+      window.innerWidth + "×" + window.innerHeight + " CSS px · DPR " + (window.devicePixelRatio || 1)));
+    var sa = getComputedStyle(document.documentElement).getPropertyValue("padding-bottom");
+    var probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom);";
+    document.body.appendChild(probe);
+    var inset = probe.getBoundingClientRect().height;
+    probe.remove();
+    tally(row(g, "info", "Safe-area inset (bottom)", inset.toFixed(0) + "px" +
+      (inset > 0 ? " — notch/home-indicator device" : " — none reported")));
+
+    /* ── Boot cost (audit C-06) ──────────────────────────────────────── */
+    g = group("Boot cost · audit C-06");
+    var boot = window.__mcBoot && window.__mcBoot.data;
+    if (boot == null) {
+      tally(row(g, "fail", "recipes-index.js boot instrument missing", "window.__mcBoot.data is undefined"));
+    } else {
+      tally(row(g, boot < 120 ? "pass" : "warn",
+        "recipes-index.js cost: " + boot.toFixed(0) + " ms",
+        "Fetch + parse + execute of the 149 KB index on this device — what first paint waits " +
+        "on. The 1.04 MB it replaced modelled at 73–244 ms, so this should land well under " +
+        "120 ms. Run once cached (second load) for the steady-state number."));
+    }
+    // COLLECTIONS gains a runtime "My Recipes" entry from user-recipes.js, so
+    // this is one higher than the count shipped in recipes-data.js. Say so,
+    // rather than looking like a mismatch with the docs.
+    var liveCols = (window.COLLECTIONS || []).filter(function (c) { return c.status === "live"; }).length;
+    tally(row(g, "info", "Data layer loaded",
+      ((window.RECIPES || []).length) + " recipes · " + liveCols +
+      " live collections (" + (liveCols - 1) + " shipped + My Recipes)"));
+
+    /* ── Offline readiness ───────────────────────────────────────────── */
+    g = group("Offline readiness");
+    if (!("serviceWorker" in navigator)) {
+      tally(row(g, "fail", "Service workers unsupported", "This browser can't run the app offline."));
+    } else {
+      var reg = await navigator.serviceWorker.getRegistration();
+      tally(row(g, reg ? "pass" : "fail", reg ? "Service worker registered" : "No service worker registered",
+        reg ? ("scope " + reg.scope) : "Open the app once over https, then re-run."));
+      tally(row(g, navigator.serviceWorker.controller ? "pass" : "warn",
+        navigator.serviceWorker.controller ? "Page is controlled by the service worker"
+                                           : "Page not yet controlled",
+        navigator.serviceWorker.controller ? "" : "Normal on a very first visit — reload once and re-run."));
+
+      var names = await caches.keys();
+      var mc = names.filter(function (n) { return n.indexOf("mc-cookbook") === 0; });
+      tally(row(g, mc.length === 1 ? "pass" : mc.length === 0 ? "fail" : "warn",
+        "Cache buckets: " + (mc.join(", ") || "none"),
+        mc.length > 1 ? "More than one version cached — the old one should purge on next activate." : ""));
+
+      if (mc.length) {
+        var cache = await caches.open(mc[0]);
+        var keys = await cache.keys();
+        // Check the assets this build actually needs, not a hardcoded list.
+        var need = ["./", "index.html", "cookbook.css", "recipes-index.js", "mc-data.js",
+                    "cookbook-home.js", "mc-fav.js", "mc-cards.js", "mc-timers.js",
+                    "mc-grocery.js", "mc-recipe-form.js", "recipe.html", "cookbook.js",
+                    "collection.html", "collection.js", "sw.js"];
+        // Every detail shard must be precached too, or a recipe opened offline
+        // shows its header and no ingredients (CI initiative 5).
+        for (var si = 0; si < (window.RECIPES_SHARDS || 16); si++) {
+          need.push("recipes-detail-" + (si < 10 ? "0" : "") + si + ".js");
+        }
+        var have = keys.map(function (r) { return r.url; });
+        var missing = need.filter(function (n) {
+          if (n === "./") return !have.some(function (u) { return /\/$|index\.html$/.test(u); });
+          return !have.some(function (u) { return u.indexOf(n) >= 0; });
+        });
+        tally(row(g, missing.length ? "fail" : "pass",
+          "Precache: " + keys.length + " entries cached",
+          missing.length ? ("MISSING: " + missing.join(", ")) :
+            "Every core asset is present — this device can run fully offline."));
+
+        var shell = await cache.match("./index.html") || await cache.match("index.html") || await cache.match("./");
+        tally(row(g, shell ? "pass" : "fail",
+          shell ? "App shell serves from cache" : "App shell not in cache",
+          shell ? "Airplane-mode reload will work." : "Offline reload would fail."));
+      }
+    }
+
+    /* ── Shared modules ──────────────────────────────────────────────── */
+    g = group("Shared modules");
+    [["MCFav", "favorites store (C-07)"], ["MCCards", "recipe card (C-07)"],
+     ["MCGrocery", "grocery quantity math (C-08)"], ["MCRecipeForm", "add-recipe form (C-08)"],
+     ["MCExport", "backup format (C-01)"], ["MCBridge", "cookbook↔workout read layer"],
+     ["MC_INSTALL", "install prompt"], ["MCUser", "my recipes"]].forEach(function (p) {
+      tally(row(g, window[p[0]] ? "pass" : "fail", p[0], window[p[0]] ? p[1] : "NOT LOADED — " + p[1]));
+    });
+
+    /* ── Storage ─────────────────────────────────────────────────────── */
+    g = group("Storage");
+    try {
+      var probeKey = "mc-cookbook:__diag";
+      localStorage.setItem(probeKey, "1");
+      localStorage.removeItem(probeKey);
+      tally(row(g, "pass", "localStorage is writable", "Favorites, plan and tracker can save."));
+    } catch (e) {
+      tally(row(g, "fail", "localStorage write FAILED",
+        "Quota full or blocked — the app can't save anything. " + (e && e.name)));
+    }
+    if (navigator.storage && navigator.storage.estimate) {
+      var est = await navigator.storage.estimate();
+      var pct = est.quota ? (est.usage / est.quota * 100) : 0;
+      tally(row(g, pct > 80 ? "warn" : "pass",
+        "Storage used: " + fmtBytes(est.usage) + " of " + fmtBytes(est.quota) + " (" + pct.toFixed(1) + "%)",
+        pct > 80 ? "Getting full — photos are the usual cause." : ""));
+    } else {
+      tally(row(g, "info", "Storage estimate unsupported", "iOS Safari often withholds this."));
+    }
+    try {
+      var photos = JSON.parse(localStorage.getItem("mc-cookbook:photos") || "{}");
+      var n = Object.keys(photos).length;
+      tally(row(g, n <= 24 ? "pass" : "warn", "Recipe cover photos: " + n + " of 24 cap (C-12)",
+        n > 24 ? "Above the cap — eviction should trim on next add." : ""));
+    } catch (e) { tally(row(g, "info", "Recipe photos unreadable", String(e))); }
+
+    /* ── Sync (audit C-02) ───────────────────────────────────────────── */
+    g = group("Sync · audit C-02");
+    var cfg = window.MC_SB && MC_SB.configured;
+    tally(row(g, cfg ? "pass" : "warn", cfg ? "Supabase configured" : "Supabase not configured",
+      cfg ? "" : "Sign-in and cross-device sync are unavailable."));
+    if (cfg) {
+      var user = null;
+      try { user = await MC_SB.currentUser(); } catch (e) {}
+      tally(row(g, user ? "pass" : "info", user ? "Signed in" : "Signed out",
+        user ? "Cross-device sync is active." : "Sign in from the 👤 button on Home to test sync."));
+      if (user && window.MC_SYNC) {
+        var st = MC_SYNC.status();
+        tally(row(g, st.lastPush ? "pass" : "warn",
+          "Last push: " + (st.lastPush ? new Date(st.lastPush).toLocaleTimeString() : "never this session"),
+          "pending changes: " + st.pending));
+        tally(row(g, st.lastPull ? "pass" : "warn",
+          "Last pull: " + (st.lastPull ? new Date(st.lastPull).toLocaleTimeString() : "never this session"), ""));
+      }
+      var favs = window.MCFav ? MCFav.load().size : 0;
+      var pantry = 0;
+      try { pantry = JSON.parse(localStorage.getItem("mc-cookbook:pantry") || "[]").length; } catch (e) {}
+      tally(row(g, "info", "Favorites: " + favs + " · pantry staples: " + pantry,
+        "Both are newly synced as of C-02. Heart something and add a staple, then background the app to push."));
+    }
+
+    /* ── Device capabilities ─────────────────────────────────────────── */
+    g = group("Kitchen capabilities");
+    tally(row(g, "wakeLock" in navigator ? "pass" : "warn",
+      "wakeLock" in navigator ? "Screen wake lock supported" : "Wake lock unsupported",
+      "wakeLock" in navigator ? "Cooking Mode can keep the screen on." : "Screen may sleep mid-recipe."));
+    tally(row(g, "BarcodeDetector" in window ? "pass" : "warn",
+      "BarcodeDetector" in window ? "Native barcode scanning supported" : "BarcodeDetector unsupported",
+      "BarcodeDetector" in window ? "" : "Tracker falls back to manual entry — expected on iOS."));
+    tally(row(g, navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? "pass" : "warn",
+      "Camera access available", "Needed for barcode scan and cook-log photos."));
+
+    /* ── Summary ─────────────────────────────────────────────────────── */
+    summaryEl.innerHTML = "";
+    [["pass", counts.pass + " passed"], ["fail", counts.fail + " failed"],
+     ["warn", counts.warn + " warnings"]].forEach(function (p) {
+      var s = document.createElement("span");
+      s.className = "dg-pill " + (p[0] === "fail" && !counts.fail ? "" : p[0]);
+      s.textContent = p[1];
+      summaryEl.appendChild(s);
+    });
+    lines.unshift("SUMMARY: " + counts.pass + " pass · " + counts.fail + " fail · " + counts.warn + " warn");
+    reportEl.value = lines.join("\n");
+  }
+
+  document.getElementById("rerun").addEventListener("click", run);
+  document.getElementById("copy").addEventListener("click", function () {
+    reportEl.select();
+    try {
+      navigator.clipboard ? navigator.clipboard.writeText(reportEl.value) : document.execCommand("copy");
+      this.textContent = "Copied ✓";
+      var b = this;
+      setTimeout(function () { b.textContent = "Copy report"; }, 1600);
+    } catch (e) { document.execCommand("copy"); }
+  });
+
+  run();
+})();
+</script>
+</body>
+</html>

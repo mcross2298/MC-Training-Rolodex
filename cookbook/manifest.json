@@ -1,0 +1,21 @@
+{
+  "name": "Mike's Cookbook",
+  "short_name": "Cookbook",
+  "description": "Heirloom hand-me-downs & performance plates — Primal, Carnivore, Heritage.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1E2022",
+  "theme_color": "#1E2022",
+  "categories": ["food", "lifestyle", "health"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "prefer_related_applications": false
+}

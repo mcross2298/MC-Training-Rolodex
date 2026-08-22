@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1E2022" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#F7F5F1" media="(prefers-color-scheme: light)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <title>Recipe · Mike's Cookbook</title>
+  <link rel="stylesheet" href="cookbook.css" />
+</head>
+<body>
+  <main class="app" data-tabbar="page">
+    <!-- Hero photo (CI initiative 3) — non-sticky, scrolls away naturally.
+         Renders nothing for a recipe with no photo. -->
+    <div class="r-hero empty" id="hero"></div>
+    <!-- Fixed header summary: title, tags, times, serving-size ladder -->
+    <header class="r-header" id="header"></header>
+
+    <!-- Sticky, swipeable sub-tab bar -->
+    <nav class="subtabs">
+      <button type="button" class="subtab active" id="tab-overview">Overview &amp; Macros</button>
+      <button type="button" class="subtab" id="tab-grocery">Grocery</button>
+      <button type="button" class="subtab" id="tab-recipe">Recipe</button>
+    </nav>
+
+    <!-- Tab content -->
+    <section class="panes" id="panes">
+      <div class="pane active" id="pane-overview"></div>
+      <div class="pane" id="pane-grocery"></div>
+      <div class="pane" id="pane-recipe"></div>
+    </section>
+  </main>
+
+  <!-- audit C-06: boot instrument. recipes-data.js WAS 1.04 MB and 62% of
+     the payload, parsed in full before anything painted. CI initiative 5
+     replaced it with recipes-index.js (149 KB — 13.9% of it) plus the
+     detail shards mc-data.js injects on demand, so __mcBoot.data now
+     measures the index alone: the number that actually gates first paint. -->
+<script>window.__mcBoot={t0:performance.now()};</script>
+<script src="recipes-index.js"></script>
+<script src="mc-data.js"></script>
+<script>if(window.__mcBoot)window.__mcBoot.data=performance.now()-window.__mcBoot.t0;</script>
+  <script src="user-recipes.js"></script>
+  <script src="cookbook-nav.js"></script>
+  <script src="mc-fav.js"></script>
+<script src="mc-cards.js"></script>
+<script src="mc-timers.js"></script>
+<script src="mc-units.js"></script>
+<script src="mc-search.js"></script>
+<script src="cookbook.js"></script>
+  <script src="tracker-store.js"></script>
+  <script src="tracker-recipe.js"></script>
+  <script src="cookbook-sw.js"></script>
+</body>
+</html>

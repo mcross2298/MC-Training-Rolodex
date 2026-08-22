@@ -1,0 +1,255 @@
+/* mc-summary.css — live Workout Summary */
+
+/* ── FINISH WORKOUT RECAP SHEET ──────────────────────────────────── */
+.fw-recap-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);
+  /* --z-modal (base.css) — see the stacking-contract block there for why
+     this sits above --z-timer-float: the auto-trigger (mc-finish.js) can
+     open this the instant the LAST set is checked, which is exactly the
+     moment that same check also starts a rest timer — the finished-workout
+     summary must win that race, not get buried under a now-pointless
+     "rest before the next set" countdown. */
+  z-index:var(--z-modal);display:none;align-items:flex-end;
+}
+.fw-recap-overlay.open{display:flex;}
+.fw-recap-sheet{
+  width:100%;max-height:92vh;overflow-y:auto;
+  background:#0d0d0d;
+  border-radius:22px 22px 0 0;
+  border-top:1px solid rgba(255,255,255,0.1);
+  padding:28px 20px calc(28px + env(safe-area-inset-bottom));
+  animation:recapSlideUp 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes recapSlideUp{
+  from{transform:translateY(100%);}
+  to{transform:translateY(0);}
+}
+
+/* drag handle */
+.fw-recap-handle{
+  width:36px;height:4px;border-radius:2px;
+  background:rgba(255,255,255,0.15);
+  margin:0 auto 22px;
+}
+
+/* Header text, stats row, and action buttons reuse the shared
+   .fw-modal-title/.fw-modal-sub/.fw-stats-row/.fw-cancel/.fw-confirm
+   classes from base.css (scoped via #fwRecapBtns there) — see
+   mc-summary.js's showRecap() — rather than a second, diverging set of
+   .fw-recap-* rules, so this sheet and mc-finish.js's own #fwModal render
+   one identical exit-dialog design. */
+
+/* ── STAT BAR (sticky top — timer + sets counter) ─────────────────── */
+.prog-bar-wrap.mcs-stat{
+  height:46px;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  background:rgba(10,10,10,0.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding:0;
+}
+.mcs-stat-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px 5px;
+}
+.mcs-timer-wrap{display:flex;align-items:baseline;gap:5px;}
+.mcs-timer{
+  font-size:var(--fs-lg);font-weight:900;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:0.02em;
+}
+.mcs-timer-label{
+  font-size:var(--fs-3xs);font-weight:700;color:#475569;
+  letter-spacing:0.1em;text-transform:uppercase;
+}
+.mcs-sets-wrap{display:flex;align-items:baseline;gap:4px;text-align:right;}
+.mcs-sets-live{
+  font-size:var(--fs-lg);font-weight:900;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.01em;
+}
+.mcs-sets-label{
+  font-size:var(--fs-3xs);font-weight:700;color:#475569;
+  letter-spacing:0.1em;text-transform:uppercase;
+}
+/* Thin progress fill sits at the very bottom of the stat bar */
+.prog-bar-wrap.mcs-stat .prog-bar-fill{
+  height:3px;width:0;
+  background:linear-gradient(90deg,#22d3ee,#a78bfa);
+  transition:width 0.4s ease;border-radius:0;margin:0;
+}
+
+/* Push page content below the 46px stat bar AND the back-link, which is
+   relocated to top:54px (≈30px tall → bottom ≈84px) to sit under the bar.
+   74px only cleared the bar, so the pill overlapped the eyebrow/title. */
+/* Every offset here is measured DOWN FROM THE BAR, and the bar itself sits at
+   top:env(safe-area-inset-top) (base.css). So these must carry the inset too.
+   They did not, and because they out-specify base.css's env()-aware rules
+   (0,2,1 vs 0,1,0), the flat values won on real hardware. Simulated at three
+   insets on a workout page with a session active:
+
+     inset  bar band    .back-link   covered by the z999 bar
+       0px  y0-46       y54-83        0 of 29px   (browsers/CI: looked fine)
+      47px  y47-93      y54-83       29 of 29px   (iPhone notch: fully hidden)
+      59px  y59-105     y54-83       24 of 29px   (Dynamic Island)
+
+   i.e. the Back button was invisible and unclickable during a session on every
+   notched device, and only ever correct where the inset is zero. */
+body.mcs-stat-active .header{padding-top:calc(94px + env(safe-area-inset-top,0px));}
+body.mcs-stat-active .hero{padding-top:calc(94px + env(safe-area-inset-top,0px));}
+body.mcs-stat-active .back-link{top:calc(54px + env(safe-area-inset-top,0px));}
+/* The floating theme toggle (mc-nav.js, top:18px) sits exactly where this
+   46px stat bar renders, so a tap there always hit the bar instead — the
+   toggle was a dead button on every workout page. Same relocation as
+   .back-link above. */
+/* Same inset-blindness, and the same 40px control this block was added to
+   rescue: at inset 47px the toggle spanned y54-94 against a bar at y47-93 --
+   39 of its 40px behind a z999 element. The relocation fixed it only where the
+   inset is zero, so on real hardware it stayed exactly as dead as before. */
+body.mcs-stat-active .mc-theme-toggle-float{top:calc(54px + env(safe-area-inset-top,0px));}
+
+/* ── SUMMARY CARD VISIBILITY (hidden by default, toggled open) ────── */
+body.mcs-stat-active .sum-section,
+body.mcs-stat-active .summary-section{
+  display:none;
+}
+body.mcs-stat-active .sum-section.mcs-open,
+body.mcs-stat-active .summary-section.mcs-open{
+  display:block;
+}
+
+/* ── SUMMARY BUTTON ─────────────────────────────────────────────────
+   Secondary action, stacked directly underneath the primary Finish
+   Workout button (appended into .fw-bar by injectSummaryButton() — see
+   base.css's .fw-bar flex-direction:column). Full-width but visually
+   subordinate: no fill, no border, just a quiet link-style row. */
+.mcs-sumbtn{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px;border-radius:10px;
+  background:transparent;border:none;
+  color:#94a3b8;font-family:inherit;font-size:var(--fs-xs);font-weight:800;letter-spacing:0.03em;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;white-space:nowrap;
+  transition:all 0.15s;
+}
+.mcs-sumbtn:active{transform:scale(0.97);color:#cbd5e1;}
+.mcs-sumbtn.mcs-btn-open{
+  color:var(--accent,#d4af37);
+}
+
+/* ── IN-CARD PROGRESS BAR ────────────────────────────────────────── */
+.mcs-progress{margin-bottom:16px;}
+.mcs-progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.mcs-progress-label{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#64748b;}
+.mcs-progress-pct{font-size:var(--fs-md);font-weight:900;color:#34d399;letter-spacing:-0.01em;}
+.mcs-progress-track{height:8px;border-radius:5px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.mcs-progress-fill{height:100%;width:0;border-radius:5px;
+  background:linear-gradient(90deg,#22d3ee,#34d399);transition:width 0.35s ease;}
+.sum-section.mcs-complete .mcs-progress-fill{background:linear-gradient(90deg,#34d399,#a3e635);}
+.sum-section.mcs-complete .mcs-progress-pct{color:#a3e635;}
+
+/* ── COMPLETED ROW STRIKE-THROUGH ────────────────────────────────── */
+.mcs-row-done .sum-nm,.mcs-row-done .sum-name{text-decoration:line-through;opacity:0.6;}
+.mcs-row-done .sum-ico,.mcs-row-done .sum-icon{filter:grayscale(1);opacity:0.55;}
+
+/* ── SAVED TODAY READOUT ─────────────────────────────────────────── */
+.mcs-today{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);
+  font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.02em;color:#34d399;}
+
+/* ── AUTO-BUILT SUMMARY CARD ─────────────────────────────────────── */
+.sum-section.mcs-auto{margin:28px 16px 96px;}
+
+/* ── PATH-B GENERATED CARD STYLES ───────────────────────────────── */
+.sum-section .sum-hd{font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.2em;
+  text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.sum-section .sum-card{border-radius:14px;padding:16px;margin-bottom:32px;}
+.sum-section .sum-sub{font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;margin:12px 0;opacity:0.85;}
+.sum-section .mcs-rows{margin-top:4px;}
+.sum-section .sum-row{display:flex;align-items:center;gap:10px;padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,0.05);}
+.sum-section .sum-row:last-of-type{border-bottom:none;}
+.sum-section .sum-ico{font-size:var(--fs-lg);width:22px;text-align:center;flex-shrink:0;}
+.sum-section .sum-nm{flex:1;font-size:var(--fs-xs);font-weight:600;color:#e2e8f0;line-height:1.3;}
+.sum-section .sum-dt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;}
+.sum-section .sum-st{font-size:var(--fs-2xs);font-weight:800;text-align:right;}
+.sum-section .sum-rp{font-size:var(--fs-2xs);font-weight:600;opacity:0.78;text-align:right;}
+.sum-section .sum-div{height:1px;margin:14px 0;}
+.sum-section .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.sum-section .sum-tot{border-radius:10px;padding:10px 8px;text-align:center;}
+.sum-section .sum-tv{font-size:var(--fs-md);font-weight:900;letter-spacing:-0.01em;}
+.sum-section .sum-tl{font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;margin-top:3px;opacity:0.75;}
+
+/* ── SAND LIGHT MODE (Phase 7) ─────────────────────────────────────────
+   Stat text here is accent-tinted via inline style per program (a program's
+   --accent can be anything from amber to purple to red), so a fixed neutral
+   override is used instead of trying to darken every possible accent —
+   consistent and always legible regardless of which program renders it. */
+html[data-theme="light"] .fw-recap-overlay{background:rgba(28,26,23,0.4);}
+html[data-theme="light"] .fw-recap-sheet{background:#f5f2ec;border-top-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .fw-recap-handle{background:rgba(28,26,23,0.15);}
+
+html[data-theme="light"] .prog-bar-wrap.mcs-stat{background:rgba(245,242,236,0.97);border-bottom-color:rgba(28,26,23,0.08);}
+html[data-theme="light"] .mcs-timer{color:#1c1a17;}
+html[data-theme="light"] .mcs-sumbtn{color:#6b6459;}
+html[data-theme="light"] .mcs-sumbtn:active{color:#1c1a17;}
+html[data-theme="light"] .mcs-sumbtn.mcs-btn-open{
+  color:var(--accent,#d4af37);
+}
+html[data-theme="light"] .mcs-progress-track{background:rgba(28,26,23,0.08);}
+html[data-theme="light"] .mcs-progress-pct{color:#047857!important;}
+html[data-theme="light"] .mcs-today{border-top-color:rgba(28,26,23,0.08);}
+
+html[data-theme="light"] .sum-section .sum-card{background:#efe9db!important;border-color:rgba(28,26,23,0.15)!important;}
+html[data-theme="light"] .sum-section .sum-hd{color:#6b6459!important;}
+html[data-theme="light"] .sum-section .sum-sub{color:#6b6459!important;}
+html[data-theme="light"] .sum-section .sum-row{border-bottom-color:rgba(28,26,23,0.08)!important;}
+html[data-theme="light"] .sum-section .sum-nm{color:#1c1a17;}
+html[data-theme="light"] .sum-section .sum-st,
+html[data-theme="light"] .sum-section .sum-rp{color:#6b6459!important;}
+html[data-theme="light"] .sum-section .sum-tot{background:rgba(28,26,23,0.04)!important;border-color:rgba(28,26,23,0.1)!important;}
+html[data-theme="light"] .sum-section .sum-tv{color:#1c1a17!important;}
+html[data-theme="light"] .sum-section .sum-tl{color:#6b6459!important;}
+
+/* ══ M3 · SESSION TOOLBAR ═══════════════════════════════════════════════
+   The 46px bar at the top of a session is now the only chrome a workout
+   page carries. It holds one timer slot, the progress readout, and the
+   single terminal action. Measured on an iPhone 13: elapsed + sets +
+   End workout = 344px of 390. Adding a second live timer needs 464px,
+   which is why the rest countdown SWAPS with elapsed rather than joining
+   it (body.mcs-resting, toggled by mc-timer.js's applyRestView).        */
+.mcs-stat .mcs-stat-row{display:flex;align-items:center;gap:9px;padding:0 12px 6px;}
+.mcs-div{flex:0 0 auto;width:1px;height:16px;background:rgba(255,255,255,0.18);}
+.mcs-spacer{flex:1 1 auto;}
+
+/* one timer slot, two states */
+.mcs-rest{display:none;align-items:baseline;gap:5px;}
+body.mcs-resting .mcs-timer,
+body.mcs-resting .mcs-timer-label{display:none;}
+body.mcs-resting .mcs-rest{display:inline-flex;}
+.mcs-rest-val{font-size:15px;font-weight:800;letter-spacing:0.01em;
+  font-variant-numeric:tabular-nums;color:var(--accent,#e0a82e);}
+.mcs-rest-label{font-size:9.5px;font-weight:700;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--muted,#8b95a4);}
+
+/* progress readout — also the mid-session summary toggle */
+/* M5: these were 34px -- under the 44pt floor, on the two controls that end a
+   session and open the summary. The bar is 46px with 6px of bottom padding, so
+   a 44px box would overflow it; negative block margins keep the tappable box a
+   true 44px while the bar stays 46px. Same technique, same reason as M1's
+   exercise-library star. */
+.mcs-setbtn{flex:0 0 auto;min-height:44px;margin-block:-2px;padding:6px 8px;background:none;border:0;
+  font-size:12.5px;font-weight:800;letter-spacing:0.02em;white-space:nowrap;
+  font-variant-numeric:tabular-nums;color:var(--muted,#8b95a4);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;}
+.mcs-setbtn.mcs-btn-open{color:var(--text,#e6e9ee);}
+
+/* the one terminal action */
+.mcs-endbtn{flex:0 0 auto;min-height:44px;margin-block:-2px;padding:7px 14px;border-radius:999px;
+  background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.22);
+  color:var(--text,#e6e9ee);font-size:12.5px;font-weight:800;letter-spacing:0.02em;
+  white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.mcs-endbtn:active{transform:scale(0.97);}
+
+html[data-theme="light"] .mcs-div{background:rgba(28,26,23,0.16);}
+html[data-theme="light"] .mcs-endbtn{background:rgba(28,26,23,0.06);
+  border-color:rgba(28,26,23,0.2);color:#1c1a17;}
+html[data-theme="light"] .mcs-rest-val{color:#a87708;}
