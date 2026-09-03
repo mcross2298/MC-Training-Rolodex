@@ -1,0 +1,1245 @@
+/* ═══════════════════════════════════════════════════════════════════
+   base.css — MC Training App · Global Foundation
+   Provides: reset, CSS tokens, shared structural rules
+   Each page overrides --accent / --accent-rgb / header gradient only.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── TOKEN DEFAULTS ─────────────────────────────────────────────── */
+:root {
+  /* DG-1/DG-2: the app's one type identity (audit lean-six-sigma-audit.md
+     §6). Archivo for display/headline roles, Manrope for UI/body — the same
+     split dashboard.html's own --font-display/--font-ui already used before
+     the rest of the app had a webfont at all. Loaded + precached fleet-wide
+     by tools/apply-head-contract.py's FONT_LINK; a page with no font link
+     (should be none after that tool runs) falls through to system-ui, same
+     failure mode this replaces rather than a blank render. */
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-ui:      'Manrope', system-ui, sans-serif;
+  --accent:       #d4af37;
+  --accent-rgb:   212,175,55;
+
+  /* ── NEUTRAL RAMP (premium-design-roadmap.md P1) ───────────────────
+     ONE warm neutral ramp, read from opposite ends by the two themes.
+
+     Before this the app carried TWO incompatible neutral families: the
+     dark theme was Tailwind *slate* — blue-tinted (#e2e8f0 / #cbd5e1 /
+     #94a3b8 / #64748b / #475569) — while the light theme was a warm
+     stone/cream ramp (#faf7f0 / #f5f2ec / #efe9db / #8a8377 / #6b6459 /
+     #1c1a17), under a warm gold accent. Blue greys beneath a gold accent
+     are why dark mode read "dashboard" rather than "premium", and why the
+     two themes never felt like one product.
+
+     The light theme's ramp was the good one, so it won: every --ink-*
+     step at 3 and above is a value the light theme already shipped, which
+     is why the light block below re-points onto these tokens with its
+     rendered output BYTE-IDENTICAL. Only the dark theme changes, so the
+     light-mode contrast ratchet cannot regress from this step.
+
+     --ink-0  canvas (dark)          --ink-6  muted2 (dark) / muted (light)
+     --ink-1  raised surface (dark)  --ink-7  muted (dark) / muted2 (light)
+     --ink-2  card (dark)            --ink-8  secondary text (dark)
+     --ink-3  elevated / text(light) --ink-9  card (light)
+     --ink-4  solid border (dark)    --ink-10 canvas (light)
+     --ink-5  tertiary               --ink-11 primary text (dark)
+
+     --ink-0 is TRUE black on purpose, not #0a0a0a. On the OLED panels this
+     app is used on, true black switches the pixel off — that infinite
+     local contrast behind near-white type is most of what reads as "4K"
+     in the reference screenshots, and it costs nothing. */
+  --ink-0:  #000000;
+  --ink-1:  #0b0b0a;
+  --ink-2:  #141312;
+  --ink-3:  #1c1a17;
+  --ink-4:  #2a2724;
+  --ink-5:  #4a453f;
+  --ink-6:  #6b6459;
+  --ink-7:  #8a8377;
+  --ink-8:  #cfc9bf;
+  --ink-9:  #efe9db;
+  --ink-10: #f5f2ec;
+  --ink-11: #faf7f0;
+
+  /* Semantic aliases. Every existing var(--text)/var(--muted) consumer
+     fleet-wide inherits the correction with no edit of its own — which is
+     why P1 ships alone: a regression here has exactly one possible cause.
+     Measured against the ground each sits on:
+       --text   #e2e8f0 on #0a0a0a  15.9:1  ->  #faf7f0 on #000  19.8:1
+       --muted  #64748b on #0a0a0a   4.19:1 ->  #8a8377 on #000   5.59:1
+       --muted2 #475569 on #0a0a0a   2.63:1 ->  #6b6459 on #000   3.59:1
+     --muted was FAILING WCAG AA for normal text at 4.19:1 and now passes;
+     all three improve, none regress. */
+  --body-bg:      var(--ink-0);
+  --card-bg:      var(--ink-2);
+  --text:         var(--ink-11);
+  --muted:        var(--ink-7);
+  --muted2:       var(--ink-6);
+  --border-faint: rgba(255,255,255,0.07);
+  --border-dim:   rgba(255,255,255,0.1);
+  --surface-bg:   var(--ink-1);
+  /* Hairline: the reference designs divide with 1px rules and space rather
+     than with filled, bordered, rounded boxes. This is that rule's colour,
+     so a hairline-divided row is a token swap and not a new literal. */
+  --hairline:     rgba(255,255,255,0.09);
+
+  /* ── ELEVATION (P1) ────────────────────────────────────────────────
+     Shadow was previously ad-hoc per component. Two steps only: a resting
+     lift and a floating/overlay lift. On a true-black canvas a shadow
+     reads as a soft halo rather than a drop, so both are deliberately
+     low-opacity and wide. */
+  --elev-1: 0 2px 12px -4px rgba(0,0,0,.7);
+  --elev-2: 0 12px 32px -12px rgba(0,0,0,.85);
+  --density:      1;       /* PM ThemeConfig density scale (mc-theme.js) */
+
+  /* Macro tracker palette (mc-macros.js reads these, not hardcoded hex) */
+  --macro-kcal:    #4d9fff;   /* blue — calories */
+  --macro-protein: #a78bfa;   /* purple — protein */
+  --macro-fat:     #fbbf24;   /* yellow — fat */
+  --macro-carb:    #fb923c;   /* orange — carbs */
+
+  /* Shared state semantics (L1 token unification) — previously loose hex
+     repeated across timers, checks, and the finish flow. */
+  --success:      #34d399;   /* done / checked / on-track green */
+  --success-rgb:  52,211,153;
+  --danger:       #f87171;   /* overtime / reset / error red */
+  /* Swapped-exercise "REPLACED" badge — the one cyan that was hardcoded
+     identically in mc-replace.js and mc-card-actions.js (U2/U4). */
+  --replaced:     #22d3ee;
+  --replaced-rgb: 34,211,238;
+
+  /* ── MOTION TOKENS (audit DG-6) ───────────────────────────────────
+     Named durations/eases for the transition/animation values that were
+     scattered as magic numbers across this file. Each token's value is
+     exactly the literal it replaces, so adopting it is a 1:1 var() swap
+     — zero visual delta, just one place to change a speed going forward.
+     The reduced-motion override below (@media prefers-reduced-motion)
+     already zeroes every transition/animation duration regardless of
+     these tokens, so it needs no changes here. */
+  --duration-fast:     0.15s;  /* hover/press micro-interactions */
+  --duration-base:     0.2s;   /* toggles, card open/close */
+  --duration-moderate: 0.35s;  /* rep-hero color/glow crossfade */
+  --duration-relaxed:  0.4s;   /* progress-bar fill */
+  --duration-slow:     1s;     /* timer pulse, timer-float progress */
+  --duration-slower:   1.2s;   /* empty-state pulse */
+  --duration-slowest:  2.6s;   /* live rep glow loop */
+  --ease-standard:  ease;
+  --ease-linear:    linear;
+  --ease-pulse:     ease-in-out;
+
+  /* ── TYPE SCALE (L1 Phase B) ────────────────────────────────────────
+     One documented ramp for the whole app so page titles, card names,
+     labels and body text stop drifting page-to-page. Values match the
+     dominant existing sizes so adoption is a 1:1 var() swap (no reflow);
+     the rare oddballs (17/19/23px) fold to their nearest step on
+     adoption. The giant tabular stat numerals (42–56px, e.g. max-out's
+     .mx-weight) stay bespoke on purpose — they're feature readouts, not
+     part of the text hierarchy. */
+  --fs-3xs:   10px;  /* micro labels / legal */
+  --fs-2xs:   11px;  /* eyebrows, tags, meta (most common) */
+  --fs-xs:    12px;  /* small meta / captions */
+  --fs-sm:    13px;  /* secondary body */
+  --fs-md:    14px;  /* body default */
+  --fs-lg:    15px;  /* emphasised body / card names */
+  --fs-xl:    16px;  /* lead body / list headings */
+  --fs-2xl:   18px;  /* sub-section headings */
+  --fs-3xl:   20px;  /* section headings */
+  --fs-title: 24px;  /* page title — single source for all .title */
+  --fs-hero:  30px;  /* hero / display heading */
+  /* P1: the ramp topped out at 30px while the reference display titles run
+     ~36-38px. Premium reads from a WIDER dynamic range — 10px micro-labels
+     against a 38px display size — not from a larger middle. */
+  --fs-display: 38px; /* program name / landing display title */
+
+  /* ── WEIGHT SCALE (L1 Phase B; extended P1) ─────────────────────────
+     The app had NO light type weight. Measured across every stylesheet:
+     266 font-weight declarations, 264 of them >= 600 — 107x900, 87x800,
+     53x700, 17x600, TWO at 500 and ZERO at 400. --fw-medium:600 was the
+     scale's lightest token, so body copy, taglines and secondary text were
+     all set in what is really a display weight.
+
+     Uniform boldness is the single largest reason the app reads loud and
+     consumer-grade rather than premium. Premium interfaces get their calm
+     from EDITORIAL CONTRAST: light body copy set against heavy display
+     type. The two new steps below supply the light half of that pairing.
+
+     Roles, so this doesn't drift back:
+       --fw-light/--fw-regular   body copy, taglines, descriptions, any
+                                 running prose longer than a label
+       --fw-medium/--fw-semi     labels, meta, secondary emphasis
+       --fw-bold/--fw-black      display type, numerals, titles ONLY
+
+     The four original tokens keep their exact values, so nothing shifts
+     until a component deliberately opts in. */
+  --fw-light:  400;  /* body copy / running prose */
+  --fw-regular:500;  /* secondary body / taglines */
+  --fw-medium: 600;  /* muted meta */
+  --fw-semi:   700;  /* body emphasis */
+  --fw-bold:   800;  /* card names / labels */
+  --fw-black:  900;  /* titles / numerals */
+
+  /* ── RADIUS SCALE (P1) ──────────────────────────────────────────────
+     21 distinct border-radius px literals existed across the tree (1,2,3,
+     4,5,6,7,8,9,10,11,12,13,14,15,16,18,20,22,24,999) with no token to
+     check a new one against — six of them inside a single 116-line
+     component file. Inconsistent corner geometry is exactly what breaks a
+     high-fidelity read at a glance, because the eye compares corners
+     across a screen even when it can't name what's wrong.
+     tools/check-design-tokens.js ratchets the off-scale count downward. */
+  --r-xs:   4px;   /* chips, tags, inline marks */
+  --r-sm:   8px;   /* small controls, thumbnails */
+  --r-md:  12px;   /* cards, rows, inputs */
+  --r-lg:  16px;   /* panels, sheets */
+  --r-xl:  24px;   /* hero surfaces, modals */
+  --r-pill: 999px; /* pills, fully-round buttons */
+
+  /* ── SPACING RHYTHM (L1 Phase B) — 4px base step ──────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* ── FIXED/OVERLAY LAYER — stacking contract (DG-10, card-integration-
+     roadmap) ──────────────────────────────────────────────────────────
+     Before this, .timer-float/.fw-bar/.fw-auto-banner/mc-nav.css's bottom
+     nav each carried its own literal z-index with no shared scale, so a
+     new fixed element had nothing to check its number against — exactly
+     how mc-card-actions.css ended up in the unrelated 1180-1360 range
+     (its own internally-consistent "floating action" layer; not part of
+     this scale, and doesn't overlap it today, so left alone rather than
+     migrated for its own sake).
+
+     z-index, low to high — every value below is a real rule elsewhere
+     (base.css unless noted); read this list before adding a new one:
+       --z-fw-bar        Finish Workout bar, baseline (no bottom nav)
+       --z-banner        .fw-auto-banner (top-pinned "workout auto-saved")
+       --z-sw-update     mc-sw-update.js's self-mounted "Update available"
+                         banner. Top-anchored BELOW whatever fixed top
+                         chrome the page already has (measured at show
+                         time), so it never fights .prog-bar-wrap. Sits
+                         under --z-modal on purpose: a dialog covers it.
+       --z-session-bar   .prog-bar-wrap — the 3px progress strip, and the
+                         46px session toolbar mc-summary.js upgrades it
+                         into (.mcs-stat: elapsed/rest, sets, End workout).
+                         This was a bare literal 999, the one fixed element
+                         never migrated onto this scale — which put it above
+                         BOTH dialog layers, so mc-summary.css's
+                         .fw-recap-overlay and mc-finish.js's .fw-modal-
+                         overlay each rendered with the toolbar punched
+                         through their top edge. It only ever needs to beat
+                         page content (.week-tabs at 8 is the highest
+                         non-fixed stack in the fleet); a full-screen dialog
+                         is supposed to cover it, hence a slot below
+                         --z-timer-float rather than above everything.
+       --z-timer-float   Rest timer floating bar
+       --z-modal         .fw-modal-overlay, and mc-summary.css's
+                          .fw-recap-overlay at the same value — deliberately
+                          ABOVE the timer: mc-finish.js's auto-trigger can
+                          open one the instant the same check that starts a
+                          rest timer completes the workout, and the
+                          finished-workout summary must win that race, not
+                          get buried under a now-pointless countdown
+       --z-fw-bar-nav    .fw-bar when mc-nav.css's bottom nav is also
+                         present (body.mc-has-nav .fw-bar) — same value as
+                         conditioning-elite.css's .sum-drawer; the two never
+                         render together so this isn't a real collision
+       --z-nav           mc-nav.css's persistent bottom nav
+       --z-nav-toggle    mc-nav.css's floating theme-toggle button
+
+     Reserved heights (content only, before env(safe-area-inset-*) is added
+     on top by whichever rule positions each element — see below):
+       .timer-float      64px, fixed
+       mc-nav.css's bar  ~58px (44px tap targets + 6px top/bottom padding)
+       .fw-bar            52px single-row baseline, ~109px in its stacked
+                          layout (Finish button + progress line + Workout
+                          Summary link) — the 109px is a measured value
+                          (headless-browser screenshot), not calculated,
+                          since it depends on live font metrics; mc-nav.css's
+                          body.mc-has-nav.mc-has-fw block recomputes every
+                          dependent offset (.timer-float, mc-qp-trigger,
+                          mc-voice-btn) from that same measured number, so
+                          if .fw-bar's stacked layout ever changes height,
+                          re-measure and update all four together.
+
+     Co-visibility rule: every fixed-bottom element's own `bottom` offset
+     must be the sum of every OTHER fixed-bottom element's reserved height
+     that sits below it on screen, plus env(safe-area-inset-bottom) once,
+     at the outermost element of the stack — verified current for every
+     rule in this scale as of DG-10; the ones sitting on the safe-area
+     already (.timer-float, .fw-bar, mc-nav.css's bar, mc-qp-trigger,
+     mc-voice-btn) all account for it correctly today, so nothing below
+     changes rendering, only names the values that were already correct. */
+  --z-fw-bar:      40;
+  --z-banner:      50;
+  --z-sw-update:   60;
+  --z-session-bar: 70;
+  --z-timer-float: 100;
+  --z-modal:       110;
+  --z-fw-bar-nav:  120;
+  --z-nav:         140;
+  --z-nav-toggle:  141;
+}
+
+/* ── PM Phase 2 — ThemeConfig knobs (set by mc-theme.js on <html>) ──── */
+/* Typography: the "Athletic Bold" option (Bebas Neue) is retired — audit
+   DG-1 found it referenced here but never loaded anywhere in the app, so it
+   silently rendered as Arial Narrow/system on every device that picked it.
+   A saved data-typography="athletic" from before this change is a harmless
+   no-op now (this selector no longer exists) rather than something needing
+   a data migration. See --font-display/--font-ui (DG-1/DG-2) for the one
+   identity the app actually delivers. */
+/* Density scale (components that opt in via var(--density)). */
+html[data-density="compact"]{--density:0.82;}
+html[data-density="spacious"]{--density:1.18;}
+/* Motion level: off = kill all animation/transition; subtle = stop decorative
+   looping animations (glow/sheen/pulse) but keep interaction transitions. */
+html[data-motion="off"] *,html[data-motion="off"] *::before,html[data-motion="off"] *::after{
+  animation:none!important;transition:none!important;}
+html[data-motion="subtle"] [class*="glow"],
+html[data-motion="subtle"] [class*="sheen"],
+html[data-motion="subtle"] .cat-icon,
+html[data-motion="subtle"] .cat-card,
+html[data-motion="subtle"] .rail-card{animation:none!important;}
+/* OS-level reduced-motion gets the same treatment as data-motion="off",
+   regardless of the PM ThemeConfig setting. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}
+}
+
+/* ── PM Phase 2 — Program Cards layout styles (applied to #flagGrid) ──── */
+/* lay-stack is the shipped default (vertical stack); the rest are opt-in. */
+.prog-cards.lay-stack{display:block;}
+.prog-cards.lay-stack .cat-card{margin-bottom:11px;}
+.prog-cards.lay-grid{display:grid;grid-template-columns:1fr;gap:11px;}
+.prog-cards.lay-grid .cat-card{margin-bottom:0;}
+@media (min-width:560px){.prog-cards.lay-grid{grid-template-columns:1fr 1fr;}}
+.prog-cards.lay-featured{display:grid;grid-template-columns:1fr;gap:11px;}
+.prog-cards.lay-featured .cat-card{margin-bottom:0;}
+.prog-cards.lay-featured .cat-card:first-child{grid-column:1 / -1;}
+@media (min-width:560px){.prog-cards.lay-featured{grid-template-columns:1fr 1fr;}}
+.prog-cards.lay-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;padding-bottom:6px;}
+.prog-cards.lay-carousel::-webkit-scrollbar{display:none;}
+.prog-cards.lay-carousel .cat-card{flex:0 0 82%;max-width:340px;scroll-snap-align:start;margin-bottom:0;}
+
+/* ── PM Phase 2b — Workout Card layouts (body[data-workout-layout]) ──── */
+/* superset-grouped: emphasize the already-grouped .ss-card supersets with a
+   bold accent bracket so paired work reads as one block. */
+body[data-workout-layout="superset-grouped"] .ss-card{
+  border-left:3px solid var(--accent,#d4af37);
+  background:rgba(var(--accent-rgb,212,175,55),0.06);
+  border-radius:14px;padding-left:6px;margin:14px 0;
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb,212,175,55),0.18);}
+body[data-workout-layout="superset-grouped"] .ss-label{color:var(--accent,#d4af37);font-weight:900;}
+body[data-workout-layout="superset-grouped"] .ss-divider .ss-x{
+  background:rgba(var(--accent-rgb,212,175,55),0.14);color:var(--accent,#d4af37);
+  padding:2px 10px;border-radius:20px;font-weight:800;}
+/* swipe: one card-block at a time, horizontal scroll-snap. Targets the
+   detected cards container so it works regardless of the page wrapper. */
+body[data-workout-layout="swipe"] [data-mc-cards]{
+  display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;padding-bottom:8px;}
+body[data-workout-layout="swipe"] [data-mc-cards]::-webkit-scrollbar{display:none;}
+body[data-workout-layout="swipe"] [data-mc-cards] > .ex-card,
+body[data-workout-layout="swipe"] [data-mc-cards] > .ss-card,
+body[data-workout-layout="swipe"] [data-mc-cards] > .a-card{
+  flex:0 0 86%;max-width:520px;scroll-snap-align:start;}
+
+/* ── RESET ──────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;font-family:var(--font-ui);-webkit-tap-highlight-color:transparent;}
+
+/* Keyboard focus must be visible on every page that loads base.css —
+   tap-highlight suppression above otherwise leaves no focus cue at all. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+
+/* ── SHELL ──────────────────────────────────────────────────────── */
+/* U1: same containment as body below, also on html — the actual root
+   scroller can vary by page (doctype/quirks/whether a page sets its own
+   height or overflow rules on either element), so setting it on both is the
+   standard cross-browser-robust way to guarantee Android pull-to-refresh
+   never reaches the browser chrome and reloads the page mid-workout,
+   regardless of which of the two ends up being the real scroll boundary. */
+html{overscroll-behavior-y:contain;}
+body{background:var(--body-bg);min-height:100vh;color:var(--text);padding-bottom:48px;
+  /* stop a downward pull at the top from reloading the page mid-workout */
+  overscroll-behavior-y:contain;}
+
+/* ── NAVIGATION ─────────────────────────────────────────────────── */
+.back-link{
+  position:absolute;top:18px;left:18px;
+  text-decoration:none;font-size:var(--fs-sm);font-weight:700;
+  padding:6px 14px;border-radius:20px;z-index:10;
+  color:var(--accent);
+  background:rgba(var(--accent-rgb),0.1);
+  border:1px solid rgba(var(--accent-rgb),0.3);
+  /* VOC/VOA Kaizen audit W-I2 — 29px tall, under the 44px touch floor.
+     Grown via min-height rather than a padding rewrite so the same fix
+     applies unchanged to every page's own colour/shape variant of this
+     rule (see the per-page .back-link duplicates this stylesheet doesn't
+     own). */
+  min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box;
+}
+/* The back-link floats absolutely; hero headers need top room so it
+   doesn't overlap the eyebrow/title (the .header class reserves 76px). */
+.back-link + .hero{padding-top:64px;}
+
+/* .back — the OTHER back control: a circular topbar icon button, distinct
+   from .back-link above (an absolutely-positioned pill). VOC/VOA Kaizen
+   audit W3-3 — byte-identical across quick-tour.html, program-guide.html,
+   workout-detail.html and workout-logs.html at 36x36, under the 44px touch
+   floor; consolidated here per check-single-impl.js's philosophy rather than
+   patching four pages. Two pages (quick-tour-overview.html,
+   pm-mode-overview.html) don't load base.css at all (see mc-nav.css's own
+   header comment on that pattern) and keep their own copy of this rule,
+   grown the same way, since there is nothing here for them to inherit. */
+.back{
+  display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+  background:var(--surface,#111);border:1px solid var(--border2,rgba(255,255,255,0.1));
+  color:var(--gold,var(--accent));font-size:var(--fs-xl);text-decoration:none;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.header{padding:76px 20px 22px;position:relative;}
+.header-inner{max-width:680px;margin:0 auto;}
+.eyebrow{font-family:var(--font-display);font-size:var(--fs-2xs);font-weight:var(--fw-bold);letter-spacing:0.25em;text-transform:uppercase;margin-bottom:var(--sp-2);color:var(--accent);}
+.title{font-family:var(--font-display);font-size:var(--fs-title);font-weight:var(--fw-black);color:#fff;margin-bottom:var(--sp-2);letter-spacing:-0.02em;}
+.week-badge{
+  display:inline-block;border-radius:6px;padding:5px 14px;
+  font-size:var(--fs-xs);font-weight:700;
+  background:rgba(var(--accent-rgb),0.15);
+  border:1px solid rgba(var(--accent-rgb),0.35);
+  color:var(--accent);
+}
+
+/* ── WEEK TABS ──────────────────────────────────────────────────── */
+.week-tabs{padding:0 12px;position:sticky;top:0;z-index:8;background:var(--body-bg);}
+.wtabs{max-width:680px;margin:0 auto;display:flex;}
+.wtab{
+  flex:1;padding:13px 8px;border:none;cursor:pointer;
+  font-weight:900;font-size:var(--fs-2xs);background:transparent;
+  border-bottom:3px solid transparent;text-align:center;
+  letter-spacing:0.05em;min-height:48px;
+  color:var(--ink-8,#cfc9bf);
+}
+.wtab.active{
+  color:var(--accent);font-size:var(--fs-md);
+  border-bottom-color:var(--accent);
+  background:rgba(255,255,255,0.07);
+}
+.wtab:active{transform:scale(0.96);}
+
+/* ── CONTENT AREA ───────────────────────────────────────────────── */
+.content{max-width:680px;margin:20px auto 0;padding:0 16px;}
+.tap-hint{
+  font-size:var(--fs-2xs);font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;margin-bottom:16px;
+  text-align:center;opacity:0.6;color:var(--accent);
+}
+.sec-head{
+  font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.2em;
+  text-transform:uppercase;margin:18px 0 10px;
+  display:flex;align-items:center;gap:8px;opacity:0.8;
+  color:var(--accent);
+}
+.sec-head::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),0.3),transparent);
+}
+
+/* ── EXERCISE CARD ──────────────────────────────────────────────── */
+.ex-card{
+  border-radius:var(--r-lg);border:1px solid rgba(var(--accent-rgb),0.2);
+  margin-bottom:10px;overflow:hidden;cursor:pointer;
+  transition:all var(--duration-fast);
+  background:linear-gradient(180deg,var(--ink-2),var(--ink-1));
+  position:relative;
+  box-shadow:0 8px 26px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.ex-card:active{transform:scale(0.99);}
+/* Premier accent purpose-rail — themed glow down the left edge */
+.ex-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;z-index:1;
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),1),rgba(var(--accent-rgb),0.45));
+  box-shadow:0 0 14px rgba(var(--accent-rgb),0.45);}
+.ex-card.checked::before{background:linear-gradient(180deg,#34d399,#059669);box-shadow:0 0 14px rgba(52,211,153,0.4);}
+/* Pre-check affordance — visible tap cue before interaction */
+.ex-card::after{
+  content:'☐';
+  position:absolute;top:12px;right:14px;
+  font-size:var(--fs-xl);line-height:1;
+  color:rgba(255,255,255,0.18);
+  transition:all var(--duration-base) var(--ease-standard);
+  pointer-events:none;
+}
+.ex-card.checked::after{content:'✓';color:var(--success);}
+.ex-card.checked{background:#061a0d!important;border-color:rgba(52,211,153,0.45)!important;}
+.ex-card.checked .ex-name{text-decoration:line-through;color:var(--success);}
+.ex-card.checked .ex-num{background:#065f46!important;border-color:transparent!important;}
+.ex-row{display:flex;gap:10px;align-items:flex-start;padding:13px 14px 13px 18px;}
+.ex-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:28px;width:28px;height:28px;border-radius:50%;
+  font-size:var(--fs-xs);font-weight:900;margin-top:1px;flex-shrink:0;
+  background:rgba(var(--accent-rgb),0.18);
+  color:var(--accent);
+  border:1px solid rgba(var(--accent-rgb),0.28);
+}
+.ex-content{flex:1;min-width:0;}
+.ex-name{font-weight:var(--fw-bold);font-size:var(--fs-md);letter-spacing:-0.01em;color:var(--text);line-height:1.3;margin-bottom:7px;overflow-wrap:break-word;word-break:break-word;}
+/* K-3.3/G-08: last-3-session micro-trend, injected as .ex-name's next
+   sibling by mc-setlog.js's injectTrend() — never as its child, since
+   .ex-name's textContent is the exercise's identity key elsewhere. */
+.a-trend{font-size:11px;font-weight:800;letter-spacing:0.01em;margin:-3px 0 6px;display:flex;align-items:center;gap:3px;}
+.a-trend-up{color:var(--success);}
+.a-trend-down{color:var(--danger);}
+.a-trend-flat{color:var(--muted);}
+.ex-tags{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.ex-sets{
+  display:inline-block;font-size:var(--fs-xs);font-weight:900;padding:3px 10px;border-radius:6px;letter-spacing:0.01em;
+  background:rgba(var(--accent-rgb),0.12);
+  color:var(--accent);
+  border:1px solid rgba(var(--accent-rgb),0.24);
+}
+.ex-note{
+  font-size:var(--fs-2xs);margin-top:5px;font-style:italic;opacity:0.85;line-height:1.4;
+  color:var(--accent);
+}
+
+/* ── SUPERSET CARD ──────────────────────────────────────────────── */
+/* Grouped block (superset / tri-set / giant set): a single continuous left
+   "spine" rail + a branch tie into each numbered leg, so the chained moves
+   read as one back-to-back unit. Extra bottom margin sets grouped blocks
+   clearly apart from neighbouring standalone cards. */
+.ss-card{border-radius:var(--r-lg);border:1px solid rgba(168,85,247,0.28);margin-bottom:16px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,var(--ink-2),var(--ink-1));
+  box-shadow:0 8px 26px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.05);}
+/* Premier purpose-rail — violet for supersets (structural grammar) */
+.ss-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;z-index:1;
+  background:linear-gradient(180deg,#a855f7,#6d28d9);box-shadow:0 0 16px rgba(168,85,247,0.55);}
+.ss-header{background:rgba(168,85,247,0.14);padding:8px 14px 8px 18px;border-bottom:1px solid rgba(168,85,247,0.18);}
+.ss-label{font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.18em;color:#c084fc;text-transform:uppercase;}
+.ss-ex{display:flex;gap:10px;align-items:flex-start;padding:11px 14px 11px 18px;cursor:pointer;position:relative;}
+/* branch tie — links the shared spine to this leg's number node */
+.ss-ex::after{content:'';position:absolute;left:5px;top:25px;width:13px;height:2px;z-index:2;
+  background:#a855f7;border-radius:1px;box-shadow:0 0 6px rgba(168,85,247,0.5);}
+.ss-ex:not(:last-child){border-bottom:1px solid rgba(168,85,247,0.1);}
+.ss-ex.checked .ss-name{text-decoration:line-through;color:var(--success);}
+.ss-ex.checked .ss-num{background:#065f46!important;border-color:transparent!important;color:#fff!important;}
+.ss-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:28px;width:28px;height:28px;
+  background:rgba(168,85,247,0.18);color:#c084fc;
+  border-radius:50%;font-size:var(--fs-xs);font-weight:900;
+  border:1px solid rgba(168,85,247,0.28);margin-top:1px;flex-shrink:0;
+}
+.ss-content{flex:1;min-width:0;}
+.ss-name{font-weight:var(--fw-bold);font-size:var(--fs-md);letter-spacing:-0.01em;color:var(--text);line-height:1.3;margin-bottom:6px;overflow-wrap:break-word;word-break:break-word;}
+.ss-divider{display:flex;align-items:center;justify-content:center;padding:4px 0;background:rgba(168,85,247,0.06);}
+.ss-x{font-size:var(--fs-2xs);font-weight:900;color:#a855f7;letter-spacing:0.12em;}
+/* Tri-set variant — amber structural grammar (parallels the premier .a-card.is-tri) */
+.ss-card.is-tri{border-color:rgba(245,158,11,0.28);}
+.ss-card.is-tri::before{background:linear-gradient(180deg,#fbbf24,#b45309);box-shadow:0 0 14px rgba(245,158,11,0.45);}
+.ss-card.is-tri .ss-header{background:rgba(245,158,11,0.12);border-bottom-color:rgba(245,158,11,0.18);}
+.ss-card.is-tri .ss-label{color:#fbbf24;}
+.ss-card.is-tri .ss-num{background:rgba(245,158,11,0.18);color:#fbbf24;border-color:rgba(245,158,11,0.3);}
+.ss-card.is-tri .ss-ex:not(:last-child){border-bottom-color:rgba(245,158,11,0.12);}
+.ss-card.is-tri .ss-ex::after{background:#fbbf24;box-shadow:0 0 6px rgba(245,158,11,0.5);}
+.ss-card.is-tri .ss-divider{background:rgba(245,158,11,0.06);}
+.ss-card.is-tri .ss-x{color:#f59e0b;}
+
+/* ── TYPE BADGES ────────────────────────────────────────────────── */
+/* Flattened — solid tint only, no border. The color still carries into the
+   card's hero rep-number glow via --rep-glow-rgb below, so the badge and the
+   big numbers read as one accent instead of two competing decorations. */
+.type-badge{display:inline-block;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:0.04em;text-transform:uppercase;}
+.tb-pyramid{background:rgba(249,115,22,0.2);color:#fb923c;}
+.tb-lowrep{background:rgba(239,68,68,0.2);color:var(--danger);}
+.tb-tempo{background:rgba(6,182,212,0.2);color:#22d3ee;}
+.tb-highrep{background:rgba(212,175,55,0.2);color:#d4af37;}
+.tb-highrep12{background:rgba(234,179,8,0.2);color:#fbbf24;}
+.tb-highrep20{background:rgba(217,119,6,0.24);color:#fb923c;}
+.tb-midset{background:rgba(139,92,246,0.2);color:#a78bfa;}
+.tb-drop{background:rgba(244,63,94,0.2);color:#fb7185;}
+.tb-amrap{background:rgba(239,68,68,0.24);color:#ef4444;}
+.tb-highset{background:rgba(52,211,153,0.2);color:var(--success);}
+.tb-superset{background:rgba(168,85,247,0.22);color:#c084fc;}
+.tb-minrest{background:rgba(139,92,246,0.2);color:#a78bfa;}
+.tb-optional{background:rgba(107,100,89,0.2);color:var(--ink-8,#cfc9bf);}
+.tb-finisher{background:rgba(16,185,129,0.2);color:var(--success);}
+/* Equipment badges — distinct from the intensifier set above so
+   station-anchoring (which equipment a block uses) reads as its own visual
+   category, not more intensifier noise. tb-dumbbell/tb-cable existed with
+   no color at all; tb-barbell/tb-machine/tb-smith/tb-plate didn't exist. */
+.tb-barbell{background:rgba(138,131,119,0.2);color:var(--ink-8,#cfc9bf);}
+.tb-dumbbell{background:rgba(56,189,248,0.2);color:#7dd3fc;}
+.tb-cable{background:rgba(45,212,191,0.2);color:#5eead4;}
+.tb-machine{background:rgba(161,161,170,0.2);color:#d4d4d8;}
+.tb-smith{background:rgba(192,132,252,0.15);color:#e9d5ff;}
+.tb-plate{background:rgba(120,113,108,0.25);color:#d6d3d1;}
+
+/* Hero rep-number glow picks up the exercise's featured intensifier color
+   instead of always the page's generic accent. Numbers stay solid white for
+   legibility — only the ambient glow (text-shadow) retints per type. Covers
+   both badge systems in the codebase: descendant .tb-* badges (pmc/cat-*
+   pages) and the .is-* modifier classes (mm-p1/mc-* multi-week pages). */
+.a-card:has(.tb-highrep){--rep-glow-rgb:212,175,55;}
+.a-card:has(.tb-highrep12){--rep-glow-rgb:234,179,8;}
+.a-card:has(.tb-highrep20){--rep-glow-rgb:217,119,6;}
+.a-card:has(.tb-lowrep){--rep-glow-rgb:239,68,68;}
+.a-card:has(.tb-pyramid){--rep-glow-rgb:249,115,22;}
+.a-card:has(.tb-tempo){--rep-glow-rgb:6,182,212;}
+.a-card:has(.tb-drop),.a-card:has(.tb-amrap){--rep-glow-rgb:244,63,94;}
+.a-card:has(.tb-superset),.a-card:has(.tb-midset){--rep-glow-rgb:168,85,247;}
+.a-card:has(.tb-highset),.a-card:has(.tb-finisher){--rep-glow-rgb:52,211,153;}
+.a-card.is-ss{--rep-glow-rgb:168,85,247;}
+.a-card.is-tri{--rep-glow-rgb:245,158,11;}
+.a-card.is-cluster{--rep-glow-rgb:34,211,238;}
+.a-card.is-drop{--rep-glow-rgb:244,63,94;}
+
+/* ── WARMUP CARD ────────────────────────────────────────────────── */
+.warmup-card{border-radius:12px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;}
+.wu-icon{font-size:var(--fs-3xl);flex-shrink:0;margin-top:1px;}
+.wu-text{font-size:var(--fs-sm);font-weight:700;line-height:1.4;}
+.wu-sub{font-size:var(--fs-2xs);opacity:0.8;margin-top:3px;}
+
+/* ── REST TIMER ─────────────────────────────────────────────────── */
+/* 44pt touch floor (R5). The rest timer is the most-tapped control in a gym
+   session — between heavy sets, with chalky hands — and it was 26px tall,
+   59% of the minimum safe size. That is an interaction defect, not a
+   styling preference. The active card gets the fuller 52px band, since
+   that is the card the athlete is actually resting on. */
+/* U3: touch-action:manipulation on the app's fast-repeat tap targets — no
+   declared touch-action anywhere in the tree meant the browser held every
+   tap for the standard double-tap-to-zoom window before acting on it, so a
+   quick double-tap under load (checking two sets back to back, restarting a
+   timer) could be swallowed as a zoom gesture instead of two taps. This
+   disables double-tap-to-zoom and the 300ms delay on these controls only —
+   pinch-zoom and normal page scroll are untouched everywhere else. */
+.rest-timer{appearance:none;-webkit-appearance:none;margin:0;font:inherit;color:inherit;border:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;user-select:none;padding:4px 12px;min-height:44px;border-radius:8px;transition:all var(--duration-fast);position:relative;touch-action:manipulation;}
+.ex-card.active .rest-timer,.ss-ex.active .rest-timer{min-height:52px;}
+.rest-timer:active{transform:scale(0.96);}
+/* .rest-timer.running / .done / .overtime and @keyframes timerPulse are gone
+   with the state they painted: the chip is a static prescription now and never
+   receives those classes (mc-timer.js's makeRestTimer explains why). Leaving
+   the rules behind would have recreated this repo's own documented trap --
+   "a dead timer reads exactly like a working one in source" (CLAUDE.md, the
+   One rest timer rule) -- here and in the 10 page-local <style> blocks that
+   each carried their own copy. .idle is the chip's only state, and is still
+   applied by every emitter. */
+.rest-timer.idle{background:rgba(107,100,89,0.12);border:1px solid rgba(107,100,89,0.2);}
+.rest-timer-icon{font-size:var(--fs-sm);}
+.rest-timer-label{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.04em;}
+.rest-timer.idle .rest-timer-label{color:var(--muted);}
+.rest-timer-hint{font-size:var(--fs-2xs);color:var(--muted2);margin-top:2px;font-style:italic;}
+
+/* ── TIMER FLOAT — full-width bottom bar ────────────────────────── */
+.timer-float{position:fixed;bottom:0;left:0;right:0;width:100%;height:64px;background:rgba(10,10,10,0.97);backdrop-filter:blur(16px);display:none;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;gap:12px;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -4px 24px rgba(0,0,0,0.6);z-index:var(--z-timer-float);}
+.timer-float.visible{display:flex;}
+.timer-float-label{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);}
+.timer-float-time{font-size:42px;font-weight:900;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:#fbbf24;}
+.timer-float-time.done{color:var(--success);}
+.timer-float-time.overtime{color:var(--danger);}
+.timer-float-ex{font-size:var(--fs-2xs);color:var(--muted);text-align:center;max-width:180px;line-height:1.4;}
+.timer-float-bar{width:100%;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:4px;overflow:hidden;}
+.timer-float-progress{height:100%;background:#fbbf24;border-radius:2px;transition:width var(--duration-slow) var(--ease-linear);width:100%;}
+.timer-float-progress.done{background:#34d399;}
+.timer-float-progress.overtime{background:#f87171;}
+.timer-float-actions{display:flex;gap:8px;margin-top:6px;}
+.timer-float-btn{padding:6px 14px;min-height:44px;border-radius:8px;border:none;font-size:var(--fs-2xs);font-weight:800;cursor:pointer;letter-spacing:0.06em;display:inline-flex;align-items:center;justify-content:center;}
+.timer-float-skip{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid rgba(52,211,153,0.3);}
+.timer-float-reset{background:rgba(239,68,68,0.12);color:var(--danger);border:1px solid rgba(239,68,68,0.2);}
+
+/* ── TIMER PRESETS ──────────────────────────────────────────────── */
+.timer-presets{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;justify-content:center;}
+.timer-preset{padding:5px 12px;min-height:44px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.07);color:var(--ink-8,#cfc9bf);font-size:var(--fs-2xs);font-weight:800;cursor:pointer;letter-spacing:0.05em;display:inline-flex;align-items:center;justify-content:center;}
+.timer-preset:active{background:rgba(var(--accent-rgb),0.2);color:var(--accent);border-color:rgba(var(--accent-rgb),0.4);}
+
+/* ── PROGRESS BAR ───────────────────────────────────────────────── */
+.prog-bar-wrap{position:fixed;top:0;left:0;right:0;height:3px;z-index:var(--z-session-bar);background:rgba(255,255,255,0.06);}
+.prog-bar-fill{height:3px;background:linear-gradient(90deg,#22d3ee,#a78bfa);transition:width var(--duration-relaxed) var(--ease-standard);border-radius:0 2px 2px 0;}
+
+/* ── NEXT WORKOUT LINK ──────────────────────────────────────────── */
+.next-workout{display:block;margin:28px 16px 32px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px 18px;text-decoration:none;color:var(--text);transition:all var(--duration-fast);}
+.next-workout:active{transform:scale(0.98);background:rgba(255,255,255,0.07);}
+.next-workout-label{font-size:var(--fs-2xs);font-weight:800;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;}
+.next-workout-row{display:flex;align-items:center;gap:10px;}
+.next-workout-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.next-workout-name{font-size:var(--fs-lg);font-weight:900;flex:1;}
+.next-workout-arrow{font-size:var(--fs-2xl);color:var(--muted2);}
+
+/* ── SET LOGGING ────────────────────────────────────────────────── */
+.setlog-wrap{margin-top:8px;border-top:1px solid rgba(255,255,255,0.07);padding-top:2px;display:none;}
+.setlog-wrap.open{display:block;}
+.setlog-toggle{display:flex;align-items:center;gap:5px;margin-top:8px;cursor:pointer;user-select:none;font-size:var(--fs-2xs);font-weight:900;color:var(--muted2);letter-spacing:0.08em;text-transform:uppercase;-webkit-tap-highlight-color:transparent;min-height:44px;padding:8px 0;touch-action:manipulation;}
+.setlog-hist{font-size:var(--fs-2xs);font-weight:700;color:rgba(var(--accent-rgb),0.6);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+.sl-row{display:grid;grid-template-columns:24px 1fr 1fr 44px;gap:5px;align-items:center;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.sl-row:last-child{border-bottom:none;}
+.sl-num{font-size:var(--fs-2xs);font-weight:900;color:var(--muted2);text-align:center;}
+.sl-inp{width:100%;min-height:44px;padding:6px 4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:var(--text);font-size:var(--fs-xl);font-weight:700;text-align:center;font-family:inherit;outline:none;-webkit-tap-highlight-color:transparent;}
+.sl-inp:focus{border-color:rgba(var(--accent-rgb),0.45);background:rgba(var(--accent-rgb),0.06);}
+.sl-inp::placeholder{color:#2d3748;font-size:var(--fs-2xs);}
+.sl-row.sl-done .sl-inp{opacity:0.4;}
+.sl-hdr{display:grid;grid-template-columns:24px 1fr 1fr 44px;gap:5px;padding:3px 2px 1px;}
+.sl-hl{font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#2d3748;text-align:center;}
+
+/* ── FINISH WORKOUT BAR & MODAL ─────────────────────────────────────────
+   Stacked layout: Finish Workout is the primary action (full-width button,
+   on top); the progress readout sits as a small status line underneath it;
+   Workout Summary (appended by mc-summary.js's injectSummaryButton()) is
+   the secondary action, last in the stack. */
+.fw-bar{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(10,10,10,0.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,0.07);z-index:var(--z-fw-bar);display:flex;flex-direction:column;gap:6px;}
+.fw-btn{width:100%;padding:14px;background:var(--accent);border:none;border-radius:12px;color:#000;font-size:var(--fs-lg);font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:0.03em;-webkit-tap-highlight-color:transparent;}
+.fw-btn:active{opacity:0.85;transform:scale(0.98);}
+.fw-progress{font-size:var(--fs-2xs);font-weight:700;color:var(--muted2);white-space:nowrap;letter-spacing:0.04em;text-align:center;}
+/* --z-modal — see the stacking-contract block at the top of this file for
+   why this sits above --z-timer-float (mc-summary.css's .fw-recap-overlay
+   uses the same token, for the same reason). */
+.fw-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:flex-end;padding:16px;z-index:var(--z-modal);}
+.fw-modal-overlay.open{display:flex;}
+.fw-modal{width:100%;background:#0e0e0e;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:24px 20px 20px;}
+.fw-modal-title{font-size:var(--fs-3xl);font-weight:900;letter-spacing:-0.02em;margin-bottom:6px;}
+.fw-modal-sub{font-size:var(--fs-sm);color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.fw-summary{background:#111;border-radius:12px;padding:14px;margin-bottom:16px;}
+.fw-summary-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:var(--fs-sm);}
+.fw-summary-row:last-child{border-bottom:none;}
+.fw-summary-label{color:var(--muted);font-weight:600;}
+.fw-summary-val{color:#fff;font-weight:800;}
+/* Exit-dialog summary metrics (Total time / Total sets) — shared by
+   mc-finish.js's own modal and mc-summary.js's showRecap() sheet, so both
+   pre-save confirmation surfaces render one identical design. */
+.fw-stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.fw-stat-cell{background:#111;border-radius:12px;padding:14px 8px;text-align:center;}
+.fw-stat-val{font-size:var(--fs-3xl);font-weight:900;color:#fff;letter-spacing:-0.01em;}
+.fw-stat-lbl{font-size:var(--fs-2xs);font-weight:700;color:var(--muted);margin-top:4px;}
+.fw-modal-btns{display:flex;gap:10px;}
+.fw-cancel{flex:1;padding:12px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:var(--muted);font-size:var(--fs-sm);font-weight:700;cursor:pointer;font-family:inherit;}
+.fw-confirm{flex:2;padding:12px;background:var(--accent);border:none;border-radius:12px;color:#000;font-size:var(--fs-md);font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:0.02em;}
+/* Exit-dialog button styling — scoped to the two pre-save confirmation
+   containers (mc-finish.js's #fwModalBtns, mc-summary.js showRecap()'s
+   #fwRecapBtns) rather than the bare .fw-cancel/.fw-confirm classes, since
+   those classes are also reused by mc-finish.js's unrelated post-save
+   "Done" button and by several bespoke pages' own page-local finish-modal
+   CSS (the-500.html, hell-week.html, driveway-demolition.html, etc.) —
+   recoloring the shared class globally would have silently reskinned all
+   of those too. */
+#fwModalBtns .fw-cancel,#fwRecapBtns .fw-cancel{padding:14px;background:var(--ink-4);border:none;color:#fff;font-size:var(--fs-md);font-weight:800;-webkit-tap-highlight-color:transparent;}
+#fwModalBtns .fw-cancel:active,#fwRecapBtns .fw-cancel:active{opacity:0.85;transform:scale(0.98);}
+#fwModalBtns .fw-confirm,#fwRecapBtns .fw-confirm{padding:14px;background:#FFFFFF;color:#000000;-webkit-tap-highlight-color:transparent;}
+#fwModalBtns .fw-confirm:active,#fwRecapBtns .fw-confirm:active{opacity:0.85;transform:scale(0.98);}
+/* Zero-set / <30s accidental-open guard: swap visual weight so Exit &
+   discard reads as the default action instead of Log workout. */
+#fwModalBtns.fw-emph .fw-cancel,#fwRecapBtns.fw-emph .fw-cancel{flex:2;background:#FFFFFF;color:#000000;}
+#fwModalBtns.fw-emph .fw-confirm,#fwRecapBtns.fw-emph .fw-confirm{flex:1;background:var(--ink-4);color:#fff;}
+.fw-auto-banner{position:fixed;top:0;left:0;right:0;background:rgba(52,211,153,0.12);border-bottom:1px solid rgba(52,211,153,0.3);padding:12px 16px;text-align:center;font-size:var(--fs-sm);font-weight:800;color:var(--success);z-index:var(--z-banner);display:none;letter-spacing:0.02em;cursor:pointer;}
+.fw-auto-banner.show{display:block;}
+
+/* Accent-driven so each program keeps its own hue (gold / orange / green).
+   Scoped to .ex-card.a-card so no other program's cards are affected. */
+.ex-card.a-card{
+  border:1px solid rgba(var(--accent-rgb),0.18);
+  background:linear-gradient(180deg,var(--ink-2),var(--ink-1));
+  box-shadow:0 10px 30px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.05);
+  border-radius:16px;overflow:hidden;position:relative;
+}
+.ex-card.a-card::after{content:none;}              /* drop base square affordance */
+.ex-card.a-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;z-index:1;
+  background:linear-gradient(180deg,rgba(var(--accent-rgb),1),rgba(var(--accent-rgb),0.45));
+  box-shadow:0 0 16px rgba(var(--accent-rgb),0.5);}
+/* Structural "purpose" colors — universal grammar: superset=violet, tri-set=amber, cluster=cyan, drop set=rose */
+.ex-card.a-card.is-ss::before{background:linear-gradient(180deg,#a855f7,#6d28d9);box-shadow:0 0 16px rgba(168,85,247,0.5);}
+.ex-card.a-card.is-tri::before{background:linear-gradient(180deg,#fbbf24,#b45309);box-shadow:0 0 16px rgba(245,158,11,0.5);}
+.ex-card.a-card.is-cluster::before{background:linear-gradient(180deg,#22d3ee,#0e7490);box-shadow:0 0 16px rgba(34,211,238,0.45);}
+.ex-card.a-card.is-drop::before{background:linear-gradient(180deg,#fb7185,#9f1239);box-shadow:0 0 16px rgba(244,63,94,0.5);}
+/* Active-exercise focus ring — set by mc-setlog.js when the athlete opens a
+   card's Log Sets panel, checks a set, or focuses a weight/reps field. Purely
+   a visual cue (every other exercise stays fully expanded, no accordion);
+   picks up the same per-type color as the hero-number glow. */
+.ex-card.a-card.active{box-shadow:0 0 0 2px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.5),
+  0 10px 30px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.05);}
+.ss-card.a-ss .ss-ex.active{background:rgba(168,85,247,0.09);}
+.ss-card.a-ss .ss-ex.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;z-index:1;
+  background:#c084fc;box-shadow:0 0 10px rgba(168,85,247,0.6);}
+.a-idx{font-size:calc(var(--fs-sm) * var(--density));font-weight:900;font-variant-numeric:tabular-nums;
+  min-width:calc(30px * var(--density));height:calc(30px * var(--density));
+  border-radius:var(--r-sm);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;
+  background:rgba(var(--accent-rgb),0.12);color:var(--accent);border:1px solid rgba(var(--accent-rgb),0.3);}
+.a-card.is-ss .a-idx{background:rgba(168,85,247,0.14);color:#c084fc;border-color:rgba(168,85,247,0.35);}
+.a-card.is-tri .a-idx{background:rgba(245,158,11,0.14);color:#fbbf24;border-color:rgba(245,158,11,0.4);}
+.a-card.is-cluster .a-idx{background:rgba(34,211,238,0.14);color:#67e8f9;border-color:rgba(34,211,238,0.4);}
+.a-card.is-drop .a-idx{background:rgba(244,63,94,0.14);color:#fb7185;border-color:rgba(244,63,94,0.4);}
+.a-card.checked .a-idx{background:#16a34a;color:#fff;border-color:transparent;}
+.a-head{flex:1;min-width:0;}
+.a-card .ex-name.a-name{font-size:calc(var(--fs-lg) * var(--density));font-weight:800;line-height:1.25;letter-spacing:-0.01em;margin-bottom:0;color:var(--text);padding-right:0;}
+.a-badges{display:flex;gap:6px;margin-top:calc(7px * var(--density));flex-wrap:wrap;}
+.a-pill{font-size:10.5px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;padding:calc(3px * var(--density)) calc(7px * var(--density));border-radius:var(--r-xs);}
+.a-pill.grp{background:rgba(168,85,247,0.16);color:#c084fc;border:1px solid rgba(168,85,247,0.32);}
+.a-card.is-tri .a-pill.grp{background:rgba(245,158,11,0.16);color:#fbbf24;border-color:rgba(245,158,11,0.34);}
+.a-card.is-cluster .a-pill.grp{background:rgba(34,211,238,0.16);color:#67e8f9;border-color:rgba(34,211,238,0.34);}
+.a-card.is-drop .a-pill.grp{background:rgba(244,63,94,0.16);color:#fb7185;border-color:rgba(244,63,94,0.34);}
+.a-pill.tempo{background:rgba(var(--accent-rgb),0.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),0.28);font-family:"SF Mono",ui-monospace,monospace;letter-spacing:0.02em;}
+.a-reps{padding:2px calc(16px * var(--density)) calc(10px * var(--density)) calc(18px * var(--density));}
+.a-leg{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.a-leg + .a-leg{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.07);}
+.a-rep{font-size:calc(var(--fs-title) * var(--density));font-weight:900;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;color:var(--ink-5,#4a453f);line-height:1;transition:color var(--duration-moderate) var(--ease-standard),opacity var(--duration-moderate) var(--ease-standard),text-shadow var(--duration-moderate) var(--ease-standard);}
+.a-rep.live{color:#fff;text-shadow:0 0 10px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.55),0 0 22px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.4);animation:repGlow var(--duration-slowest) var(--ease-pulse) infinite;}
+/* completed working set — settles to a calm dim-green, no glow (Phase 3) */
+.a-rep.rep-done{color:var(--success);opacity:0.5;text-shadow:none;animation:none;}
+@keyframes repGlow{
+  0%,100%{text-shadow:0 0 8px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.45),0 0 18px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.28);}
+  50%{text-shadow:0 0 14px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.75),0 0 30px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.5);}
+}
+@media(prefers-reduced-motion:reduce){.a-rep.live{animation:none;}}
+.a-rep.special{color:#fb7185;font-size:var(--fs-2xl);text-shadow:0 0 14px rgba(251,113,133,0.4);}
+.a-sep{font-size:var(--fs-xs);color:var(--muted2);font-weight:900;align-self:center;}
+.a-legtag{font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.14em;color:var(--muted2);text-transform:uppercase;align-self:center;}
+/* Slim caption strip — Rest fallback only. The Sets cell restated the hero
+   reps number (already shown big/bold above) so it's dropped unconditionally;
+   the Rest cell is dropped too whenever an interactive .rest-timer is present
+   below (same number, tappable there), collapsing the whole strip in that
+   case so no empty gap remains. Pages without a timer still show Rest alone
+   as a fallback. Both .editable spans (data-field="sets"/"rest") stay in the
+   DOM untouched for PM inline-edit. */
+.a-strip{display:flex;align-items:baseline;gap:14px;padding:0 calc(16px * var(--density)) calc(9px * var(--density)) calc(18px * var(--density));}
+.a-cell{flex:0 0 auto;padding:0;display:flex;flex-direction:row;align-items:baseline;gap:5px;min-width:0;}
+.a-cell + .a-cell{border-left:none;}
+.a-cell .k{font-size:var(--fs-3xs);font-weight:800;letter-spacing:0.1em;color:var(--muted2);text-transform:uppercase;}
+.a-cell .v{font-size:11.5px;font-weight:700;color:var(--muted);}
+.a-card .a-cell .v .editable{border-bottom:1px dashed rgba(var(--accent-rgb),0.4);color:var(--muted);}
+.a-strip .a-cell:nth-child(1){display:none;}
+.a-card:has(.a-timerbar .rest-timer) .a-strip{display:none;}
+/* ── R4 consolidated card header (card-integration roadmap, S4) ───────────
+   Collapses the old three-band card top — .a-top, then a full-width .a-reps
+   hero, then a standalone .a-notes coaching cue — into one header block:
+
+     row 1   index · exercise name · ⓘ      (⋯ floats here, absolutely placed)
+     row 2   structural pill(s) · the prescription, at reading size
+
+   R4's wireframe put the prescription inline on row 1 as a compact pill
+   ("4x10"). That does not survive this app's real data: a Kitchen Sink
+   prescription renders as "12·10·8·8→∞·∞" (102px) and several programs carry
+   two structural pills, and reserving a fixed right-hand column for those
+   starved .a-head so badly that names and badges stacked into a 320px header.
+   Measured, not guessed. So the prescription keeps its own row instead —
+   still one header block, still far shorter than the three bands it replaces,
+   and robust to a long scheme or an extra pill.
+
+   .a-reps is KEPT and shrunk, not deleted. The UX report proposed removing it
+   as a restatement of the logger's numbered rows, but .a-rep is not static
+   text: mc-rep-progress.js advances a .live glow across those spans set by
+   set, and they carry their own reduced-motion rule and light-theme palette.
+   Deleting them would have removed a live progress indicator (decision 1).
+
+   S4b completed the migration: all 5 engines and all 17 hand-written pages
+   now emit this markup, and the old .a-top rule it replaced is deleted.
+   Class names inside the header (.a-idx, .a-head, .a-reps, .a-badges) are
+   deliberately unchanged, because program-overrides.js resolves .a-head and
+   .a-reps by querySelector for PM inline-edit. */
+.a-hdr{position:relative;display:flex;flex-wrap:wrap;align-items:center;
+  column-gap:calc(10px * var(--density));row-gap:calc(6px * var(--density));
+  min-height:52px;
+  padding:calc(9px * var(--density)) 54px calc(7px * var(--density)) calc(18px * var(--density));}
+.a-hdr .a-idx{order:1;}
+/* flex-basis:0, not auto — flexbox breaks lines on HYPOTHETICAL main size, so
+   an auto-basis .a-head measured at its full content width filled row 1 by
+   itself and pushed ⓘ onto a line of its own (measured: a 3-row, 123px
+   header). Basis 0 lets it size from the space actually left over. */
+.a-hdr .a-head{order:2;flex:1 1 0;min-width:0;}
+/* Exercise-name legibility outranks every other element on the card, so a
+   long name wraps to a second line rather than ellipsizing something the
+   athlete has to recognise mid-set. The row grows only when one needs it. */
+.a-hdr .ex-name.a-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+/* Row 2 — always its own line (flex-basis:100%), indented under the name. */
+.a-hdr .a-hdr-meta{order:4;flex:1 1 100%;display:flex;align-items:center;
+  flex-wrap:wrap;gap:calc(8px * var(--density));
+  padding-left:calc(30px * var(--density) + 10px * var(--density));}
+.a-hdr .a-badges{margin-top:0;}
+.a-hdr .a-reps{padding:0;margin-left:auto;}
+.a-hdr .a-leg{gap:5px;}
+.a-hdr .a-leg + .a-leg{margin-top:2px;padding-top:2px;}
+.a-hdr .a-rep{font-size:calc(var(--fs-lg) * var(--density));}
+.a-hdr .a-rep.special{font-size:calc(var(--fs-xs) * var(--density));}
+.a-hdr .a-sep{font-size:var(--fs-3xs);}
+.a-hdr .a-legtag{font-size:9px;}
+/* ⓘ is rendered only when the exercise actually carries a coaching cue — an
+   empty info button on every card would be the band just removed, in a
+   smaller coat. 44x44 per the touch floor established in S1/R5. */
+/* Floated out of flow beside the ⋯ meatball (which is already absolute at
+   right:6px), so a 44px control does not set the height of a 30px row. */
+.a-hdr:has(.a-info){padding-right:98px;}
+.a-info{position:absolute;top:6px;right:54px;z-index:4;
+  appearance:none;-webkit-appearance:none;
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  background:none;border:none;padding:0;margin:0;font:inherit;font-size:var(--fs-xl);line-height:1;
+  color:var(--muted2);cursor:pointer;border-radius:var(--r-sm);
+  -webkit-tap-highlight-color:transparent;transition:color var(--duration-fast),background var(--duration-fast);}
+.a-info:active{background:rgba(var(--accent-rgb),0.14);}
+.a-info[aria-expanded="true"]{color:var(--accent);background:rgba(var(--accent-rgb),0.12);}
+/* The cue itself — present in the DOM for PM inline-edit and mc-setlog.js's
+   collapseNotes(), shown only when ⓘ is pressed. */
+.a-hdr-card .a-notes{display:none;}
+.a-hdr-card.a-note-open .a-notes{display:block;}
+.a-timerbar{padding:calc(10px * var(--density)) calc(16px * var(--density)) calc(12px * var(--density)) calc(18px * var(--density));}
+.a-card .a-timerbar .rest-timer{width:100%;justify-content:center;}
+.a-card .a-timerbar .rest-timer.idle{background:rgba(var(--accent-rgb),0.1);border:1px solid rgba(var(--accent-rgb),0.26);}
+.a-card .a-timerbar .rest-timer.idle .rest-timer-label{color:var(--accent);}
+.a-notes{margin:0 calc(16px * var(--density)) calc(12px * var(--density)) calc(18px * var(--density));
+  padding:calc(7px * var(--density)) calc(10px * var(--density));background:rgba(var(--accent-rgb),0.06);
+  border-left:3px solid rgba(var(--accent-rgb),0.5);border-radius:4px;font-size:var(--fs-2xs);color:var(--text);line-height:1.5;}
+/* Collapsed to one line by default (mc-setlog.js adds the class + tap
+   handler); tap toggles .a-notes-open to read the full cue. */
+/* 44pt touch floor (R5) — this is a tap target (tap to expand the cue), so it
+   has to clear the floor like any other. Kept as a block, not a flex box:
+   text-overflow:ellipsis does not apply to an anonymous flex item, and the
+   one-line truncation is the whole point of the collapsed state. */
+.a-notes.a-notes-collapsible{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  position:relative;padding-right:24px;min-height:44px;
+  padding-top:calc(13px * var(--density));padding-bottom:calc(13px * var(--density));}
+.a-notes.a-notes-collapsible::after{content:'⌄';position:absolute;right:8px;top:50%;
+  transform:translateY(-50%);opacity:0.55;font-size:var(--fs-2xs);}
+.a-notes.a-notes-collapsible.a-notes-open{white-space:normal;overflow:visible;text-overflow:clip;}
+.a-notes.a-notes-collapsible.a-notes-open::after{content:'⌃';}
+/* tidy the logger that mc-setlog injects at the foot of .ex-body */
+.a-card .mcl-toggle,.a-card .setlog-toggle{border-top:1px solid rgba(255,255,255,0.07);}
+
+
+.ss-card.a-ss{
+  position:relative;border-radius:16px;overflow:hidden;margin-bottom:14px;
+  background:linear-gradient(180deg,#100c16,#0a0810);
+  border:1px solid rgba(168,85,247,0.22);
+  box-shadow:0 10px 30px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.ss-card.a-ss::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;z-index:1;
+  background:linear-gradient(180deg,#a855f7,#6d28d9);box-shadow:0 0 16px rgba(168,85,247,0.5);}
+.ss-card.a-ss .ss-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:11px 14px 11px 18px;background:rgba(168,85,247,0.10);
+  border-bottom:1px solid rgba(168,85,247,0.18);}
+.ss-card.a-ss .ss-label{font-size:var(--fs-xs);font-weight:900;letter-spacing:0.16em;text-transform:uppercase;color:#c084fc;}
+.ss-card.a-ss .ss-rests{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:0.02em;color:#8b7bb0;
+  background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);border-radius:20px;padding:3px 10px;}
+.ss-card.a-ss .ss-ex{display:flex;align-items:flex-start;gap:11px;padding:13px 14px 12px 18px;cursor:pointer;position:relative;}
+.ss-card.a-ss .ss-num{flex-shrink:0;width:30px;height:30px;border-radius:50%;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);font-weight:900;
+  background:rgba(168,85,247,0.16);color:#c084fc;border:1px solid rgba(168,85,247,0.4);}
+.ss-card.a-ss .ss-content{flex:1;min-width:0;padding-right:30px;}
+.ss-card.a-ss .ss-name{font-size:var(--fs-lg);font-weight:var(--fw-bold);line-height:1.25;letter-spacing:-0.01em;color:var(--text);}
+.ss-card.a-ss .a-ss-reps{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.ss-card.a-ss .a-ss-sets-hidden{display:none;}
+.ss-card.a-ss .a-rep.live{text-shadow:0 0 18px rgba(168,85,247,0.6);}
+.ss-card.a-ss .ex-note.a-ss-tempo{margin-top:7px;font-size:var(--fs-2xs);font-weight:800;font-style:normal;
+  font-family:"SF Mono",ui-monospace,monospace;color:#c084fc;opacity:1;letter-spacing:0.02em;}
+.ss-card.a-ss .ex-rest{margin-top:9px;}
+.ss-card.a-ss .ex-rest .rest-timer{width:100%;justify-content:center;}
+.ss-card.a-ss .ex-rest .rest-timer.idle{background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.28);}
+.ss-card.a-ss .ex-rest .rest-timer.idle .rest-timer-label{color:#c084fc;}
+.ss-card.a-ss .ss-divider{display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:5px 0;background:rgba(168,85,247,0.06);}
+.ss-card.a-ss .ss-x{font-size:var(--fs-2xs);font-weight:900;letter-spacing:0.16em;color:#a855f7;text-transform:uppercase;}
+.ss-card.a-ss .ss-btw{font-size:var(--fs-2xs);font-weight:800;color:#8b7bb0;
+  background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);border-radius:20px;padding:2px 8px;}
+.ss-card.a-ss .ss-ex.checked .ss-num{background:#16a34a;color:#fff;border-color:transparent;}
+.ss-card.a-ss .ss-ex.checked .ss-name{text-decoration:line-through;color:var(--success);}
+.ss-card.a-ss .ss-ex.checked{opacity:0.72;}
+/* the per-station meatball mc-card-actions injects into .ss-content */
+.ss-card.a-ss .ss-content .mc-meatball{top:0;right:0;}
+
+/* ── Shared .day-card base (Visual #2 consolidation) ──────────────────────
+   Program pages each carried their own copy of this exact rule (three
+   distinct variants had drifted into use across 24 files — see CLAUDE.md's
+   dashboard rail/grid duplication note for the sibling issue). This is the
+   variant used by the majority (15 of 24) of program pages; those pages'
+   own inline <style> no longer redeclares it. A handful of older pages
+   intentionally keep a different local .day-card (heavier border, var()
+   surface token) — their local rule still loads after this one in the
+   cascade and overrides it unchanged, so this consolidation only removes
+   duplicates that were already byte-identical. */
+.day-card{border-radius:16px;border:1px solid rgba(255,255,255,0.06);margin-bottom:10px;overflow:hidden;transition:all var(--duration-base);background:rgba(255,255,255,0.02);}
+
+/* ── REPLACED badge (L1 U4 consolidation) ─────────────────────────────────
+   The "REPLACED" pill painted onto a swapped exercise used to carry a
+   byte-identical inline cssText string duplicated in BOTH mc-replace.js
+   (applyReplacements) and mc-card-actions.js (paintReplaced). The styling
+   now lives here once, tokenized on --replaced/--replaced-rgb; the two JS
+   sites only set the class + textContent, and tint the name via the same
+   token. Single source of truth — the two can no longer drift. */
+.replaced-badge{font-size:var(--fs-2xs);font-weight:900;color:var(--replaced);
+  background:rgba(var(--replaced-rgb),0.12);border:1px solid rgba(var(--replaced-rgb),0.25);
+  border-radius:4px;padding:2px 5px;margin-left:6px;letter-spacing:0.06em;vertical-align:middle;}
+
+/* ── EMPTY / LOADING / ERROR STATES (L1 Phase C · U5) ──────────────────────
+   One shared placeholder vocabulary so lists, charts and sheets never render
+   a blank panel, and so the ~three drifting bespoke variants (.bonus-empty,
+   stats' .empty, exercise-library's .empty-state) converge on a single look.
+   Mirrors mc-macros.js's showEmpty() (icon + line). Token-driven, so it
+   auto-adapts to Sand light mode via the cascade — no per-theme rule needed.
+   Markup:
+     <div class="empty-state">
+       <div class="empty-icon">🔍</div>
+       <div class="empty-text">No exercises found</div>
+       <div class="empty-sub">Try fewer keywords</div>   (optional)
+     </div>
+   Modifiers: .empty-state.loading pulses the icon; .empty-state.error tints
+   the message with --danger for failed loads. */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:var(--sp-2);padding:var(--sp-8) var(--sp-5);min-height:120px;}
+.empty-icon{font-size:var(--fs-hero);line-height:1;opacity:0.85;}
+.empty-text{font-size:var(--fs-sm);font-weight:var(--fw-semi);color:var(--muted);line-height:1.5;max-width:34ch;}
+.empty-sub{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--muted2);line-height:1.5;}
+.empty-state.error .empty-text{color:var(--danger);}
+.empty-state.loading .empty-icon{animation:empty-pulse var(--duration-slower) var(--ease-pulse) infinite;}
+@keyframes empty-pulse{0%,100%{opacity:0.35;}50%{opacity:0.95;}}
+
+/* ── MOTION (L1 Phase C) — honour prefers-reduced-motion globally ──────────
+   Users who ask the OS to reduce motion get transitions/animations collapsed
+   to a near-instant duration everywhere (cards, sheets, tabs, the empty-state
+   pulse above, rest-timer flourishes). Kept as one global guard rather than
+   per-component opt-ins so no future animation can regress accessibility. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:0.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* ── SAND LIGHT MODE (Phase 7) ─────────────────────────────────────────────
+   Shared program-page components. Toggle is applied by mc-nav.js (Phase 7
+   THEME EARLY-APPLY block) + mc-appearance.js; this file only supplies the
+   gated CSS. The token cascade below covers most color reads on its own
+   since every rule in this file that reads --text/--muted/--muted2/
+   --border-faint/--border-dim/--body-bg/--card-bg/--surface-bg via var()
+   picks the new values up automatically; explicit rules follow for
+   hardcoded hex/rgba the cascade can't reach. --accent/--accent-rgb are
+   left alone everywhere (per-program mid-tone accent already reads fine on
+   a light background). */
+html[data-theme="light"]{
+  /* P1: re-pointed onto the shared --ink-* ramp. Every value below is the
+     SAME colour this block already shipped — the light theme's warm ramp is
+     the one the dark theme adopted, not the reverse — so light-mode rendered
+     output is byte-identical across this change and the light-mode contrast
+     ratchet cannot move because of it. */
+  --body-bg:var(--ink-10);
+  --card-bg:var(--ink-9);
+  --text:var(--ink-3);
+  --muted:var(--ink-6);
+  --muted2:var(--ink-7);
+  --border-faint:rgba(28,26,23,0.06);
+  --border-dim:rgba(28,26,23,0.1);
+  --surface-bg:var(--ink-9);
+  --hairline:rgba(28,26,23,0.12);
+  --elev-1:0 2px 12px -4px rgba(28,26,23,.12);
+  --elev-2:0 12px 32px -12px rgba(28,26,23,.20);
+  /* Accent had no light value until audit G-04. The brand gold above is tuned
+     for the near-black ground (9.42:1) and collapses to 1.88:1 on Sand, so
+     every var(--accent) consumer — back links, eyebrows, section heads, active
+     tabs, pills — rendered barely-legible gold-on-cream. This is the same hue
+     darkened until it clears WCAG AA (4.72:1); mc-light.css's per-class
+     `var(--accent,#8a6d1a)` fallbacks were never reached, because :root always
+     defines --accent, so a fallback could not fire.
+     Pages that load mc-theme.js get a program-adaptive accent set as an inline
+     style on <html>, which outranks this rule — that module does the same
+     darkening itself (see adaptToGround()). */
+  --accent:#826919;
+  --accent-rgb:130,105,25;
+}
+
+html[data-theme="light"] .title{color:#1c1a17;}
+html[data-theme="light"] .header{background:linear-gradient(135deg,rgba(var(--accent-rgb),0.14),rgba(245,242,236,0.4));}
+html[data-theme="light"] .wtab{color:#8a8377;}
+html[data-theme="light"] .wtab.active{background:rgba(28,26,23,0.05);color:var(--accent);}
+html[data-theme="light"] .prog-bar-wrap{background:rgba(28,26,23,0.06);}
+
+html[data-theme="light"] .ex-card,
+html[data-theme="light"] .ss-card{
+  background:linear-gradient(180deg,#faf7f0,#efe9db);
+  box-shadow:0 8px 26px rgba(28,26,23,0.08),inset 0 1px 0 rgba(255,255,255,0.6);
+}
+html[data-theme="light"] .ex-card::after{color:rgba(28,26,23,0.18);}
+html[data-theme="light"] .ex-card.checked{background:#e8f8f0!important;border-color:rgba(5,150,105,0.35)!important;}
+html[data-theme="light"] .ex-card.checked::after{color:var(--success);}
+html[data-theme="light"] .day-card{background:rgba(28,26,23,0.03);border-color:rgba(28,26,23,0.08);}
+
+/* .a-rep's pending-state color is set by mc-light.css's later G-04 pass
+   (same selector/specificity, loads after this file, always wins) — a
+   #d3cbb9 value here was found to be fully unreachable dead code and was
+   removed rather than left to shadow-fight a rule it can never win against. */
+html[data-theme="light"] .a-rep.live{
+  color:#1c1a17;
+  text-shadow:0 0 10px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.35),0 0 22px rgba(var(--rep-glow-rgb,var(--accent-rgb)),0.22);
+}
+html[data-theme="light"] .a-rep.rep-done{color:#047857;}
+html[data-theme="light"] .a-rep.special{color:#be123c;}
+html[data-theme="light"] .a-sep,
+html[data-theme="light"] .a-legtag{color:#8a8377;}
+
+html[data-theme="light"] .ss-card.a-ss{background:linear-gradient(180deg,#f8f2fb,#efe2f5);}
+html[data-theme="light"] .ss-card.a-ss .ss-label,
+html[data-theme="light"] .ss-card.a-ss .ss-num{color:#7c3aed;}
+html[data-theme="light"] .ss-card.a-ss .ss-x{color:#7c3aed;}
+html[data-theme="light"] .ss-card.a-ss .ex-rest .rest-timer.idle .rest-timer-label{color:#7c3aed;}
+
+html[data-theme="light"] .tb-pyramid{background:rgba(249,115,22,0.16);color:#c2410c;}
+html[data-theme="light"] .tb-lowrep{background:rgba(239,68,68,0.14);color:#b91c1c;}
+html[data-theme="light"] .tb-tempo{background:rgba(6,182,212,0.14);color:#0e7490;}
+html[data-theme="light"] .tb-highrep{background:rgba(212,175,55,0.18);color:#8a6d1a;}
+html[data-theme="light"] .tb-highrep12{background:rgba(234,179,8,0.16);color:#92700c;}
+html[data-theme="light"] .tb-highrep20{background:rgba(217,119,6,0.16);color:#92510a;}
+html[data-theme="light"] .tb-midset{background:rgba(139,92,246,0.14);color:#6d28d9;}
+html[data-theme="light"] .tb-drop{background:rgba(244,63,94,0.14);color:#be123c;}
+html[data-theme="light"] .tb-amrap{background:rgba(239,68,68,0.16);color:#b91c1c;}
+html[data-theme="light"] .tb-highset{background:rgba(52,211,153,0.16);color:#047857;}
+html[data-theme="light"] .tb-superset{background:rgba(168,85,247,0.16);color:#7c3aed;}
+html[data-theme="light"] .tb-minrest{background:rgba(139,92,246,0.14);color:#6d28d9;}
+html[data-theme="light"] .tb-optional{background:rgba(107,100,89,0.14);color:var(--ink-6,#6b6459);}
+html[data-theme="light"] .tb-finisher{background:rgba(16,185,129,0.16);color:#047857;}
+html[data-theme="light"] .tb-barbell{background:rgba(107,100,89,0.16);color:var(--ink-6,#6b6459);}
+html[data-theme="light"] .tb-dumbbell{background:rgba(14,165,233,0.14);color:#0369a1;}
+html[data-theme="light"] .tb-cable{background:rgba(20,184,166,0.14);color:#0f766e;}
+html[data-theme="light"] .tb-machine{background:rgba(113,113,122,0.16);color:#52525b;}
+html[data-theme="light"] .tb-smith{background:rgba(168,85,247,0.14);color:#7e22ce;}
+html[data-theme="light"] .tb-plate{background:rgba(120,113,108,0.18);color:#57534e;}
+
+html[data-theme="light"] .rest-timer.idle{background:rgba(28,26,23,0.05);border-color:rgba(28,26,23,0.14);}
+html[data-theme="light"] .rest-timer.idle .rest-timer-label{color:#6b6459;}
+html[data-theme="light"] .rest-timer-hint{color:#8a8377;}
+
+html[data-theme="light"] .timer-float{background:rgba(245,242,236,0.97);border-top-color:rgba(28,26,23,0.1);box-shadow:0 -4px 24px rgba(28,26,23,0.12);}
+html[data-theme="light"] .timer-float-label{color:#8a8377;}
+html[data-theme="light"] .timer-float-ex{color:#6b6459;}
+html[data-theme="light"] .timer-float-bar{background:rgba(28,26,23,0.08);}
+html[data-theme="light"] .timer-preset{background:rgba(28,26,23,0.05);border-color:rgba(28,26,23,0.12);color:#8a8377;}
+html[data-theme="light"] .timer-preset:active{background:rgba(var(--accent-rgb),0.2);color:var(--accent);border-color:rgba(var(--accent-rgb),0.4);}
+
+html[data-theme="light"] .setlog-wrap{border-top-color:rgba(28,26,23,0.08);}
+html[data-theme="light"] .setlog-toggle{color:#8a8377;}
+html[data-theme="light"] .sl-row{border-bottom-color:rgba(28,26,23,0.06);}
+html[data-theme="light"] .sl-num,
+html[data-theme="light"] .sl-hl{color:#8a8377;}
+html[data-theme="light"] .sl-inp{background:rgba(28,26,23,0.04);border-color:rgba(28,26,23,0.14);}
+html[data-theme="light"] .sl-inp:focus{border-color:rgba(var(--accent-rgb),0.45);background:rgba(var(--accent-rgb),0.06);}
+html[data-theme="light"] .sl-inp::placeholder{color:#b7b0a3;}
+html[data-theme="light"] .next-workout{background:rgba(28,26,23,0.03);border-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .next-workout:active{background:rgba(28,26,23,0.06);}
+html[data-theme="light"] .next-workout-label,
+html[data-theme="light"] .next-workout-arrow{color:#8a8377;}
+
+html[data-theme="light"] .summary-section .sum-card{background:#efe9db!important;border-color:rgba(28,26,23,0.12)!important;}
+html[data-theme="light"] .summary-section .sum-row{border-bottom-color:rgba(28,26,23,0.08)!important;}
+
+html[data-theme="light"] .fw-bar{background:rgba(245,242,236,0.96);border-top-color:rgba(28,26,23,0.08);}
+html[data-theme="light"] .fw-progress{color:#8a8377;}
+html[data-theme="light"] .fw-modal-overlay{background:rgba(28,26,23,0.35);}
+html[data-theme="light"] .fw-modal{background:#f5f2ec;border-color:rgba(28,26,23,0.1);}
+html[data-theme="light"] .fw-modal-sub{color:#6b6459;}
+html[data-theme="light"] .fw-summary{background:rgba(28,26,23,0.03);}
+html[data-theme="light"] .fw-summary-row{border-bottom-color:rgba(28,26,23,0.06);}
+html[data-theme="light"] .fw-summary-label{color:#6b6459;}
+html[data-theme="light"] .fw-summary-val{color:#1c1a17;}
+html[data-theme="light"] .fw-stat-cell{background:rgba(28,26,23,0.04);}
+html[data-theme="light"] .fw-stat-val{color:#1c1a17;}
+html[data-theme="light"] .fw-stat-lbl{color:#6b6459;}
+html[data-theme="light"] #fwModalBtns .fw-confirm,html[data-theme="light"] #fwRecapBtns .fw-confirm{border:1px solid rgba(28,26,23,0.15);}
+html[data-theme="light"] #fwModalBtns.fw-emph .fw-cancel,html[data-theme="light"] #fwRecapBtns.fw-emph .fw-cancel{border:1px solid rgba(28,26,23,0.15);}
+
+/* ── PWA STANDALONE SAFE-AREA (Phase L2, findings M1/M3) ──────────────────
+   The L2 head sweep turned on `viewport-fit=cover` fleet-wide, so on notched /
+   home-indicator devices in standalone mode the layout viewport now fills the
+   whole screen. Pad the shared program-page top furniture down from under the
+   notch and lift the fixed bottom furniture above the home indicator. The
+   bottom nav (`.mc-nav`), its lifted `.fw-bar`, and the theme toggle already
+   carry their own insets in mc-nav.css. Sticky `.topbar`s are NOT offset here
+   — see the note on the `top:` group below for why pinning a top bar at the
+   inset is the wrong shape for the topmost bar on a page.
+   `env()` resolves to 0 in a normal browser tab and drops to the base value
+   where unsupported, so every rule below is inert until it's actually needed. */
+
+/* Top-left floating back button — mirror the theme-toggle inset in mc-nav.css */
+@supports (top: env(safe-area-inset-top)) {
+  .back-link{top:calc(18px + env(safe-area-inset-top));}
+}
+/* Shared page headers grow their top room so the title clears the notch and
+   stays below the shifted back-link */
+@supports (padding: env(safe-area-inset-top)) {
+  .header{padding-top:calc(76px + env(safe-area-inset-top));}
+  .back-link + .hero{padding-top:calc(64px + env(safe-area-inset-top));}
+  /* SECONDARY sticky chrome pins below the notch, not under it.
+     .week-tabs is base.css's own; the other three are declared per-page (27
+     pages spell out .tabs-bar, 4 .week-selector, one .phase-tabs) in <style>
+     blocks parsed after this file, so they need a selector that outranks
+     their (0,1,0) rather than one that merely follows it. `body ` is the
+     cheapest way to get there.
+     Confirmed against a real 59px inset, where these stuck at y0-42 -- the
+     exact band the status bar paints over.
+
+     `.topbar` USED TO BE IN THIS GROUP AND MUST NOT GO BACK IN IT.
+     These four are all SECONDARY bars -- something else (a .header, a .hero,
+     a .topbar) paints above them, so pinning them at the inset lands them
+     against real chrome. A `.topbar` is the TOPMOST bar on its page, so
+     `top:inset` pins it with NOTHING above it: the status-bar band is left
+     unpainted and page content scrolls through it in plain sight. Seven pages
+     declare a sticky `.topbar` (dashboard, workout-detail, workout-logs,
+     program-guide, quick-tour, quick-tour-overview, pm-mode-overview) and
+     every one of them was doing that. dashboard.html compounded it, because
+     it ALSO pads its own content down by the inset -- so the bar was inset
+     twice and its title sat ~2x the inset down the screen. The comment at the
+     top of this block used to assert the dashboard "carries its own -- none
+     are touched here, so the dashboard shell can't double-inset"; the bare
+     `.topbar` in this selector list is exactly what made that false.
+     The right shape for a topmost bar is `top:0` plus the inset as PADDING,
+     so the bar's own background paints the notch band. Each of the seven
+     declares that itself; tools/check-topbar-inset.js holds the line. */
+  body .tabs-bar,
+  body .week-tabs,
+  body .week-selector,
+  body .phase-tabs{top:env(safe-area-inset-top);}
+  /* Fixed top furniture */
+  .prog-bar-wrap{top:env(safe-area-inset-top);}
+  .fw-auto-banner{padding-top:calc(12px + env(safe-area-inset-top));}
+}
+/* Fixed bottom furniture that isn't already inset. The floating rest timer is
+   lifted clear of the nav when one is present (mc-nav.css), so only the
+   nav-less bottom:0 case needs the inset; neutralize it under the nav. */
+.timer-float{height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);}
+body.mc-has-nav .timer-float{height:64px;padding-bottom:0;}
+.fw-modal-overlay{padding:16px 16px calc(16px + env(safe-area-inset-bottom));}
+
+/* ==========================================================================
+   Day list — the "back to all days" control (roadmap F3)
+   --------------------------------------------------------------------------
+   F3 turns every multi-day workout page from an accordion into a day LIST that
+   drills into ONE workout. That needs a "back to the list" control on 23 pages
+   across five separate engine families, so it is defined once here rather than
+   per family — the same reasoning tools/check-single-impl.js enforces for
+   shared JS helpers, which exist because makeRestTimer drifted into six
+   divergent per-page bodies before anyone noticed.
+
+   Accent-neutral on purpose: it reads from --accent, so a page family whose
+   brand colour differs from its --accent restyles this by overriding those
+   tokens in its own sheet rather than by cloning the rule. 44px min-height is
+   the app's gym-floor touch floor, and it is a real <button>, so it is
+   keyboard-operable with no extra key handling.
+   ========================================================================== */
+.mc-day-back{
+  display:inline-flex; align-items:center; gap:6px;
+  min-height:44px; padding:0 16px; margin:0 0 12px;
+  border-radius:22px; cursor:pointer;
+  font-family:inherit; font-size:13px; font-weight:700;
+  color:var(--accent);
+  background:rgba(var(--accent-rgb),0.14);
+  border:1px solid rgba(var(--accent-rgb),0.40);
+  touch-action:manipulation;   /* U3 */
+}
+.mc-day-back:active{ background:rgba(var(--accent-rgb),0.24); }
+.mc-day-back:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+/* A day ROW is a destination, not a disclosure. The chevron replaces the
+   accordion's ▼/▲ and the row gets a press response. */
+.day-card.mc-day-row .day-header{ min-height:56px; }
+.day-card.mc-day-row .day-toggle{
+  font-size:20px; line-height:1; font-weight:900;
+  background:transparent; color:var(--accent);
+}
+.day-card.mc-day-row{ transition:transform .12s ease, border-color .2s, box-shadow .2s; touch-action:manipulation; }   /* U3 */
+.day-card.mc-day-row:active{ transform:scale(0.985); }
