@@ -1,0 +1,2213 @@
+/* ==========================================================================
+   mc-setlog.js  —  shared set/rep logger (single source of truth)
+   --------------------------------------------------------------------------
+   Renders the per-set WEIGHT/REPS logger under every exercise card, on every
+   workout page, deterministically — replacing the per-page inline scripts that
+   were rendering inconsistently. Hardened: does NOT depend on a page's #app
+   watch-loop or render timing; runs on its own observer + retry passes.
+
+   Compatibility (so nothing else breaks):
+   - Persists to the SAME store ('mc_setlog_v1', keyed PID|exId, sets{sn:{w,r}})
+     that the Finish-Workout module reads for history/PRs.
+   - Each set's checkbox carries class .set-check and toggles .done, so the
+     existing progress observer ("X / Y sets") and Finish-Workout counter pick
+     it up with no change.
+   - Removes any native .setlog-toggle/.setlog-wrap so there is exactly one
+     logger, then renders its own (.mcl-*). Re-runs briefly to win any race
+     with the late native render, which then no-ops.
+   ========================================================================== */
+(function () {
+  // W0 — Node-side hook so CI can regression-test the REAL prescription
+  // parser (same convention as mc-sync.js / mc-suggest.js) instead of a
+  // transcribed copy that could drift from what ships. Placed above the
+  // `window` guard on purpose: there is no window in Node, and the parser
+  // functions are `function` declarations further down this same closure, so
+  // hoisting has already defined them by the time this runs. See
+  // tools/test-mc-setlog-plan.js and tools/check-set-schemes.js.
+  if (typeof module !== 'undefined' && module.exports) {
+    // Deliberately only the four functions that already existed before W1:
+    // the tests assert the PUBLIC contract ("how many rows, targeting what"),
+    // not this file's internal decomposition, so they run unchanged against
+    // the old parser and the new one — which is what lets them be proven to
+    // fail on the tree before the fix lands.
+    module.exports = {
+      setCount:   function () { return setCount.apply(null, arguments); },
+      repFor:     function () { return repFor.apply(null, arguments); },
+      parseDrop:  function () { return parseDrop.apply(null, arguments); },
+      stripDrop:  function () { return stripDrop.apply(null, arguments); },
+      // Added by Phase 2.3 so the "did this prescription state a set count"
+      // question is testable against the real implementation.
+      statesSetCount: function () { return statesSetCount.apply(null, arguments); }
+    };
+    return;
+  }
+  if (window.__mcSetlog) return;
+  window.__mcSetlog = true;
+
+  var SK  = 'mc_setlog_v1';
+  // PID namespaces persistence per program. Custom "Build Your Own" workouts run
+  // through run-workout.html and set window.MC_PID_OVERRIDE so each saved workout
+  // keeps its own logging history instead of colliding on the shared filename.
+  var PID = (window.MC_PID_OVERRIDE || location.pathname.split('/').pop().replace('.html', ''));
+  // Unique id for this page-load session; groups all sets into one session row.
+  var SESSION_ID = 'sess-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+
+  // A-9: PR-check local high-water mark. getMaxWeight() was called before
+  // EVERY checked set to learn the historical max for that exercise — a real
+  // network round trip on the hottest path in the app, to answer a question
+  // that only changes when THIS session sets a new PR. In-memory only (not
+  // persisted): a fresh page load re-seeds from the server once per exercise
+  // the first time it matters, which is correct — this cache exists to avoid
+  // repeat queries within one session, not to second-guess the server's
+  // cross-device truth. undefined = not yet seeded; null = seeded, no prior
+  // max; a number = seeded, known max.
+  var _prCache = {};
+  function prCacheKey(exName) { return String(exName || '').toLowerCase(); }
+  function localMaxP(exName) {
+    var k = prCacheKey(exName);
+    if (k in _prCache) return Promise.resolve(_prCache[k]);
+    if (!window.MC_SB || !MC_SB.getMaxWeight) return Promise.resolve(null);
+    return MC_SB.getMaxWeight(exName).then(function (v) { _prCache[k] = v; return v; });
+  }
+  function noteMax(exName, w) {
+    var k = prCacheKey(exName);
+    if (w && (!(k in _prCache) || _prCache[k] === null || w > _prCache[k])) _prCache[k] = w;
+  }
+
+  // ---- storage (shape-compatible with the Finish-Workout module) ---------
+  // FIX-06 (roadmap Phase 5.1): the day key carries a year now. The whole
+  // migration happens HERE, in the one read path, rather than at 8 comparison
+  // sites: st() hands every caller a store whose session keys are already
+  // ISO, so `sess.d === dayStamp()` keeps working unchanged and a legacy
+  // "Sep 11" cannot be compared against a dated key and read as a different
+  // day. withStore() writes that same normalised object back, so the store on
+  // disk converges on the first save without a separate one-shot migration
+  // to sequence, and a legacy entry arriving later from sync is upgraded on
+  // the next read rather than slipping past a migration that already ran.
+  //
+  // JSON.parse already walks the whole structure, so the extra pass is a
+  // constant factor on something that was O(n) to begin with — and it is
+  // in-memory only, so the storageReads figure the K-3.1 perf budget watches
+  // is untouched.
+  function _mcLog() {
+    // Resolved lazily, never captured at parse time — the same reason
+    // mc-exercise-trends.js does this. mc-log-read.js is on all 79 pages that
+    // load this file (checked), but <script> order across them is not a
+    // contract this file can rely on at parse time.
+    if (typeof window !== 'undefined' && window.MC_LOG) return window.MC_LOG;
+    try { return require('./mc-log-read.js'); } catch (e) { return null; }
+  }
+  function st() {
+    var v;
+    try { v = JSON.parse(localStorage.getItem(SK) || '{}'); } catch (e) { return {}; }
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+    var L = _mcLog();
+    if (L && L.normalizeSessions) {
+      for (var k in v) if (Array.isArray(v[k])) v[k] = L.normalizeSessions(v[k]);
+    }
+    return v;
+  }
+  function ek(id) { return PID + '|' + id; }
+  function dayStamp() {
+    var L = _mcLog();
+    // No silent fallback to the old label: a page that somehow lacks
+    // mc-log-read.js must not start writing a SECOND key format into a store
+    // every other page reads as dated. The local ISO format is one line and
+    // deliberately not routed through check-single-impl.js — it is a format
+    // of last resort, not a second implementation anyone calls.
+    if (L && L.dayKey) return L.dayKey();
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+           '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function dayLabel(d) {
+    var L = _mcLog();
+    return (L && L.dayLabel) ? L.dayLabel(d) : String(d == null ? '' : d);
+  }
+
+  // ---- FIX-01 (audit L-01): serialise every write to the shared store -----
+  // save() used to read the WHOLE store, mutate it and write it back with no
+  // lock and no re-read. Two tabs of the same program page interleaving that
+  // sequence means the second write is computed from a snapshot taken before
+  // the first, so it silently overwrites it. Measured on the pre-fix build:
+  // ten sets accepted across two tabs, five persisted; the single-tab control
+  // lost nothing. No error, no warning, and each tab shows a correct count.
+  //
+  // Two mechanisms are needed here, and the second one is not obvious.
+  //
+  // 1. A Web Lock around the whole read-modify-write. localStorage is
+  //    synchronous within a page but nothing coordinates two pages, and only
+  //    two of the 43 modules that write browser storage listen for cross-tab
+  //    changes (neither is this one).
+  //
+  // 2. A broadcast of each committed set, replayed into every later write.
+  //    THE LOCK ALONE IS NOT ENOUGH, which was measured rather than assumed:
+  //    two tabs doing 100 locked read-modify-writes on one key still lost
+  //    one, while the same test without the lock lost fifty. Web Locks order
+  //    the CODE; they do not flush another renderer process's localStorage
+  //    cache, so a read taken inside the lock can still miss a write the
+  //    other tab has already made. Re-applying the recently committed sets on
+  //    every write repairs exactly that hole: a snapshot that came back stale
+  //    gets the missing entries put back before it is written out again.
+  //
+  // Taking the lock also makes the write asynchronous, which matters because
+  // lsess()/lset() read the store back. The same _recent list doubles as the
+  // in-memory view for those reads — layered ON TOP of a fresh read, never
+  // instead of it, so it can only add a pending value, never hide one.
+  var RECENT_MS = 60000;
+  var _recent = [];         // {k, d, sn, entry, ts} — this tab's and its peers'
+
+  function noteRecent(rec) {
+    var cut = Date.now() - RECENT_MS;
+    _recent = _recent.filter(function (r) {
+      return r.ts >= cut && !(r.k === rec.k && r.sn === rec.sn && r.d === rec.d);
+    });
+    _recent.push(rec);
+  }
+
+  // Peers announce their commits here. The storage event alone cannot carry
+  // this: it fires with the whole serialised blob, which is the very value
+  // that may be stale.
+  var _bc = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      _bc = new BroadcastChannel(SK);
+      _bc.onmessage = function (ev) {
+        var rec = ev && ev.data;
+        if (!rec) return;
+        if (rec.forget) {
+          _recent = _recent.filter(function (r) { return r.k.indexOf(rec.forget) !== 0; });
+          return;
+        }
+        if (!rec.k || rec.sn == null) return;
+        noteRecent({ k: rec.k, d: rec.d, sn: rec.sn, entry: rec.entry, ts: rec.ts || Date.now() });
+        _stCache = null;
+        if (window.MC_SCAN && MC_SCAN.schedule) MC_SCAN.schedule();
+      };
+    }
+  } catch (e) { _bc = null; }
+
+  // Put every recently committed set back into a snapshot that may have been
+  // read stale. Oldest first, so the newest value for a slot wins.
+  function replayRecent(s) {
+    _recent.slice().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (r) {
+      if (!s[r.k]) s[r.k] = [];
+      var sess = s[r.k][0];
+      if (!sess || sess.d !== r.d) {
+        // EN-10 / FIX-06: `d` WAS a day label with no year, so a merge across
+        // two devices had nothing to order by and its five-session cap fell
+        // on encounter order — dropping a NEW session in favour of five old
+        // ones. EN-10 added the numeric `ts` below as the first half of the
+        // repair; Phase 5.1 finished it by dating `d` itself, so the ordering
+        // no longer depends on every entry in the list happening to carry a
+        // stamp. `ts` stays: it is what dates a LEGACY entry during the
+        // upgrade, and it is finer than a day. See mc-sync.js's mergeSetlog().
+        sess = { d: r.d, sets: {}, ts: Date.now() };
+        s[r.k].unshift(sess);
+        s[r.k] = s[r.k].slice(0, 5);
+      }
+      sess.sets[r.sn] = r.entry;
+    });
+  }
+
+  // forget() drops recent records for a page. Discard needs it: without it
+  // replayRecent() would faithfully put back the very sets the athlete just
+  // threw away, which is the opposite of what discard means.
+  function forgetRecent(pagePrefix) {
+    var pre = pagePrefix + '|';
+    _recent = _recent.filter(function (r) { return r.k.indexOf(pre) !== 0; });
+    try { if (_bc) _bc.postMessage({ forget: pre, ts: Date.now() }); } catch (e) {}
+  }
+
+  // ---- roadmap Phase 5.3 (manual scenario M7): a full store, visibly ------
+  // Every localStorage write in this app sits inside a catch, and a full
+  // store therefore failed SILENTLY: the row ticked, the count went up, the
+  // screen said the set was logged, and nothing reached disk. Phase 0 left a
+  // stopgap here that called MC_TOAST — a function that is defined NOWHERE in
+  // the tree, behind an `if (window.MC_TOAST)` guard that swallowed it. So
+  // the warning Phase 0 believed it had added has never once been shown. Same
+  // shape as the #pushChip element Phase 4.5 found: a guard around something
+  // that was never built. This one therefore builds its own element and
+  // depends on nothing.
+  //
+  // Published as MCSetlogUtil.writeStore() so the other writers on the
+  // session path share it rather than each growing a private copy — the same
+  // reasoning check-single-impl.js applies to the readers.
+  function isQuotaError(e) {
+    if (!e) return false;
+    // Chrome/Safari: code 22. Firefox: 1014 with its own name. Safari in a
+    // private window throws QuotaExceededError at a quota of zero, which is
+    // the same message to the athlete: this device will not keep the set.
+    if (e.code === 22 || e.code === 1014) return true;
+    return e.name === 'QuotaExceededError' ||
+           e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+           e.name === 'QUOTA_EXCEEDED_ERR';
+  }
+
+  var _quotaShown = false;
+  function warnStorageFull(quota) {
+    // One banner per page load, not one per set — and dismissing it is
+    // final for that load rather than re-arming on the next failed write,
+    // which would put it back on screen every few seconds while the athlete
+    // is mid-session. A reload re-arms it.
+    if (_quotaShown) return;
+    if (typeof document === 'undefined' || !document.body) return;
+    _quotaShown = true;
+    var el = document.createElement('div');
+    el.className = 'mc-quota';
+    el.setAttribute('role', 'alert');
+    var body = document.createElement('div');
+    body.className = 'mc-quota-body';
+    var title = document.createElement('div');
+    title.className = 'mc-quota-title';
+    title.textContent = quota ? 'Storage full — this set was not saved'
+                              : 'This browser is not saving your sets';
+    var msg = document.createElement('div');
+    msg.className = 'mc-quota-msg';
+    // Built as nodes, not innerHTML: the only variable part is the link, and
+    // an alert about losing data is the last place to introduce a parse path.
+    msg.appendChild(document.createTextNode(quota
+      ? 'Keep training — your sets still reach the cloud if you are signed in. To fix it on this device, '
+      : 'Private browsing and blocked site data both do this. Your sets still reach the cloud if you are signed in. You can '));
+    var a = document.createElement('a');
+    a.href = 'dashboard.html';
+    a.textContent = 'export a backup and clear old logs';
+    msg.appendChild(a);
+    msg.appendChild(document.createTextNode(' from your account panel.'));
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'mc-quota-x';
+    x.setAttribute('aria-label', 'Dismiss storage warning');
+    x.textContent = '\u2715';
+    x.addEventListener('click', function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    body.appendChild(title); body.appendChild(msg);
+    el.appendChild(body); el.appendChild(x);
+    document.body.appendChild(el);
+  }
+
+  // Returns true when the value actually reached disk. Callers that care can
+  // act on false; callers that don't at least no longer report success.
+  function writeStore(key, value) {
+    try { localStorage.setItem(key, value); return true; }
+    catch (e) { warnStorageFull(isQuotaError(e)); return false; }
+  }
+
+  function withStore(mutate, opts) {
+    var replay = !(opts && opts.replay === false);
+    function run() {
+      var s = st();
+      try { if (mutate) mutate(s); } catch (e) { return; }
+      if (replay) replayRecent(s);
+      writeStore(SK, JSON.stringify(s));   // Phase 5.3: warns for real now
+    }
+    if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+      return navigator.locks.request(SK, run).catch(function () { run(); });
+    }
+    run();
+    return Promise.resolve();
+  }
+
+  function save(exId, sn, w, r, rpe) {
+    var k = ek(exId), d = dayStamp();
+    var entry = { w: w, r: r };
+    if (rpe) entry.rpe = rpe;          // optional — older readers ignore it
+    var rec = { k: k, d: d, sn: sn, entry: entry, ts: Date.now() };
+    noteRecent(rec);
+    try { if (_bc) _bc.postMessage(rec); } catch (e) {}
+    withStore(null);                   // replayRecent() carries the new entry
+  }
+
+  function lsess(exId) {
+    var k = ek(exId);
+    var sess = (st()[k] || [])[0] || null;
+    var mine = _recent.filter(function (r) { return r.k === k; });
+    if (!mine.length) return sess;
+    var d = mine[mine.length - 1].d;
+    var out = { d: (sess && sess.d === d) ? sess.d : d, sets: {} };
+    if (sess && sess.d === d) {
+      Object.keys(sess.sets || {}).forEach(function (sn) { out.sets[sn] = sess.sets[sn]; });
+    }
+    mine.sort(function (a, b) { return a.ts - b.ts; }).forEach(function (r) {
+      if (r.d === out.d) out.sets[r.sn] = r.entry;
+    });
+    return out;
+  }
+  function lset(exId, sn) { var sess = lsess(exId); return sess ? sess.sets[sn] || null : null; }
+
+  // ---- A-10: typed-but-unchecked values survive a reload -------------------
+  // Nothing persisted a weight/reps field until the checkbox was tapped —
+  // onCheck() was the only path into storage. An interrupted set (a mid-
+  // session sign-in reload via mc-sync.js, the SW's forced deploy reload, a
+  // dropped phone) erased whatever the athlete had just typed, and worse:
+  // the next reload's carry-down would then repopulate the empty field with
+  // the PREVIOUS set's number, nudging the athlete toward the wrong load.
+  // Separate small store, not folded into mc_setlog_v1 — these are drafts,
+  // not committed sets, and must never appear in history/PR/Supabase logic.
+  // Pruned by age the same way mc_session_v1 is, since an abandoned exercise
+  // should not hold a stale pending value forever.
+  var PK = 'mc_setlog_pending_v1';
+  var PENDING_MAX_AGE = 12 * 3600 * 1000;
+  function readPending() {
+    var p; try { p = JSON.parse(localStorage.getItem(PK) || '{}') || {}; } catch (e) { p = {}; }
+    var now = Date.now(), changed = false;
+    Object.keys(p).forEach(function (k) {
+      if (!p[k] || (now - (p[k].ts || 0)) > PENDING_MAX_AGE) { delete p[k]; changed = true; }
+    });
+    // Deliberately NOT writeStore(): this write only ever SHRINKS the store,
+    // so a quota failure here loses nothing and warning about it would point
+    // the athlete at the one write that was trying to free space.
+    if (changed) try { localStorage.setItem(PK, JSON.stringify(p)); } catch (e) {}
+    return p;
+  }
+  function pendingKey(exId, sn) { return PID + '|' + exId + '|' + sn; }
+  function getPending(exId, sn) { return readPending()[pendingKey(exId, sn)] || null; }
+  function setPending(exId, sn, w, r) {
+    var p = readPending(), k = pendingKey(exId, sn);
+    if (!w && !r) { delete p[k]; }
+    else { p[k] = { w: w || '', r: r || '', ts: Date.now() }; }
+    writeStore(PK, JSON.stringify(p));
+  }
+  function clearPending(exId, sn) {
+    var p = readPending(), k = pendingKey(exId, sn);
+    if (p[k]) { delete p[k]; writeStore(PK, JSON.stringify(p)); }
+  }
+  function histText(exId) {
+    var sess = lsess(exId); if (!sess) return '';
+    var top = null;
+    Object.keys(sess.sets).forEach(function (k) {
+      var w = parseFloat(sess.sets[k].w) || 0;
+      if (w && (!top || w > top.w)) top = { w: w, rpe: sess.sets[k].rpe };
+    });
+    // FIX-06: `d` is a dated key now, so the athlete-facing text formats it
+    // back to the "Sep 11" this cue has always read. The displayed string is
+    // byte-identical to the pre-fix one; only the stored value changed.
+    if (!top) return dayLabel(sess.d);
+    return 'Last: ' + top.w + ' lb' + (top.rpe ? ' @' + top.rpe : '') + ' · ' + dayLabel(sess.d);
+  }
+
+  // ---- active-exercise highlight ------------------------------------------
+  // Marks whichever card the athlete is actually logging sets on right now
+  // (opened its Log Sets panel, checked a set, or focused a weight/reps
+  // field) with .active, so the accent-ring in base.css follows attention
+  // around the workout. Only one card at a time; every other exercise stays
+  // fully visible (no accordion/collapse) — purely a focus cue.
+  // ---- notes: collapse to one line, tap to expand -------------------------
+  // .a-notes is rendered per-page (every program's inline script builds its
+  // own noteHtml), so this runs generically over whatever the DOM already
+  // has rather than requiring per-page changes. Idempotent via data-mc-notes
+  // so repeat run() passes (MutationObserver-driven) don't double-bind.
+  function collapseNotes() {
+    document.querySelectorAll('.a-notes').forEach(function (n) {
+      if (n.dataset.mcNotes) return;
+      n.dataset.mcNotes = '1';
+      n.classList.add('a-notes-collapsible');
+      n.addEventListener('click', function (e) {
+        e.stopPropagation();
+        n.classList.toggle('a-notes-open');
+      });
+    });
+  }
+
+  // A-11 / M-1 / §3.4: the app already knows which card has the athlete's
+  // attention — becoming active now also opens that card's own logger, so
+  // the "Log Sets" tap (an information-free gesture repeated once per
+  // exercise, every session) is only ever needed to open a card out of
+  // order. Every existing caller of setActiveCard() already implied an open
+  // wrap (you can't focus a hidden input or tap a hidden checkbox); the one
+  // caller that does NOT — the card-handoff promotion below — is exactly
+  // the case this was missing for.
+  // R4: the program's coaching cue (.a-notes) moved behind the header's ⓘ
+  // button on cards using the consolidated header. ONE delegated listener for
+  // every such button on the page, however it was rendered — the same pattern
+  // mc-timer.js uses for .rest-timer, and the reason a per-engine copy of this
+  // handler would be the exact duplication check-single-impl.js exists to
+  // prevent. A real <button> is keyboard-focusable and fires click on both
+  // Space and Enter for free, so the cue stays reachable without a pointer.
+  document.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest && e.target.closest('.a-info');
+    if (!btn) return;
+    e.stopPropagation(); e.preventDefault();
+    var card = btn.closest('.ex-card, .ss-ex, .ex-item');
+    if (!card) return;
+    var open = card.classList.toggle('a-note-open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+
+  // ---- the expansion unit is the GROUP, not the card ---------------------
+  // A superset or tri-set is one block the athlete performs as a unit —
+  // A set 1, B set 1, A set 2 — so expanding one leg while its partners stay
+  // collapsed hides exactly the rows the next thirty seconds need. And a
+  // collapsed partner is not merely smaller: mc-setlog.css collapses a leg to
+  // its 48px strip with `display:none!important` on every other child, so its
+  // logger leaves the layout entirely. mc-superset-hop.js's openLog() adding
+  // .open to a wrap inside a collapsed leg therefore changed nothing on
+  // screen — the hop landed the athlete on an invisible logger.
+  //
+  // FOCUS stays per-exercise while EXPANSION is group-wide: exactly one unit
+  // carries .active (the one being performed, which the hop advances leg by
+  // leg and mc-voice reads), and every member of its group is open. A
+  // standalone exercise is a group of one, so this is the same code path for
+  // every card in the tree rather than a superset special case — which is
+  // what makes it hold on the ~9 rendering engines without per-engine work.
+  function groupOf(unit) {
+    return (unit && unit.closest && unit.closest('.ss-card')) || unit;
+  }
+  function membersOf(unit) {
+    var group = groupOf(unit);
+    if (group && group.classList && group.classList.contains('ss-card')) {
+      var legs = group.querySelectorAll('.ss-ex');
+      if (legs.length) return Array.prototype.slice.call(legs);
+    }
+    return unit ? [unit] : [];
+  }
+
+  function setActiveCard(card) {
+    document.querySelectorAll('.ex-card.active, .ss-ex.active').forEach(function (c) {
+      if (c !== card) c.classList.remove('active');
+    });
+    // R3: one exercise expanded at a time — the one being performed. Every
+    // other card rests as its 48px .mcl-strip. This reverses base.css's
+    // recorded "no accordion" decision, which was made when a card was ~150px
+    // and is being revisited now that S1-S4 measured it at 272px collapsed.
+    // Signed off by the owner (roadmap decision 2). "One exercise" reads as
+    // one GROUP now — the smallest block that is coherent to train.
+    if (card) {
+      var members = membersOf(card);
+      // A-14: build every member's rows now if they were only ever
+      // strip-built — openLogger() below assumes .mcl-wrap exists. Superset
+      // legs are already eager (see run()) so this is a no-op there, but a
+      // standalone card still needs it and a future eager/lazy change to
+      // legs must not silently reveal an empty partner.
+      members.forEach(ensureRowsBuilt);
+      document.querySelectorAll(UNIT_SEL_R3).forEach(function (c) {
+        if (members.indexOf(c) < 0 && c.querySelector('.mcl-strip')) setCollapsed(c, true);
+      });
+      card.classList.add('active');
+      members.forEach(function (m) { setCollapsed(m, false); openLogger(m); });
+    }
+  }
+
+  // A-14: build a specific card's rows on demand, from whatever setActiveCard()
+  // or a session restore hands it — resolves host/exId/setsStr/rs the same
+  // way run() does per unit type, so this reaches the identical DOM build()
+  // itself would have. Superset legs (.ss-ex) are already fully eager (run()
+  // calls build() for them directly), so this is a safe no-op there.
+  function ensureRowsBuilt(card) {
+    if (!card || card.classList.contains('ss-ex')) return;
+    var host = card.classList.contains('ex-card')
+      ? (card.querySelector('.ex-content') || card.querySelector('.ex-body') || card)
+      : card;
+    buildRows(host, card, exIdOf(card), setsOf(card), restSecs(card));
+  }
+  var UNIT_SEL_R3 = '.ex-card, .ss-ex, .ex-item';
+  function openLogger(card) {
+    var wrap = card.querySelector('.mcl-wrap');
+    var toggle = card.querySelector('.mcl-toggle');
+    if (!wrap || wrap.classList.contains('open')) return;
+    wrap.classList.add('open');
+    if (toggle) {
+      toggle.classList.add('open');
+      var lbl = toggle.querySelector('.mcl-lbl');
+      if (lbl) lbl.textContent = 'Hide';
+    }
+  }
+
+  // ---- §3.4 card handoff: find the next not-yet-finished exercise --------
+  // Mirrors mc-timer.js's getUpNext() sibling-walk, at the same top-level
+  // granularity (.ex-card / .ss-card) — a superset's two .ss-ex legs are
+  // nested inside one .ss-card, so promoting "the next exercise" out of a
+  // finished .ex-card has to climb out of and back into that structure
+  // rather than just walking .nextElementSibling on the logging unit itself.
+  function topUnitOf(unit) { return (unit.closest && unit.closest('.ex-card, .ss-card')) || unit; }
+  function firstIncompleteLeg(topEl) {
+    if (topEl.classList && topEl.classList.contains('ss-card')) {
+      var legs = topEl.querySelectorAll('.ss-ex'), i;
+      for (i = 0; i < legs.length; i++) { if (!legs[i].__mclDone) return legs[i]; }
+      return legs[0] || null;
+    }
+    return topEl;
+  }
+  function nextTopUnit(topEl) {
+    var n = topEl.nextElementSibling;
+    while (n && !(n.classList && (n.classList.contains('ex-card') || n.classList.contains('ss-card')))) {
+      n = n.nextElementSibling;
+    }
+    return n;
+  }
+  function nextIncompleteUnit(fromCard) {
+    var top = topUnitOf(fromCard);
+    // A superset's other leg lives inside the SAME top-level unit fromCard
+    // just finished — check there before walking to the next position, or
+    // finishing leg A always skips straight past leg B.
+    var here = firstIncompleteLeg(top);
+    if (here && here !== fromCard && !here.__mclDone) return here;
+    var next = nextTopUnit(top);
+    while (next) {
+      var candidate = firstIncompleteLeg(next);
+      if (candidate && !candidate.__mclDone) return candidate;
+      next = nextTopUnit(next);
+    }
+    return null;
+  }
+  // VOC-A2: the cold-start counterpart of nextIncompleteUnit() — instead of
+  // walking forward from a just-finished card, find the very first
+  // incomplete top-level unit on the page at all, so a fresh visit (no
+  // mc_session_v1 record yet — see mc-session.js) can land the athlete on it
+  // directly. Reuses firstIncompleteLeg() so a superset's first leg is
+  // returned rather than its .ss-card wrapper, exactly as nextIncompleteUnit()
+  // already does. On a genuinely fresh page every unit's __mclDone is
+  // undefined (rows haven't been checked, so nothing has run updateCount()
+  // yet), so in practice this returns the first unit in DOM order — but it
+  // stays correct rather than assuming that, in case a future caller invokes
+  // it after some cards are already marked done.
+  function firstIncompleteUnit() {
+    var units = document.querySelectorAll('.ex-card, .ss-card, .ex-item');
+    for (var i = 0; i < units.length; i++) {
+      var candidate = firstIncompleteLeg(units[i]);
+      if (candidate && !candidate.__mclDone) return candidate;
+    }
+    return null;
+  }
+
+  // EN-7 (roadmap Phase 4 step 4). The old control cycled seven values on
+  // every row: '', 8, 8.5, 9, 9.5, 10, F. Six choices — and every consumer in
+  // the app tests one predicate over them, `rpe === 'F' || parseFloat(rpe) >=
+  // 9.5` (mc-suggest.js's progression hold, mc-strain.js's session load,
+  // mc-readiness.js's recovery curve), so six choices only ever produced TWO
+  // outcomes. Reaching "to failure" cost six taps and effort was recorded on
+  // 1.6% of sets.
+  //
+  // Three choices, asked once, on the exercise the athlete has just finished.
+  // The stored values stay inside the old vocabulary so existing logs, the
+  // Supabase `rpe` column and all three consumers keep working untouched: 8
+  // and 9 are below the near-failure threshold, F is at it.
+  var EFFORT_CHOICES = [
+    { rpe: '8', label: 'Easy',       hint: 'Three or more reps left in the tank' },
+    { rpe: '9', label: 'Solid',      hint: 'One or two reps left' },
+    { rpe: 'F', label: 'To failure', hint: 'Nothing left — this holds the weight where it is' }
+  ];
+
+  // What the last set of this exercise currently records, if anything.
+  function storedEffort(exId, sn) {
+    var l = lset(exId, sn);
+    return (l && l.rpe) || '';
+  }
+
+  // Reflect the stored answer onto the buttons, and only ask once the whole
+  // exercise is logged — an effort question in front of an unstarted card is
+  // noise, and asking mid-exercise asks about the wrong set.
+  function paintEffort(card, exId) {
+    var row = card.querySelector('.mcl-effort');
+    if (!row) return;
+    var cid = cssId(exId);
+    var rows = card.querySelectorAll('.mcl-row[id^="mclr-' + cid + '-"]');
+    var done = 0;
+    Array.prototype.forEach.call(rows, function (r) {
+      if (r.querySelector('.mcl-ck.done')) done++;
+    });
+    var ready = rows.length > 0 && done === rows.length;
+    if (row.classList.contains('on') !== ready) row.classList.toggle('on', ready);
+    var cur = storedEffort(exId, rows.length);
+    Array.prototype.forEach.call(row.querySelectorAll('.mcl-effort-btn'), function (b) {
+      var on = !!cur && b.dataset.rpe === cur;
+      if (b.classList.contains('set') !== on) {
+        b.classList.toggle('set', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    });
+  }
+
+  // ---- parse the prescribed "sets" string --------------------------------
+  // ONE resolution, read by both setCount() and repFor(): a prescription
+  // becomes an ordered list of per-row rep targets, so the number of logging
+  // rows IS that list's length and row i's target IS list[i]. They used to be
+  // two independent parsers over the same string, and they disagreed —
+  // "25/20/20/15/12" built EIGHT rows, every one asking for 25 reps, for a
+  // five-step descending pyramid. Everything downstream inherits this: the
+  // "0/N Sets" strip badge, and (through planFor -> plannedSetCount)
+  // mc-finish.js's whole-workout total.
+  //
+  // '/' is overloaded FOUR ways in the authored data, and the order of the
+  // branches below is what keeps the two that were always correct correct —
+  // the multiplier settles the count before any slash is looked at:
+  //
+  //   1. "4×10 / 12 per side"       N× multiplier   -> 4 rows  (always right)
+  //   2. "4×6, + Cluster 6/6/6"     cluster inner   -> 4 rows  (always right)
+  //   3. "12, 12, 10 / 10, 10, 8"   leg separator   -> 3 rows  (was 5)
+  //   4. "25/20/20/15/12"           set separator   -> 5 rows  (was 8)
+  //
+  // See tools/test-mc-setlog-plan.js (every shape pinned) and
+  // tools/check-set-schemes.js (the fleet-wide invariants).
+
+  // Everything this parser needs is a FUNCTION DECLARATION, never a `var`
+  // initialiser: the Node export hook at the top of this file returns before
+  // any statement in the closure body runs, so a `var X = …` would still be
+  // undefined when CI calls in. Declarations hoist; assignments do not.
+
+  // A superset is 2 legs and a tri-set is 3 — ks-engine.js's GROUP_SIZE and
+  // mc-group-split.js's `tri = names.length >= 3` both say so. The bound
+  // matters: it is what separates a leg list from the per-ROUND form
+  // "12/12, 10/10, 8/8", where the COMMA is the outer separator and each
+  // slash pairs the two legs' reps inside one round. That form has 4 slash
+  // segments for 3 rounds, so a leg rule that just counted slashes would get
+  // it wrong; raising this bound needs a different discriminator, not a
+  // bigger number.
+  function maxLegs() { return 3; }
+  // A leading number is a SET count only when the prose says so ("4 sets",
+  // "3 sets to failure", "4–5 sets"). The same shape carrying a rep or
+  // duration unit — "100–200 reps", "30 sec each side", "21s" — prescribes
+  // REPS and names no set count at all; reading it as one clamped a
+  // hundred-rep finisher into eight logging rows.
+  function declaredSets(s) {
+    var m = String(s).match(/^\s*(\d+)\s*(?:[–\-—]\s*\d+\s*)?\+?\s*sets?\b/i);
+    return m ? Math.min(parseInt(m[1], 10), 12) : null;
+  }
+
+  // The rep target one row asks for, read off its own slice of the
+  // prescription. It takes the FIRST number, never every digit in the slice
+  // run together: a slice routinely carries a second number that is not a rep
+  // target at all — a drop or cluster round ("10 + 1× Drop"), a back-off set
+  // ("4 + 1× back-off 12 reps"), or the other leg's reps ("12/12") — and
+  // concatenating them invented targets like 101, 411 and 121 that appear
+  // nowhere in the program. A LEADING multiplier is stripped first, because
+  // in "3× Cluster 8 reps" the 3 counts rounds and the 8 is the actual rep
+  // target. Guarded fleet-wide by tools/check-set-schemes.js's provenance
+  // check: no row may target a number its prescription does not contain.
+  function repDigits(r) {
+    var s = String(r == null ? '' : r).replace(/^[^\dA-Za-z]*\d+\s*[x×]\s*/i, '');
+    var n = s.match(/\d+/);
+    return n ? n[0].slice(0, 3) : '';
+  }
+  function slashSegs(s) {
+    return String(s).split('/').map(function (p) { return p.trim(); })
+      .filter(function (p) { return p.length; });
+  }
+  // "G1: … / G2: … / G3: …" (push-pull-legs' giant sets) puts a whole ROUND
+  // in each slash segment, so the segment count is the round count however
+  // many lifts each round happens to name.
+  function roundLabelled(segs) {
+    return segs.length > 1 && segs.every(function (p) {
+      return /^(?:G|R|Round)\s*\d+\s*[:.]/i.test(p);
+    });
+  }
+  // An OPEN-ENDED rep token states no number at all: AMRAP, to failure, max.
+  // "4×AMRAP" prescribes four sets and no rep target — reading a number out of
+  // it is the whole of audit P2-09.
+  // A function declaration, not a `var` holding a regex: this file's Node
+  // export hook calls setCount() at require() time, before any `var`
+  // initialiser in the IIFE has run — the same hoisting reason repList()'s
+  // cache hangs off the function itself. Caught by running the exports.
+  function isOpenRep(v) { return /^(?:amrap|∞|failure|fail|max)\b/i.test(String(v == null ? '' : v).trim()); }
+
+  // The fallback rep target for a prescription that carries no per-row list:
+  // the reps beside a multiplier ("4×12" -> 12), else the first number.
+  //
+  // It used to search the WHOLE string for the first `[x×]\s*(\d+)` and, failing
+  // that, for the first bare number. Both fall through to the SET COUNT when
+  // the reps are open-ended, because the only digit in "4×AMRAP" is the 4:
+  // twelve authored prescriptions in this tree — "3×failure", "5×AMRAP",
+  // "4× AMRAP", "3xfailure each" — asked every row for as many reps as there
+  // were sets, and six more ("AMRAP in 2 min" -> 2, "AMRAP (50-100 reps)" ->
+  // 50, "AMRAP × 3" -> 3) picked up whatever number happened to be nearby.
+  // A rep target the program never prescribed then drives the progression
+  // engine's "did every set hit the target" comparison.
+  //
+  // So: read the reps from where the reps actually are — immediately after the
+  // multiplier when there is one — and answer '' rather than invent a number.
+  // '' means "no fixed target", which every consumer already handles, because
+  // an unparseable prescription has always been able to produce it.
+  function loneRep(s) {
+    var str = String(s).trim();
+    var m = str.match(/^\s*\d+\s*[x×]\s*([\s\S]*)$/i);
+    if (m) {
+      var after = m[1].trim();
+      if (isOpenRep(after)) return '';
+      var d = after.match(/(\d+)/);
+      return d ? d[1] : '';
+    }
+    if (isOpenRep(str)) return '';
+    // A trailing "sets" makes the number a SET COUNT, not a rep target
+    // ("10-12 each motion × 3 sets" used to prescribe 3 reps).
+    var x = str.match(/[x×]\s*(\d+)(\s*sets?\b)?/i);
+    if (x) return x[2] ? '' : x[1];
+    var n = str.match(/(\d+)/); return n ? n[1] : '';
+  }
+
+  // Does the prescription state how many sets to do? An N× multiplier, the
+  // word "sets", a slash pyramid or a comma list all do. "100-200 reps",
+  // "AMRAP in 2 min" and "Pyramid" do not — 39 distinct prescriptions in this
+  // tree — and those fall through to a THREE-ROW DEFAULT that the athlete has
+  // never been shown as a guess (audit P2-12). Surfaced on the logger's set
+  // counter and in its screen-reader label; consumed by mc-suggest.js, which
+  // refuses to judge progression against a set count nobody prescribed.
+  function statesSetCount(s) {
+    if (s == null || s === '') return false;
+    var str = String(s);
+    if (/^\s*\d+\s*[x×]/i.test(str)) return true;
+    if (declaredSets(str) != null) return true;
+    if (slashSegs(str).length > 1) return true;
+    var toks = str.split(',').filter(function (p) {
+      return /\d/.test(p) || isOpenRep(p);
+    });
+    return toks.length > 1;
+  }
+  function fill(n, rep) {
+    var out = [], i;
+    for (i = 0; i < n; i++) out.push(rep);
+    return out;
+  }
+
+  function computeRepList(s) {
+    if (!s) return ['', '', ''];                    // no information -> 3 rows
+
+    // (1)(2) an N× multiplier states the set count outright, so it wins over
+    // every slash rule below — this is why "4×10 / 12 per side" stays 4 rows
+    // and a cluster's inner "6/6/6" never becomes rows of its own.
+    var mult = String(s).match(/^\s*(\d+)\s*[x×]/i);
+    if (mult) return fill(Math.min(parseInt(mult[1], 10), 12), loneRep(s));
+
+    var segs = slashSegs(s);
+    if (segs.length > 1) {
+      if (roundLabelled(segs)) return fill(segs.length, '');
+      var parts = segs.map(function (p) {
+        return p.split(',').map(function (x) { return x.trim(); })
+          .filter(function (x) { return x.length; });
+      });
+      var anyList = parts.some(function (p) { return p.length > 1; });
+
+      // (4) no commas anywhere -> the slashes ARE the set separator: an
+      // ascending or descending pyramid, one prescribed set per step.
+      if (!anyList) return segs.map(repDigits);
+
+      // (3) a comma list on at least one side of the slash -> leg separator.
+      // The legs are the SAME rounds performed at two or three stations, so
+      // the row count is one leg's, never the sum. It takes the LONGEST leg,
+      // which covers three real shapes at once: matched legs ("12, 12, 10 /
+      // 10, 10, 8" -> 3), a leg written as a single token beside a full list
+      // ("AMRAP / 3, 3, 3", "8, 8 / 2× AMRAP" -> the list's length), and
+      // irregular authoring where one leg carries more sets than the other
+      // ("10, 8, 20, 15 / 20, 20, 15" -> 4). Showing one spare row is
+      // recoverable; silently dropping a prescribed set is not.
+      if (segs.length <= maxLegs()) {
+        var longest = parts[0], k;
+        for (k = 1; k < parts.length; k++) {
+          if (parts[k].length > longest.length) longest = parts[k];
+        }
+        return longest.map(repDigits);
+      }
+      // Anything else (a lone token beside a real leg, "AMRAP / 3, 3, 3";
+      // the per-round form) falls through to the comma split below, which is
+      // the outer separator in exactly those cases.
+    }
+
+    var c = String(s).split(',');
+    if (c.length > 1) return c.map(repDigits);
+
+    var decl = declaredSets(s);
+    if (decl != null) return fill(decl, '');
+    return fill(3, loneRep(s));
+  }
+
+  // Pure over its input, and the same ~530 authored strings recur on every
+  // card of every page, so memoise rather than re-parse per row. Callers read
+  // the array (length / index) and never mutate it. The cache hangs off the
+  // function itself rather than a closure `var` for the hoisting reason above
+  // — a `var` initialiser has not run when the Node export hook calls in.
+  function repList(s) {
+    if (!repList.cache) repList.cache = {};
+    // Prefix every key so a prescription can never collide with an inherited
+    // Object.prototype member ("constructor" is not a real sets string, but a
+    // cache that answers one is a bug waiting for the day something is).
+    var key = '§' + (s == null ? '' : String(s));
+    var hit = repList.cache[key];
+    if (hit) return hit;
+    return (repList.cache[key] = computeRepList(s));
+  }
+  function setCount(s) { return repList(s).length; }
+  function repFor(s, i) {
+    var L = repList(s);
+    if (!L.length) return '';
+    return (L[i] != null ? L[i] : L[L.length - 1]) || '';
+  }
+
+  // ---- cluster-set detection ----------------------------------------------
+  // A cluster set (e.g. "5+5+5") breaks EVERY working set of the exercise into
+  // mini-sets with a short intra-set rest. Producers (run-workout.html,
+  // program-overrides.js) stamp the scheme onto the card as data-mc-cluster /
+  // data-mc-cluster-rest; when absent, rows render exactly as before.
+  function parseClusterAttr(s) {
+    return s ? s.split('+').map(function (p) { return p.trim(); }).filter(Boolean) : [];
+  }
+
+  // ---- drop-set detection -------------------------------------------------
+  // A drop set is an EXTRA set tacked onto the working sets — it must not be
+  // folded into the working-set count. Several notations appear across programs:
+  //       → an AMRAP drop (strip weight, reps to failure)
+  //   • numeric  "… drop N"    (PMC/MC/Pump "12,10,8,8 drop 15")
+  //       → a drop with a prescribed rep target (N)
+  //   • word, optionally multiplier-prefixed  "…, Drop AMRAP" / "…, 2× Drop AMRAP"
+  //       (Iron Engine/Kitchen Sink word family) → the multiplier repeats the
+  //       AMRAP token that many times (one row per drop)
+  //   • arrow, trailing           "12, 10, 8, 8 → AMRAP, AMRAP"
+  //       (Iron Engine/Kitchen Sink family)
+  //   • arrow + repeat×target, trailing   "15, 12, 12 → 3×10"
+  //       (Kitchen Sink cluster-round notation: N additional numeric-target
+  //       rows tacked on after the base pyramid, e.g. "3 base sets, then 3
+  //       cluster micro-sets of 10" — reuses the drop-row machinery below
+  //       since a numeric-target extra row is exactly what a drop already is)
+  //   • plus-multiplier, no "drop" word   "8, 6, 4, 4, + 2×AMRAP"
+  //       (Modality Matrix superset/tri-set burnout rounds)
+  //   • "then"                    "12,10,8,8 then AMRAP"
+  // Returns {is, drops} where each entry in drops is a numeric target or 'AMRAP'.
+  // A bare "drop" with no number and no "set" (rare) is NOT treated as a drop.
+  // "∞" is accepted everywhere "amrap" is, as a display-swapped synonym —
+  // pages (e.g. run-workout.html's custom-workout builder) may render the
+  // drop target as the ∞ glyph instead of the word "AMRAP"; either spelling
+  // normalizes to the same internal 'AMRAP' keyword below, so the Log Sets
+  // placeholder always shows literal "AMRAP" (the functional log-it cue)
+  // regardless of which glyph the page displays.
+  function parseDrop(name, sets) {
+    var hay = (name || '') + ' ' + (sets || '');
+    function tokensFrom(str) {
+      var drops = [], tok = /(\d+)|set|amrap|∞/gi, t;
+      while ((t = tok.exec(str))) drops.push(t[1] ? t[1] : 'AMRAP');
+      return drops;
+    }
+    function finish(tokenStr, mult) {
+      var drops = tokensFrom(tokenStr);
+      if (!drops.length) return { is: false, drops: [] };
+      // A leading "N× " multiplier on a SINGLE-token drop clause repeats that
+      // token N times ("2× Drop AMRAP" == two successive AMRAP drops).
+      if (mult && drops.length === 1) {
+        var one = drops[0]; drops = [];
+        for (var i = 0; i < mult; i++) drops.push(one);
+      }
+      return { is: true, drops: drops };
+    }
+    var m;
+    // arrow: "12, 10, 8, 8 → AMRAP, AMRAP" (trailing, end of string)
+    m = hay.match(/→\s*((?:amrap|∞|\d+)(?:\s*,\s*(?:amrap|∞|\d+))*)\s*$/i);
+    if (m) return finish(m[1], 0);
+    // arrow + repeat×target: "15, 12, 12 → 3×10" (Kitchen Sink cluster round) —
+    // N additional rows, each targeting the same numeric rep count.
+    m = hay.match(/→\s*(\d+)\s*[x×]\s*(\d+)\s*$/i);
+    if (m) return finish(m[2], parseInt(m[1], 10));
+    // plus-multiplier, no "drop" word: "…, + 2×AMRAP"
+    m = hay.match(/\+\s*(\d+)\s*[x×]\s*(?:amrap\b|∞)\s*$/i);
+    if (m) return finish('AMRAP', parseInt(m[1], 10));
+    // "…, then AMRAP"
+    m = hay.match(/\bthen\b\s*((?:amrap|∞|\d+)(?:\s*,\s*(?:amrap|∞|\d+))*)\s*$/i);
+    if (m) return finish(m[1], 0);
+    // word "drop", optionally "N× drop …" — tokens must immediately follow
+    // "drop": one or more of set/AMRAP/∞/number, comma-separated.
+    m = hay.match(/(?:(\d+)\s*[x×]\s*)?\bdrop\b\s*((?:set|amrap|∞|\d+)(?:\s*,\s*(?:set|amrap|∞|\d+))*)/i);
+    if (m) return finish(m[2], m[1] ? parseInt(m[1], 10) : 0);
+    return { is: false, drops: [] };
+  }
+  // Strip the trailing drop clause (whichever of the four notations matched)
+  // so the WORKING sets parse cleanly ("12,10,8,8 drop 15" → "12,10,8,8";
+  // "12, 10, 8, 8 → AMRAP, AMRAP" → "12, 10, 8, 8"; no more garbled targets).
+  function stripDrop(s) {
+    return (s || '')
+      .replace(/\s*→\s*(?:amrap|∞|\d+)(?:\s*,\s*(?:amrap|∞|\d+))*\s*$/i, '')
+      .replace(/\s*→\s*\d+\s*[x×]\s*\d+\s*$/i, '')
+      .replace(/[,+ ]*\+\s*\d+\s*[x×]\s*(?:amrap\b|∞)\s*$/i, '')
+      .replace(/[, ]*\bthen\b\s*(?:amrap|∞|\d+)(?:\s*,\s*(?:amrap|∞|\d+))*\s*$/i, '')
+      .replace(/[,+ ]*(?:\d+\s*[x×]\s*)?\bdrop\b.*$/i, '')
+      .trim();
+  }
+
+  // ---- planned row count (S5c-0) -----------------------------------------
+  // The number of set rows build() WILL render for a card, derived from the
+  // prescription alone — no DOM required. build() calls it too, so the
+  // "planned" count and the "built" count are the same expression rather than
+  // two copies that can drift.
+  //
+  // mc-finish.js reads it to size a workout from the program data instead of
+  // counting rendered checkboxes. That was never a safe proxy: every day of a
+  // multi-day block lives in the DOM at once, so the document-wide count made
+  // a finished day on mm-p1.html read "43 / 172 sets" and put the auto-open
+  // Finish modal out of reach until all four days were done. It also stops
+  // being true at all once loggers are built lazily (A-14).
+  //
+  // A cluster scheme puts N reps bubbles INSIDE one row, so it never changes
+  // the row count — only working sets plus appended drop rows do.
+  // ---- reduced volume (roadmap Phase 4 step 3, audit PG-2) ----------------
+  // Two things can make today lighter, and they meet here so the row count,
+  // mc-finish.js's completion denominator (plannedSetCount below) and the
+  // card's own note can never disagree with each other:
+  //
+  //   'readiness'  the athlete accepted a lighter session in the pre-session
+  //                brief. A tab-scoped intent, so it lives in sessionStorage
+  //                and expires — it is a decision about TODAY, not a setting.
+  //   'deload'     the program's own block schedules a deload this week. No
+  //                flagship program had one before this step, including the
+  //                fifteen-week one. Derived on the page, from the program's
+  //                declared deloadWeeks — never from "it's the last week".
+  //
+  // Resolved once per page load and cached: the answer cannot change mid-
+  // session, and planFor() is called on every card on every render pass.
+  var REDUCED_KEY = 'mc_deload_v1';
+  var REDUCED_WINDOW_MS = 4 * 60 * 60 * 1000;
+  var OFF = { on: false, reason: '' };
+  var _flag = null;      // sessionStorage intent — answerable immediately
+  var _deload = null;    // program schedule — needs MC_PROGRAM_DAY + MC_PM_DATA
+  function reducedVolume() {
+    if (_flag === null) {
+      _flag = false;
+      try {
+        var f = JSON.parse(sessionStorage.getItem(REDUCED_KEY) || 'null');
+        if (f && isFinite(f.ts) && (Date.now() - f.ts) < REDUCED_WINDOW_MS) _flag = true;
+      } catch (e) {}
+    }
+    if (_flag) return { on: true, reason: 'readiness' };
+    if (_deload === null) {
+      var D = window.MC_PROGRAM_DAY, P = window.MC_PROGRAM_PROGRESS;
+      var cur = null;
+      try { cur = D && D.current && D.current(); } catch (e2) {}
+      // NOT cached while the answer is unknowable. mc-pm-data.js used to reach
+      // three of these five pages only through an async injection, so the first
+      // build ran before the record existed — and caching that "no" made a
+      // deload week silently prescribe full volume for the whole page load.
+      // The pages now load the data synchronously before this file; this guard
+      // is the second line, so a mis-ordered page degrades to full volume for
+      // one pass instead of permanently.
+      if (!cur || !cur.prog || !P || !P.isDeloadWeek || !window.MC_PM_DATA) return OFF;
+      _deload = false;
+      try {
+        var src = window.MC_PM_DATA.program(cur.prog);
+        var def = src && P.defFromSchedule(src.schedule);
+        if (def && P.isDeloadWeek(P.get(cur.prog, def), cur.week)) _deload = true;
+      } catch (e3) {}
+    }
+    return _deload ? { on: true, reason: 'deload' } : OFF;
+  }
+
+  function planFor(card, setsStr) {
+    if (setsStr == null) setsStr = setsOf(card);
+    var nmEl = card.querySelector('.ex-name, .ss-name, .lift-name, .var-name');
+    var drop = parseDrop(nmEl ? nmEl.textContent : '', setsStr);
+    var work = drop.is ? stripDrop(setsStr) : setsStr;
+    var n = setCount(work);
+    var nd = drop.is ? drop.drops.length : 0;   // number of appended drop rows
+    var stated = statesSetCount(work);
+    // One working set fewer, floored at one. Drop rows are untouched — a drop
+    // set IS the reduction on that exercise. And a prescription that never
+    // stated a set count is left alone (P2-12): trimming a default the program
+    // did not ask for would be inventing a number twice over.
+    var cut = 0;
+    if (stated && n > 1 && reducedVolume().on) { cut = 1; n -= 1; }
+    return { nmEl: nmEl, drop: drop, work: work, n: n, nd: nd, total: n + nd,
+             stated: stated, cut: cut };
+  }
+  function plannedSetCount(card) {
+    try { return planFor(card).total; } catch (e) { return 0; }
+  }
+
+  // ---- rest seconds from the card's rest timer ---------------------------
+  function restSecs(card) {
+    var t = card.querySelector('.rest-timer');
+    if (t && t.dataset && t.dataset.rest && typeof TMR !== 'undefined' && TMR.parseSeconds)
+      return TMR.parseSeconds(t.dataset.rest) || 60;
+    return 60;
+  }
+
+  // ---- check handler -----------------------------------------------------
+  // A cluster working set (see build()'s clusterParts handling) carries
+  // SEVERAL .mcl-r reps inputs in one row — one bubble per mini-set — instead
+  // of the usual single reps box, so the athlete can log what they actually
+  // hit on each mini-set (e.g. "5+5+6" when the last one came up short). Read
+  // them all and join with '+' into the same rVal string a plain row would
+  // produce; every downstream consumer (save/history/Supabase) just sees text.
+  function clusterRVal(row) {
+    var mini = row.querySelectorAll('.mcl-r');
+    if (mini.length <= 1) return mini.length ? mini[0].value.trim() : '';
+    return Array.prototype.map.call(mini, function (m) { return m.value.trim() || m.placeholder || ''; }).join('+');
+  }
+  function onCheck(card, exId, sn, rs) {
+    var row = card.querySelector('#mclr-' + cssId(exId) + '-' + sn);
+    if (!row) return;
+    var ck = row.querySelector('.mcl-ck');
+    var w = row.querySelector('.mcl-w');
+    var rEl = row.querySelector('.mcl-r:not(.mcl-rmini)');
+    if (ck.classList.contains('done')) {
+      ck.classList.remove('done'); ck.textContent = '☐'; ck.setAttribute('aria-checked', 'false');
+      row.classList.remove('done-row');
+      updateCount(card, exId);
+      // A-10: unchecking re-opens the row for edits, so it is typed-but-
+      // unconfirmed again — re-arm the pending snapshot from whatever is in
+      // the fields right now, same as if it had never been checked.
+      setPending(exId, sn, w ? w.value.trim() : '', rEl ? rEl.value.trim() : '');
+      // FIX-05 (audit EN-6): remove the cloud row too. Unchecking used to be
+      // local-only, so the row stayed in workout_logs forever and kept
+      // winning the all-time maximum — a mistyped weight was uncorrectable.
+      try {
+        if (window.MC_SB && MC_SB.configured && MC_SB.unlogSet) {
+          var unNm = card.querySelector('.ex-name, .ss-name, .lift-name, .var-name');
+          MC_SB.unlogSet({
+            session_id: SESSION_ID,
+            exercise: origNameOf(unNm),
+            set_number: sn
+          }).catch(function () {});
+        }
+      } catch (ue) {}
+      return;
+    }
+    var wVal = w ? w.value.trim() : '';
+    var rVal = clusterRVal(row);
+    // EN-7: effort is no longer a per-row control, so it is CARRIED FORWARD
+    // from what this set already recorded rather than read off the row. Reading
+    // the removed element here would have written '' on every re-check and
+    // silently erased an answer the athlete had already given.
+    var rpeVal = storedEffort(exId, sn);
+    save(exId, sn, wVal, rVal, rpeVal);
+    // Now committed for real — checking always solidifies a ghosted
+    // suggestion (typing is not required), and the pending draft is
+    // superseded by the real entry mc_setlog_v1 now holds.
+    Array.prototype.forEach.call([w, rEl], function (inp) {
+      if (inp && inp.dataset.ghost) { inp.classList.remove('mcl-ghost'); delete inp.dataset.ghost; }
+    });
+    clearPending(exId, sn);
+    // Best-effort Supabase write — builds durable per-set history for the
+    // auto-weight pre-fill, fatigue flag, and PR milestone detection.
+    // Never blocks the UI; all Supabase calls are fire-and-forget.
+    try {
+      if (window.MC_SB && MC_SB.configured && MC_SB.logSet) {
+        var nmEl = card.querySelector('.ex-name, .ss-name, .lift-name, .var-name');
+        var exName = origNameOf(nmEl);
+        var muscle = classifyForCloud(exName);
+        var wNum = wVal ? (parseFloat(wVal) || null) : null;
+        // A cluster row's rVal is "5+5+6" — sum the mini-sets for a meaningful
+        // total rep count rather than parseInt-ing just the first number.
+        var repsNum = rVal
+          ? rVal.split('+').reduce(function (sum, p) { return sum + (parseInt(p, 10) || 0); }, 0) || null
+          : null;
+        var logEntry = {
+          session_id:   SESSION_ID,
+          exercise:     exName,
+          muscle:       muscle,
+          set_number:   sn,
+          weight_lbs:   wNum,
+          reps:         repsNum,
+          rpe:          rpeVal || null,
+          workout_name: document.title || '',
+          program_id:   activeProgramId()
+        };
+        // Local high-water mark first (A-9) — a real network call only on
+        // this exercise's first checked set THIS page load; every later one
+        // this session is a synchronous cache read.
+        var prevMaxP = wNum ? localMaxP(exName) : Promise.resolve(null);
+        prevMaxP.then(function (prevMax) {
+          MC_SB.logSet(logEntry).then(function () {
+            // PR detected: new weight beats a REAL historical max (audit G-03).
+            // prevMax === null does not mean "no record to beat" — getMaxWeight()
+            // returns null for three different situations: no Supabase client,
+            // nobody signed in, and genuinely no history for this exercise. The
+            // old `prevMax === null ||` read all three as a PR, so every first
+            // logged set of every exercise fired "your best lift ever" — about
+            // ten of them in a new user's first session, which is how a
+            // celebration turns into noise people mute. A first log is a
+            // baseline, not a record: require a known previous max to beat.
+            if (wNum && prevMax !== null && wNum > prevMax && MC_SB.sendPush) {
+              // Roadmap Phase 4 step 5: say what actually happened. "Your best
+              // lift ever" is true of every PR and so tells the athlete
+              // nothing; the number it BEAT is the part worth reading on a
+              // lock screen, and it is already in hand here.
+              MC_SB.sendPush({
+                title: '🏆 New PR — ' + exName,
+                body: wNum + ' lb, up from ' + prevMax + ' lb. That is +' +
+                      Math.round(wNum - prevMax) + ' on your best.'
+              }).catch(function () {});
+            }
+            noteMax(exName, wNum);
+          }).catch(function () {});
+        }).catch(function () {
+          MC_SB.logSet(logEntry).catch(function () {});
+        });
+      }
+    } catch (e) {}
+    ck.classList.add('done'); ck.textContent = '✓'; ck.setAttribute('aria-checked', 'true');
+    row.classList.add('done-row');
+    // Light confirming tap on check.
+    MC_HAPTICS.tap();
+    updateHist(card, exId);
+    updateCount(card, exId);
+    if (rs > 0 && typeof TMR !== 'undefined' && TMR.start) {
+      var t = card.querySelector('.rest-timer');
+      if (t) {
+        // Use the rest value carried on the timer (from the program's data),
+        // so the auto-countdown matches the prescribed rest exactly.
+        var secs = (TMR.parseSeconds && TMR.parseSeconds(t.dataset.rest)) || rs;
+        try { (typeof buildTimerFloat === 'function') && buildTimerFloat(); } catch (e) {}
+        TMR.start(t, secs, 'Rest');
+      }
+    }
+  }
+  function updateHist(card, exId) {
+    var h = card.querySelector('.mcl-hist-' + cssId(exId));
+    if (h) h.textContent = histText(exId);
+  }
+  // Collapsed-header "done / total" so set progress reads without expanding.
+  function updateCount(card, exId) {
+    var cid = cssId(exId);
+    var el = card.querySelector('.mcl-count-' + cid);
+    if (!el) return;
+    var rows = card.querySelectorAll('.mcl-row[id^="mclr-' + cid + '-"]');
+    var done = 0;
+    Array.prototype.forEach.call(rows, function (r) {
+      if (r.querySelector('.mcl-ck.done')) done++;
+    });
+    el.textContent = done + '/' + rows.length;
+    var allDone = done > 0 && done === rows.length;
+    el.classList.toggle('done', allDone);
+    // Logging every set is itself completion — mirror it onto the card's
+    // .checked class so every consumer that already reads .checked (session
+    // progress bar, live-summary %, activity log) picks it up without the
+    // athlete also needing to tap the whole card as a separate gesture.
+    card.classList.toggle('checked', allDone);
+
+    // EN-7: the effort question appears when the exercise is finished, so it
+    // is repainted wherever completion is recomputed — including restoreSets(),
+    // which routes through here (audit S2).
+    paintEffort(card, exId);
+
+    var stripCount = card.querySelector('.mcl-strip-count-' + cid);
+    if (stripCount) stripCount.textContent = done + '/' + rows.length + ' Sets';
+    // R3: the strip is every card's resting state now, so it has to show
+    // whether this one is actually finished rather than always looking done.
+    var stripEl = card.querySelector('.mcl-strip');
+    if (stripEl) {
+      stripEl.classList.toggle('is-done', allDone);
+      var dotEl = stripEl.querySelector('.mcl-strip-dot');
+      if (dotEl) {
+        var idxEl2 = card.querySelector('.a-idx');
+        var want = allDone ? '✓' : ((idxEl2 && idxEl2.textContent.trim()) || '•');
+        if (dotEl.textContent !== want) dotEl.textContent = want;
+      }
+      // The strip carries an aria-label, and a label OVERRIDES the element's
+      // own text for assistive tech — so the '3/5 Sets' span inside it is not
+      // announced. Harmless while the strip only ever meant "finished"; under
+      // R3 it is the resting state of every card and progress is the whole
+      // point of it, so the label has to carry the count itself.
+      var wantLbl = 'Expand ' + (stripEl.querySelector('.mcl-strip-name') || {}).textContent
+                  + ', ' + done + ' of ' + rows.length + ' sets logged'
+                  // P2-12: a row count nobody prescribed is announced as the
+                  // default it is, not as the program's own number.
+                  + (card.dataset.mcSetsUnstated ? ' (set count not prescribed)' : '');
+      if (stripEl.getAttribute('aria-label') !== wantLbl) stripEl.setAttribute('aria-label', wantLbl);
+    }
+    var toggleEl = card.querySelector('.mcl-toggle');
+    if (toggleEl) toggleEl.classList.toggle('mcl-alldone', allDone);
+
+    var wasDone = !!card.__mclDone;
+    card.__mclDone = allDone;
+    if (allDone && !wasDone) {
+      clearTimeout(card.__mclCollapseTimer);
+      // §3.4 card handoff: collapse the just-finished card, then promote
+      // whichever exercise is next in the day so the athlete's next tap is
+      // already where they need it — the "auto-open" half of A-11 doing its
+      // real work for the first time, since every OTHER setActiveCard()
+      // caller only fires on a wrap the athlete already opened by hand.
+      card.__mclCollapseTimer = setTimeout(function () {
+        var next = nextIncompleteUnit(card);
+        // Collapsing is setActiveCard's job now, and it collapses everything
+        // outside the NEXT exercise's group. That distinction is the whole
+        // point: finishing leg A of a superset does not end the block, so A
+        // must stay open while the athlete works leg B — the old
+        // unconditional collapse here closed A and setActiveCard(B) reopened
+        // it a frame later. With nothing left to promote there is no group to
+        // belong to, so the finished card collapses on its own.
+        if (!next) { setCollapsed(card, true); return; }
+        setActiveCard(next);
+        try {
+          var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+          next.scrollIntoView(reduced ? { block: 'nearest' } : { behavior: 'smooth', block: 'nearest' });
+        } catch (e) {}
+      }, 600);
+    } else if (wasDone && !allDone) {
+      // Unchecking a set on a FINISHED card re-expands it — the checkboxes
+      // have to be visible to uncheck another one. Guarded on the
+      // done->not-done transition (wasDone), not on !allDone alone: under R3
+      // every card is collapsed at rest, so the old unguarded form re-expanded
+      // all ten of them on every updateCount() pass.
+      clearTimeout(card.__mclCollapseTimer);
+      membersOf(card).forEach(function (m) { setCollapsed(m, false); });
+    } else if (!allDone) {
+      clearTimeout(card.__mclCollapseTimer);
+    }
+  }
+  function cssId(id) { return String(id).replace(/[^a-zA-Z0-9_-]/g, '_'); }
+  function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // ---- auto-collapse to a compact strip once every set is done -----------
+  // Fires only on the false->true transition of "all sets done" (tracked via
+  // card.__mclDone), never on every updateCount() pass — so an athlete who
+  // reopens an already-finished card to tweak an RPE isn't fought by the
+  // timer re-collapsing it out from under them. Unchecking a set (allDone
+  // flips back to false) force-expands immediately and cancels any pending
+  // auto-collapse, since the checkboxes have to be visible to uncheck one.
+  function setCollapsed(card, val) {
+    card.classList.toggle('mcl-collapsed', val);
+    var strip = card.querySelector('.mcl-strip');
+    if (strip) strip.setAttribute('aria-expanded', String(!val));
+  }
+
+  // ---- A-14: split the collapsed strip from the expensive logger body ----
+  // build() used to do both in one pass, for every card on the page, even
+  // though R3 already collapses every card but one to a 71px strip — a
+  // multi-day page built the full per-set <input> markup (ghost-fill, two
+  // localStorage history reads per row, blur/input listeners) for cards
+  // nobody had opened yet. buildStrip() is the cheap part every card still
+  // gets eagerly (the 0/N badge has to read correctly at rest); buildRows()
+  // is the expensive part, now built only when a card is actually activated
+  // (see setActiveCard() and MCSetlogUtil.ensureRowsBuilt below). build()
+  // itself stays as a "do both" entry point, unchanged for callers that
+  // still want the old eager behavior — run() keeps using it for superset
+  // legs (see run(), and the note there on why supersets stay eager).
+  function buildStrip(host, card, exId, setsStr, rs) {
+    if (!host) return;
+    // Strip any OTHER wave3 logger / notes UI EVERY pass (before the early
+    // return), so page-native scripts that re-add their UI after us (e.g.
+    // pmc-workout's .ex-notes) don't win the race. Runs here (not in
+    // buildRows) so it still happens for every card every pass, not just
+    // whichever one is currently active.
+    Array.prototype.forEach.call(
+      host.querySelectorAll('.setlog-toggle, .setlog-wrap, .note-btn, .note-area, .ex-notes-toggle, .ex-notes-wrap, .log-row'),
+      function (n) { n.remove(); }
+    );
+    if (card.querySelector('.mcl-strip')) return;   // ours already present
+
+    var cid = cssId(exId);
+    var plan = planFor(card, setsStr);
+    var nmEl = plan.nmEl;
+    var exNameText = nmEl ? nmEl.textContent.trim() : 'Exercise';
+    var total = plan.total;
+
+    // ---- collapsed-strip view ---------------------------------------------
+    // Appended as a sibling of `host` (i.e. a direct child of `card` itself,
+    // whether or not host === card) rather than inside it, so a single CSS
+    // rule keyed off `card` — "hide every direct child except .mcl-strip" —
+    // hides the ENTIRE original card content (name/badges/reps/timer/notes/
+    // logger) in one shot, on every template shape this file renders onto
+    // (single .ex-body wrapper, bare .ss-ex/.ex-item children, etc.) with no
+    // per-page markup change required. See mc-setlog.css .mcl-collapsed.
+    var strip = document.createElement('button');
+    strip.type = 'button';
+    strip.className = 'mcl-strip';
+    strip.setAttribute('aria-expanded', 'false');
+    strip.setAttribute('aria-label', 'Expand ' + exNameText + ', 0 of ' + total + ' sets logged');
+    // R3: the dot carries the exercise's position while the card is
+    // unstarted, and updateCount() swaps it for a ✓ once every set is
+    // logged. It used to be a hard-coded ✓ because the strip only ever
+    // appeared on finished cards.
+    var idxEl = card.querySelector('.a-idx');
+    var idxTxt = idxEl ? idxEl.textContent.trim() : '';
+    strip.innerHTML =
+      '<span class="mcl-strip-dot" aria-hidden="true">' + escHtml(idxTxt || '•') + '</span>' +
+      '<span class="mcl-strip-name">' + escHtml(exNameText) + '</span>' +
+      '<span class="mcl-strip-count mcl-strip-count-' + cid + '">0/' + total + ' Sets</span>' +
+      '<span class="mcl-strip-chev" aria-hidden="true">›</span>';
+    strip.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      clearTimeout(card.__mclCollapseTimer);
+      // Tapping a strip promotes that exercise — which collapses whichever
+      // card was expanded (setActiveCard also builds its rows under A-14).
+      setActiveCard(card);
+    });
+    card.appendChild(strip);
+    // R3: a freshly built card rests collapsed unless it is the one the
+    // athlete is already on. Guarded on first build only (__mclR3Init) so a
+    // later re-render pass never re-collapses a card mid-set.
+    if (!card.__mclR3Init) {
+      card.__mclR3Init = true;
+      if (!card.classList.contains('active')) setCollapsed(card, true);
+    }
+  }
+
+  // ---- render the full per-set logger onto a host element ----------------
+  // The expensive half: history reads, ghost-fill, one <input> row per
+  // prescribed set. Idempotent (checks .mcl-wrap) and safe to call whether
+  // or not buildStrip() already ran for this card.
+  function buildRows(host, card, exId, setsStr, rs) {
+    if (!host) return;
+    buildStrip(host, card, exId, setsStr, rs);
+    if (host.querySelector('.mcl-wrap')) return;   // ours already present
+
+    var cid = cssId(exId);
+
+    // Separate the WORKING sets from any appended drop set so the drop is never
+    // folded into (and garbling) the working-set rows. See parseDrop/stripDrop.
+    var plan = planFor(card, setsStr);
+    var nmEl = plan.nmEl;
+    var exNameText = nmEl ? nmEl.textContent.trim() : 'Exercise';
+    var drop = plan.drop;
+    var work = plan.work;
+    var n = plan.n;
+    var nd = plan.nd;                           // number of appended drop rows
+    var total = plan.total;
+    // P2-12: mark the card when its row count is this file's 3-row DEFAULT
+    // rather than anything the prescription stated, so the guess is visible
+    // (counter tooltip, strip screen-reader label) instead of silent.
+    // Written only on change — an unconditional attribute write is the
+    // observe/write feedback loop the card-integration roadmap exists to keep
+    // out (audit A-2).
+    var wantUnstated = plan.stated ? '' : '1';
+    if ((card.dataset.mcSetsUnstated || '') !== wantUnstated) {
+      if (wantUnstated) card.dataset.mcSetsUnstated = wantUnstated;
+      else delete card.dataset.mcSetsUnstated;
+    }
+    var dropAmrap = nd === 1 && drop.drops[0] === 'AMRAP';
+    var clusterParts = parseClusterAttr(card.dataset.mcCluster);
+    var clusterRestLabel = card.dataset.mcClusterRest || '';
+
+    var dropTag = '', dropTitle = '';
+    if (drop.is) {
+      dropTag = nd > 1 ? ('+ ' + nd + ' DROPS') : (dropAmrap ? '+ AMRAP' : '+ DROP');
+      dropTitle = nd > 1
+        ? ('Drop sets — ' + nd + ' successive drops after your working sets')
+        : (dropAmrap ? 'Drop set — extra set to failure after your working sets'
+                     : 'Drop set — strip weight after the last set, rep out (~' + drop.drops[0] + ')');
+    }
+    var toggle = document.createElement('div');
+    toggle.className = 'mcl-toggle';
+    toggle.innerHTML = '<span class="mcl-chev">▾</span><span class="mcl-lbl">Log Sets</span>' +
+                       '<span class="mcl-count mcl-count-' + cid + '"' +
+                         (plan.stated ? '' : ' title="This exercise\u2019s prescription does not say how many sets ' +
+                           '\u2014 showing ' + total + ' by default"') + '>0/' + total + '</span>' +
+                       (drop.is ? '<span class="mcl-amrap" title="' + dropTitle + '">' + dropTag + '</span>' : '') +
+                       '<span class="mcl-hist mcl-hist-' + cid + '">' + histText(exId) + '</span>';
+
+    // Manual collapse control — only visible once mcl-alldone is set on this
+    // toggle (updateCount()), i.e. after every set is logged. Lets an athlete
+    // who reopened a finished card (e.g. to tweak an RPE) shrink it back down
+    // themselves instead of waiting for the auto-collapse, which only fires
+    // once, on the moment the LAST set gets checked.
+    var collapseBtn = document.createElement('button');
+    collapseBtn.type = 'button';
+    collapseBtn.className = 'mcl-collapse-btn';
+    collapseBtn.setAttribute('aria-label', 'Collapse ' + exNameText);
+    collapseBtn.textContent = 'Collapse';
+    collapseBtn.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      clearTimeout(card.__mclCollapseTimer);
+      setCollapsed(card, true);
+    });
+    toggle.appendChild(collapseBtn);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'mcl-wrap';
+    // R2: the column-header row (SET/WEIGHT/REPS/RPE) was deleted — 23px on
+    // every card, times every exercise on the page. The row-number divs
+    // (1, 2, 3…) already read as "set" positionally, and the weight/reps inputs' own
+    // placeholder text ("lb" / "reps" when nothing else fills it) already
+    // does the labeling job the header row was duplicating — "the inputs'
+    // own placeholders, which is where a mobile form puts them anyway."
+    var html = '';
+    for (var i = 0; i < total; i++) {
+      var sn = i + 1, last = lset(exId, sn);
+      var dropIdx = i - n;                          // ≥0 ⇒ this is a drop row
+      var isDropRow = drop.is && dropIdx >= 0;
+      var dropTarget = isDropRow ? drop.drops[dropIdx] : '';
+      var pr = isDropRow ? '' : repFor(work, i);
+      // Quick Pump's history-aware weight seed (Phase 2.4): a fresh Quick
+      // Pump session has no mc_setlog_v1 history of its own (new id every
+      // generation), so `last` is always empty there — this is local-only
+      // (mc_workout_log_v1), set-1-only, and never overrides real history.
+      var seedWeight = (i === 0 && !last) ? parseFloat(card.dataset && card.dataset.mcSeedWeight) : 0;
+      var wPh = (last && last.w) ? (last.w + ' lb') : (seedWeight ? (seedWeight + ' lb') : 'lb');
+      var rPh = isDropRow ? (dropTarget === 'AMRAP' ? 'AMRAP' : dropTarget) : (pr || (last && last.r ? last.r : 'reps'));
+      // One-tap fill values: focusing an empty field drops in last session's
+      // weight (and the prescribed / last reps) so the athlete confirms instead
+      // of retyping. Carry-down (below) keeps later sets' fill in sync with set 1.
+      var wFill = (last && last.w) ? last.w : (seedWeight || '');
+      var rFill = isDropRow ? (dropTarget === 'AMRAP' ? '' : dropTarget)
+                            : (pr || (last && last.r) || '');
+
+      // A-10 + ghost prefill (§3.3): a typed-but-unchecked value left over
+      // from before an interrupted reload is REAL and wins outright. Failing
+      // that, the suggested fill above (last session's weight / the
+      // prescribed-or-last reps) is shown AS the field's value rather than
+      // only as a placeholder, marked .mcl-ghost so it reads as "suggested,
+      // not yet confirmed" (see mc-setlog.css) — tapping ✓ commits it exactly
+      // as typed, same as any other value. Drop-row reps are a task label
+      // (AMRAP / a numeric target), not history, so they are never ghosted —
+      // ghosting a target as if it were "what you did last time" would lie.
+      var pend = getPending(exId, sn);
+      var wValue = (pend && pend.w) ? pend.w : wFill;
+      var wGhost = !(pend && pend.w) && wValue !== '';
+      var rValue = (pend && pend.r) ? pend.r : (isDropRow ? '' : rFill);
+      var rGhost = !(pend && pend.r) && !isDropRow && rValue !== '';
+
+      // A cluster working set (not a drop row) gets N reps bubbles — one per
+      // mini-set — pre-populated with what was actually logged last time, or
+      // the prescribed target when there's no history, instead of one plain
+      // reps box. Everything else about the row (weight, RPE, checkbox, the
+      // rest-timer it triggers) is identical to a normal working set.
+      var isClusterRow = !isDropRow && clusterParts.length > 0;
+      var repsCellHtml, clusterRowHtml = '';
+      if (isClusterRow) {
+        var lastParts = (last && last.r && last.r.indexOf('+') !== -1) ? last.r.split('+') : null;
+        repsCellHtml = '<div class="mcl-rcell"></div>';
+        var bubbles = clusterParts.map(function (target, k) {
+          var v = (lastParts && lastParts[k] !== undefined) ? lastParts[k].trim() : target;
+          return '<input class="mcl-inp mcl-r mcl-rmini" type="number" inputmode="numeric" value="' + v + '" title="Mini-set ' + (k + 1) + ' reps">';
+        }).join('<span class="mcl-cluster-plus">+</span>');
+        clusterRowHtml = '<div class="mcl-cluster-row">' +
+          '<span class="mcl-cluster-lbl">🧩 Cluster' + (clusterRestLabel ? ' · ' + clusterRestLabel : '') + '</span>' +
+          '<div class="mcl-cluster-bubbles">' + bubbles + '</div>' +
+        '</div>';
+      } else {
+        repsCellHtml = '<input class="mcl-inp mcl-r' + (rGhost ? ' mcl-ghost' : '') + '" type="number" inputmode="numeric" placeholder="' + rPh + '"' +
+          (rValue !== '' ? ' value="' + rValue + '"' : '') +
+          (rFill !== '' ? ' data-fill="' + rFill + '"' : '') +
+          (rGhost ? ' data-ghost="1"' : '') + '>';
+      }
+
+      html += '<div class="mcl-row' + (isDropRow ? ' mcl-row-amrap' : '') + '" id="mclr-' + cid + '-' + sn + '">' +
+                '<div class="mcl-num">' + (isDropRow ? '↓' : sn) + '</div>' +
+                '<input class="mcl-inp mcl-w' + (wGhost ? ' mcl-ghost' : '') + '" type="number" inputmode="decimal" placeholder="' + wPh + '"' +
+                  (wValue !== '' ? ' value="' + wValue + '"' : '') +
+                  (wFill !== '' ? ' data-fill="' + wFill + '"' : '') +
+                  (wGhost ? ' data-ghost="1"' : '') + '>' +
+                repsCellHtml +
+                // EN-7 (roadmap Phase 4 step 4): the per-row RPE chip is gone.
+                // It cycled seven values on EVERY row — six taps to reach "to
+                // failure" — and effort was recorded on 1.6% of sets. Every
+                // consumer (mc-suggest.js, mc-strain.js, mc-readiness.js) tests
+                // the SAME predicate, `rpe === 'F' || parseFloat(rpe) >= 9.5`,
+                // so six choices only ever produced two outcomes. One
+                // three-choice question on the finished exercise now, below.
+                '<button type="button" class="mcl-ck set-check" role="checkbox" aria-checked="false" ' +
+                  'aria-label="Set ' + sn + '" data-sn="' + sn + '">☐</button>' +
+                clusterRowHtml +
+              '</div>';
+    }
+    wrap.innerHTML = html;
+
+    // wiring
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation(); e.preventDefault();
+      var open = wrap.classList.toggle('open');
+      toggle.classList.toggle('open', open);
+      toggle.querySelector('.mcl-lbl').textContent = open ? 'Hide' : 'Log Sets';
+      setActiveCard(open ? card : null);
+    });
+    wrap.addEventListener('click', function (e) { e.stopPropagation(); });
+    Array.prototype.forEach.call(wrap.querySelectorAll('.mcl-ck'), function (ck) {
+      ck.addEventListener('click', function (e) {
+        e.stopPropagation(); e.preventDefault();
+        setActiveCard(card);
+        onCheck(card, exId, parseInt(ck.dataset.sn, 10), rs);
+      });
+    });
+    // EN-7: ONE effort question, on the finished exercise. Three choices, each
+    // a real <button> at the 44px floor — the old chip was a non-semantic
+    // <div> and so unreachable by keyboard, which Volume II Phase 6 fixed for
+    // the rest-timer and set-check controls and missed here.
+    //
+    // The answer is stored on the LAST set, in the same vocabulary the log
+    // already carries, so nothing downstream changes shape: 8 and 9 sit below
+    // the 9.5 near-failure threshold every consumer tests, F is at it. Only
+    // "To failure" holds progression back, which is what near-failure means.
+    // Say WHY the row count is short, on the card the athlete is looking at.
+    // A silently shorter prescription reads as a bug, and the two reasons want
+    // different words: one is the program's plan, the other is today's choice.
+    if (plan.cut) {
+      var cutNote = document.createElement('div');
+      cutNote.className = 'mcl-cut';
+      cutNote.textContent = reducedVolume().reason === 'deload'
+        ? 'Deload week — one working set lighter'
+        : 'Lighter session — one working set fewer';
+      wrap.appendChild(cutNote);
+    }
+
+    var effortRow = document.createElement('div');
+    effortRow.className = 'mcl-effort';
+    effortRow.innerHTML =
+      '<span class="mcl-effort-q">How did that feel?</span>' +
+      '<div class="mcl-effort-opts">' +
+        EFFORT_CHOICES.map(function (c) {
+          return '<button type="button" class="mcl-effort-btn" data-rpe="' + c.rpe + '" ' +
+                 'aria-pressed="false" title="' + c.hint + '">' + c.label + '</button>';
+        }).join('') +
+      '</div>';
+    wrap.appendChild(effortRow);
+    paintEffort(card, exId);
+    Array.prototype.forEach.call(effortRow.querySelectorAll('.mcl-effort-btn'), function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation(); e.preventDefault();
+        setActiveCard(card);
+        // Tapping the selected answer again clears it — the athlete can undo a
+        // mis-tap without a fourth "none of these" button taking up a row.
+        var cur = storedEffort(exId, total);
+        var next = (cur === btn.dataset.rpe) ? '' : btn.dataset.rpe;
+        var lastRow = card.querySelector('#mclr-' + cid + '-' + total);
+        var w = lastRow && lastRow.querySelector('.mcl-w');
+        save(exId, total, w ? w.value.trim() : '', lastRow ? clusterRVal(lastRow) : '', next);
+        paintEffort(card, exId);
+        updateHist(card, exId);
+      });
+    });
+
+    // Tap-to-fill: focusing an empty input drops in its suggested value (last
+    // weight / prescribed reps) and selects it, so typing still overrides
+    // instantly but a single tap-then-check accepts last time's number.
+    // A ghosted input already carries that value (as its real, visible
+    // value — see the row-build loop above), so this only fires for the
+    // legacy placeholder-only cases (cluster mini-set bubbles, or a row with
+    // no suggestion at all) — it never fights the ghost's own focus-select.
+    Array.prototype.forEach.call(wrap.querySelectorAll('.mcl-inp'), function (inp) {
+      inp.addEventListener('focus', function () {
+        setActiveCard(card);
+        if (!inp.value.trim() && inp.dataset.fill) {
+          inp.value = inp.dataset.fill;
+          try { inp.select(); } catch (e) {}
+        }
+      });
+    });
+    // A-10 + ghost prefill wiring (§3.3). A ghost value is a SUGGESTION, not
+    // something the athlete typed: focusing it selects the text (one tap,
+    // then either type to override or just check to accept), and the first
+    // keystroke solidifies it — loses .mcl-ghost the instant it stops being
+    // exactly the suggested number. Persistence only ever touches real,
+    // athlete-confirmed text: a still-ghosted field is never written to the
+    // pending store, which is the whole point of doing this before A-10
+    // rather than after — a prefill the athlete never touched must not
+    // survive a reload disguised as something they typed.
+    Array.prototype.forEach.call(wrap.querySelectorAll('.mcl-w, .mcl-r:not(.mcl-rmini)'), function (inp) {
+      if (inp.dataset.ghost) {
+        inp.addEventListener('focus', function () { try { inp.select(); } catch (e) {} }, { once: true });
+      }
+      inp.addEventListener('input', function () {
+        if (inp.dataset.ghost) { inp.classList.remove('mcl-ghost'); delete inp.dataset.ghost; }
+      });
+      inp.addEventListener('blur', function () {
+        var row = inp.closest('.mcl-row');
+        if (!row) return;
+        var ckEl = row.querySelector('.mcl-ck');
+        if (ckEl && ckEl.classList.contains('done')) return;   // already committed via onCheck
+        var ckSn = parseInt(ckEl && ckEl.dataset.sn, 10);
+        if (!ckSn) return;
+        var wEl = row.querySelector('.mcl-w'), rEl2 = row.querySelector('.mcl-r:not(.mcl-rmini)');
+        var wv = (wEl && !wEl.dataset.ghost) ? wEl.value.trim() : '';
+        var rv = (rEl2 && !rEl2.dataset.ghost) ? rEl2.value.trim() : '';
+        setPending(exId, ckSn, wv, rv);
+      });
+    });
+    // Carry-down: typing set 1's weight updates the fill/placeholder of every
+    // later still-empty working set (drop rows excluded — weight is stripped).
+    // A ghosted later set is still just a suggestion the athlete has not
+    // touched, so it counts as "empty" here too — carry-down overwrites the
+    // stale ghost with today's number and keeps it ghosted, since it is
+    // still unconfirmed either way. A real (pending or already-typed) value
+    // is never touched.
+    var wInputs = Array.prototype.slice.call(
+      wrap.querySelectorAll('.mcl-row:not(.mcl-row-amrap) .mcl-w'));
+    wInputs.forEach(function (inp, idx) {
+      inp.addEventListener('input', function () {
+        var v = inp.value.trim();
+        if (!v) return;
+        for (var j = idx + 1; j < wInputs.length; j++) {
+          var nxt = wInputs[j];
+          if (!nxt.value.trim() || nxt.dataset.ghost) {
+            nxt.placeholder = v + ' lb'; nxt.dataset.fill = v;
+            nxt.value = v; nxt.classList.add('mcl-ghost'); nxt.dataset.ghost = '1';
+          }
+        }
+      });
+    });
+
+    host.appendChild(toggle);
+    host.appendChild(wrap);
+    // Strip creation lives in buildStrip() now, called at the top of this
+    // function — nothing left to do here once the rows are appended.
+  }
+
+  // Combined "do both phases now" entry point — unchanged contract for any
+  // caller that wants the old fully-eager behavior (run() uses it for
+  // superset legs; see run() below for why they stay eager rather than lazy).
+  function build(host, card, exId, setsStr, rs) {
+    buildStrip(host, card, exId, setsStr, rs);
+    buildRows(host, card, exId, setsStr, rs);
+  }
+
+  // ---- attach to every exercise card -------------------------------------
+  // Read the prescribed scheme from whichever element a template uses:
+  function setsOf(card) {
+    var se = card.querySelector('.ex-sets, [data-field="sets"], .notes-row, .lift-meta');
+    return se ? se.textContent.trim() : '';
+  }
+  // The ORIGINAL (HTML-authored) name of an exercise, never the painted one.
+  // program-overrides.js stamps the immutable original on the card as
+  // data-mc-orig-name the instant it paints a rename, so we key persistence
+  // off that — keying off the visible text would fork a renamed exercise onto
+  // a brand-new history bucket and orphan everything logged before the rename.
+  // Both load orders converge: if this runs before the painter the visible
+  // text IS the original; if the painter ran first the attribute holds it.
+  function origNameOf(el) {
+    if (!el) return '';
+    var card = el.closest('.ex-card, .ss-ex, .ex-item, .lift-card');
+    var orig = card && card.getAttribute('data-mc-orig-name');
+    if (orig) return orig;
+    // injectTrend() below already states the rule this guards: NOTHING may be
+    // written inside the name element, because origNameOf() and slugOf() read
+    // its textContent as the exercise's IDENTITY for the history key and the
+    // Supabase lookup. Some pages break it — a completion chip is rendered as
+    // a CHILD of .ex-name — so the history key came out with a tick slugged
+    // into it ("x-\u2713incline-db-press"). Found by the Phase 2.1 identity
+    // gate, and present on `main` too, so pre-existing.
+    //
+    // Two defences, in order: prefer the authored name node when the page
+    // marks one, then drop tick glyphs, which are decoration wherever they
+    // appear and never part of an exercise's name. Deliberately generic — the
+    // fix is for the SHAPE of the bug, not for one page's chip.
+    var authored = el.querySelector('[data-field="name"]');
+    var text = authored ? (authored.textContent || '') : (el.textContent || '');
+    return text.replace(/[\u2713\u2714]/g, '');
+  }
+  function slugOf(el) {
+    return origNameOf(el).trim().replace(/\s+/g, '-').toLowerCase().slice(0, 24) || 'ex';
+  }
+  // Per-pass occurrence index. nameId() used to issue a document-wide
+  // querySelectorAll — and then slugOf() every result — once PER CARD, purely
+  // to learn how many earlier cards share this card's slug. That is O(n²) over
+  // the page, re-run on every observer pass, and it was one of the two biggest
+  // consumers of main-thread time during a rest period. The answer is identical
+  // for every card in a single pass, so compute it once and look it up.
+  // Invalidated at the top of run(); nothing else can change the DOM mid-pass.
+  var _nameIdx = null;
+  function buildNameIdx() {
+    var map = new Map(), counts = Object.create(null);
+    var all = document.querySelectorAll('.ex-name, .ss-name, .lift-name');
+    for (var i = 0; i < all.length; i++) {
+      var base = slugOf(all[i]);
+      var occ = counts[base] || 0;
+      counts[base] = occ + 1;
+      map.set(all[i], 'x-' + base + (occ ? '-' + occ : ''));
+    }
+    return { map: map, counts: counts };
+  }
+  // Deterministic id from the original exercise name (NO random fallback — that
+  // would change every pass, breaking persistence and re-rendering forever).
+  // Duplicate names are disambiguated by their occurrence order in the DOM.
+  function nameId(card) {
+    var mine = card.querySelector('.ex-name, .ss-name, .lift-name');
+    if (!_nameIdx) _nameIdx = buildNameIdx();
+    var hit = _nameIdx.map.get(mine);
+    if (hit) return hit;
+    // Name element is not in the document (detached card, or one added since
+    // the index was built). The old loop never hit its break in that case and
+    // fell through with occ === the total count of matching slugs; preserve
+    // that exactly rather than quietly changing an id that may be persisted.
+    var base = slugOf(mine);
+    var n = _nameIdx.counts[base] || 0;
+    return 'x-' + base + (n ? '-' + n : '');
+  }
+
+  // ---- exercise identity (audit EN-1, EN-8) --------------------------------
+  // A history key must name the EXERCISE, never its POSITION. Measured across
+  // 12 pages and 456 cards before this changed: 170 of them (37%) carried a
+  // positional data-id — "1-s-3", "ssex-0-2", "0-b-4", "grp-6-0-0" — and on a
+  // page that serves several workouts from one document that is catastrophic.
+  // On pmc-workout.html, 31 of 32 distinct history keys were shared by
+  // DIFFERENT exercises and the worst single key carried EIGHT of them: a
+  // squat's logged weight sat in the same bucket as a lat pulldown's, and the
+  // suggestion engine averaged them into a progression.
+  //
+  // The other 286 cards carry NO data-id and have always been keyed by
+  // nameId(), which derives from the authored exercise name and survives a
+  // rename through data-mc-orig-name. So this is a convergence onto the scheme
+  // most of the fleet already uses, not a new one — which is also why the
+  // majority of pages see no change at all.
+  //
+  // data-id is left alone on the card: the engines use it for their own
+  // checkState bookkeeping, and it is page-local session state, not history.
+  function exIdOf(card) { return nameId(card); }
+
+  // A positional key holds a MIXTURE of exercises, so moving it forward would
+  // attribute one lift's sets to another — worse than leaving it. Only a
+  // legacy id that was ALREADY name-derived can be migrated safely. Everything
+  // else is left exactly where it is: untouched, still in the store, still
+  // recoverable, simply no longer written to.
+  function legacyNameDerivedId(card) {
+    var raw = card && card.dataset && card.dataset.id;
+    if (!raw) return '';
+    return /^(?:grp|x)-[a-z]/.test(raw) ? raw : '';
+  }
+  var _migrated = false;
+  function migrateLegacyHistory(cards) {
+    if (_migrated) return;
+    // Do NOT latch on an empty pass. run() fires before the cards exist on
+    // every page that opens as a day LIST (roadmap F3 converted 23 of them),
+    // so latching here would mean the migration never ran on exactly the
+    // pages with the most history to carry forward.
+    if (!cards || !cards.length) return;
+    _migrated = true;
+    var pairs = [];
+    for (var i = 0; i < cards.length; i++) {
+      var legacy = legacyNameDerivedId(cards[i]);
+      if (!legacy) continue;
+      var to = ek(exIdOf(cards[i])), from = ek(legacy);
+      if (from !== to) pairs.push([from, to]);
+    }
+    if (!pairs.length) return;
+    try {
+      withStore(function (store) {
+        pairs.forEach(function (pr) {
+          if (store[pr[0]] && !store[pr[1]]) store[pr[1]] = store[pr[0]];
+        });
+      });
+    } catch (e) {}
+  }
+
+  // ---- K-3.3/G-08: last-3-session micro-trend on the card header ---------
+  // Progression at the point of the load decision (the day's card list),
+  // not buried behind the meatball's full trend sheet. Reuses this file's
+  // OWN store read (st()) and history key (ek()) — mc-suggest.js has a
+  // near-identical completedSessions()/historyKey() pair, but it's private
+  // to that file's IIFE, not exported, so this is a deliberate small
+  // duplicate rather than a cross-module reach (same reasoning as
+  // mc-cond-suggest.js's local copy of workoutInProgress()).
+  // A-2/S1: one localStorage read per run() pass, not one per card. The
+  // first cut of this called st() straight from trendFor() per-card, which
+  // the K-3.1 perf budget caught immediately (storageReads 17 -> 83 on one
+  // of its probe pages, well past its 1.5x ceiling) — the exact per-card-
+  // storage-read shape S1 spent this whole roadmap eliminating.
+  var _stCache = null;
+  function trendFor(exId) {
+    var hist = (_stCache || (_stCache = st()))[ek(exId)] || [];   // newest-first, capped at 5
+    var today = dayStamp();   // FIX-06: st() already dated every sess.d above
+    var tops = [];
+    for (var i = 0; i < hist.length && tops.length < 3; i++) {
+      var sess = hist[i];
+      if (!sess || sess.d === today || !sess.sets) continue;   // skip today's in-progress session
+      var weights = Object.keys(sess.sets).map(function (k) {
+        return parseFloat(sess.sets[k].w) || 0;
+      }).filter(Boolean);
+      if (!weights.length) continue;                // bodyweight/unweighted session
+      tops.push(Math.max.apply(null, weights));
+    }
+    if (tops.length < 2) return null;                // need 2 sessions for a direction
+    var latest = tops[0], prior = tops[1];
+    var arrow = latest > prior ? '↑' : (latest < prior ? '↓' : '→');
+    return { arrow: arrow, weight: latest };
+  }
+
+  function injectTrend(card, exId) {
+    var nameEl = card.querySelector('.ex-name, .ss-name, .lift-name');
+    // Never write inside nameEl itself — origNameOf()/slugOf() read its
+    // textContent as the exercise's identity for history-key + Supabase
+    // lookups, and this file's own nameId() depends on that staying exactly
+    // the authored name. The badge is a SIBLING, never a child.
+    if (!nameEl || !nameEl.parentNode) return;
+    var t = trendFor(exId);
+    var el = nameEl.nextElementSibling;
+    if (!(el && el.classList && el.classList.contains('a-trend'))) el = null;
+    if (!t) { if (el) el.parentNode.removeChild(el); return; }
+    var dir = t.arrow === '↑' ? 'up' : (t.arrow === '↓' ? 'down' : 'flat');
+    var label = t.arrow + ' ' + t.weight + ' lb';
+    if (el && el.textContent === label) return;      // A-2: write only on change
+    if (!el) {
+      el = document.createElement('div');
+      nameEl.parentNode.insertBefore(el, nameEl.nextSibling);
+    }
+    el.className = 'a-trend a-trend-' + dir;
+    el.textContent = label;
+    el.setAttribute('aria-label', 'Weight trend versus last session: ' + label);
+  }
+
+  function run() {
+    _nameIdx = null;                            // one index per pass
+    _stCache = null;                            // one storage read per pass (K-3.3)
+    // EN-1/EN-8: carry forward any history whose old key was already
+    // name-derived. One-shot per page load and it exits immediately when
+    // there is nothing to move, so it never enters the per-pass hot path
+    // this roadmap spent S1 clearing.
+    migrateLegacyHistory(document.querySelectorAll('.ex-card, .ss-ex, .ex-item, .lift-card'));
+    // Match cards WITH OR WITHOUT data-id. Older templates
+    // render .ex-card/.lift-card with no data-id, so a data-id-only selector
+    // silently skipped them. Fall back to a stable id derived from the name.
+    // A-14: plain units build their strip eagerly (cheap — the 0/N badge has
+    // to read right at rest) but their expensive per-set rows only when
+    // active — a fresh page starts with nothing active, so nothing beyond
+    // the strips gets built until the trainee (or a restored session, or
+    // VOC-A2's cold-start auto-open) actually opens one via setActiveCard(),
+    // which calls MCSetlogUtil.ensureRowsBuilt(). A card already marked
+    // .active from an earlier pass (e.g. this run() re-firing after a DOM
+    // mutation elsewhere on the page) keeps its rows built here too, rather
+    // than relying on setActiveCard() having been the one to trigger it.
+    document.querySelectorAll('.ex-card').forEach(function (c) {
+      var host = c.querySelector('.ex-content') || c.querySelector('.ex-body') || c;
+      var exId = exIdOf(c), setsStr = setsOf(c), rs = restSecs(c);
+      buildStrip(host, c, exId, setsStr, rs);
+      if (c.classList.contains('active')) buildRows(host, c, exId, setsStr, rs);
+      injectTrend(c, exId);
+    });
+    // Superset legs stay fully eager (build(), both phases) — excluded from
+    // A-14's lazy scope. mc-superset-hop.js's leg-cycling (hasUndoneSet())
+    // reads a leg's .mcl-ck directly to decide whether it still has work
+    // left; an unbuilt leg reads as "nothing left to do" and gets skipped,
+    // which is the exact "handoff skips the second leg" bug S3 already fixed
+    // once. Supersets are a small fraction of a page's cards, not the source
+    // of the multi-day boot-cost problem A-14 targets, so excluding them
+    // trades a small amount of the win for zero risk to that engine.
+    document.querySelectorAll('.ss-ex').forEach(function (c) {
+      // Read the prescribed rest from the exercise's own .rest-timer (data),
+      // not a hardcoded value — fallback 90s. The superset normalizer below
+      // then keeps a single timer on the SECOND row and parks it under the logger.
+      var exId = exIdOf(c);
+      build(c.querySelector('.ss-content') || c.querySelector('.ex-body') || c, c, exId, setsOf(c), restSecs(c) || 90);
+      injectTrend(c, exId);
+    });
+    document.querySelectorAll('.ex-item').forEach(function (c) {
+      var exId = exIdOf(c), setsStr = setsOf(c), rs = restSecs(c);
+      buildStrip(c, c, exId, setsStr, rs);
+      if (c.classList.contains('active')) buildRows(c, c, exId, setsStr, rs);
+      injectTrend(c, exId);
+    });
+    normalizeSupersetTimers();
+    collapseNotes();
+    _nameIdx = null;                            // index is pass-scoped only
+    _stCache = null;                            // cache is pass-scoped only
+  }
+
+  // ---- superset rest-timer normalization ---------------------------------
+  // A superset is "do A then B back-to-back, THEN rest". So there must be a
+  // SINGLE rest timer, and it belongs on the SECOND exercise (B) — not the
+  // first. We also park it directly under the "Log Sets" dropdown, so the rest
+  // auto-starts the moment B's set row is checked off (onCheck handles that).
+  function normalizeSupersetTimers() {
+    document.querySelectorAll('.ss-card').forEach(function (sc) {
+      var exs = sc.querySelectorAll('.ss-ex');
+      if (exs.length < 2) return;
+      var last = exs[exs.length - 1];
+      Array.prototype.forEach.call(exs, function (ex) {
+        var timers = ex.querySelectorAll('.rest-timer');
+        if (ex !== last) {
+          // strip rest timers from every non-final superset row
+          Array.prototype.forEach.call(timers, function (t) { t.remove(); });
+          return;
+        }
+        // final row (B): keep exactly one timer, parked under the logger
+        var keep = timers[0];
+        for (var i = 1; i < timers.length; i++) timers[i].remove();
+        if (!keep) return;
+        var host = ex.querySelector('.ss-content') || ex;
+        var wrap = host.querySelector('.mcl-wrap');
+        if (wrap && keep.parentNode && keep.previousElementSibling !== wrap) {
+          keep.classList.add('mcl-rest-under');
+          wrap.parentNode.insertBefore(keep, wrap.nextSibling);
+        }
+      });
+    });
+  }
+
+  // Derives exId the same way run() does (exIdOf(card)) and
+  // runs the full updateCount() derivation for that card — badge text, the
+  // .checked mirror, the collapsed-strip count, .mcl-alldone, and the
+  // auto-collapse timer. Exposed for mc-session.js#restoreSets() (A-7): a
+  // reload writes .done directly onto restored rows without going through
+  // onCheck(), so none of the above ever ran for a restored card without
+  // this being called afterward.
+  function updateCountByCard(card) {
+    if (!card) return;
+    updateCount(card, exIdOf(card));
+  }
+
+  // shared parsing helpers for mc-suggest.js (and future analytics) — avoids
+  // re-implementing the prescribed-scheme parser anywhere else
+  window.MCSetlogUtil = {
+    setCount: setCount, repFor: repFor, pid: PID, histKey: ek,
+    exIdOf: exIdOf,                   // EN-1/EN-8: the ONE identity derivation,
+                                      // so mc-suggest.js cannot key history on a
+                                      // different id than the logger writes under
+    statesSetCount: statesSetCount,   // P2-12: mc-suggest.js refuses to judge
+                                      // progression against a set count the
+                                      // prescription never stated
+
+    updateCountByCard: updateCountByCard,
+    sessionId: SESSION_ID,   // A-5: lets mc-finish.js purge exactly this
+                              // page-load's Supabase workout_logs rows on discard
+    activateCard: setActiveCard,  // §3.4: lets mc-session.js re-open the card
+                                    // the athlete was on when a session restores
+    plannedSetCount: plannedSetCount,  // S5c-0: lets mc-finish.js size a workout
+                                    // from the prescription, not from rendered
+                                    // checkboxes (see planFor above)
+    ensureRowsBuilt: ensureRowsBuilt,  // A-14: lets mc-session.js build a specific
+                                    // card's rows before restoring checks onto it
+    firstIncompleteUnit: firstIncompleteUnit,  // VOC-A2: lets mc-session.js find
+                                    // where to land a genuinely fresh visit
+    writeStore: writeStore,          // Phase 5.3: the ONE storage write that
+                                     // reports a full device instead of
+                                     // swallowing it (manual scenario M7)
+    withStore: withStore,            // FIX-01: the ONE guarded read-modify-write
+    forgetRecent: forgetRecent,      // ...and the way a discard tells it to stop
+                                    // replaying the sets it just removed
+                                    // on mc_setlog_v1. mc-finish.js (discard)
+                                    // and mc-resume.js (restore) are the only
+                                    // other writers of this store; they route
+                                    // through here so a concurrent tab cannot
+                                    // lose their write either.
+  };
+
+  // ---- FIX-01, second half: notice a write from another tab ---------------
+  // The lock stops the two tabs destroying each other's data. It does not
+  // stop this tab holding a stale VIEW of it — a set logged next door is in
+  // the store but not on this screen. Drop the per-pass caches and ask for a
+  // rebuild; mc-session.js's restore then repaints the checked rows.
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('storage', function (e) {
+      if (e.key !== SK) return;
+      _stCache = null;
+      if (window.MC_SCAN && MC_SCAN.schedule) MC_SCAN.schedule();
+      else run();
+    });
+  }
+
+  // ---- cross-device pre-fill from Supabase ----------------------------------
+  // When localStorage has no history (e.g. new device), query Supabase for the
+  // last logged weight per exercise and update data-fill on weight inputs.
+  // Non-blocking — runs 2s after the initial render to avoid startup latency.
+  // ---- Phase 1.4 (audit EN-2): fill the cloud attribution columns ---------
+  // Every one of the 125 live workout_logs rows carried a null muscle AND a
+  // null program_id, so any server-side volume, adherence or coaching query
+  // had nothing to group by. Both columns had the same shape of bug: the
+  // writer read something that is not there on a workout page, and the
+  // failure went into an empty catch.
+  //
+  //   muscle      read MC_EXCATALOG.classify(). mc-exercise-catalog.js loads
+  //               on THREE pages; mc-setlog.js loads on 79. On every logging
+  //               page the lookup threw and the catch swallowed it.
+  //   program_id  read window.activeProg, which is a dashboard-local variable
+  //               and simply does not exist on a workout page, so the `||`
+  //               fell through to '' every single time.
+  //
+  // The roadmap offered "load the classifier on the logging pages, or
+  // classify server-side". Measuring first found a third option that costs
+  // nothing: mc-muscle-map.js is ALREADY loaded on all 79 pages that load
+  // this one (checked, not assumed — zero missing), and MC_MUSCLES.classify()
+  // is the same taxonomy the recovery curve, the heatmap and the volume stats
+  // already use. So the cloud now agrees with the client instead of adding a
+  // third opinion, and no page gains a script tag.
+  //
+  // MC_MUSCLES' own ordering defects are real and known (audit DB-2, DB-8),
+  // and roadmap Phase 2 step 2 reconciles the classifiers. A column filled
+  // with the app's own taxonomy is still strictly better than a null one, and
+  // when that reconciliation lands this improves with it rather than needing
+  // its own second fix.
+  function classifyForCloud(exName) {
+    try {
+      if (window.MC_MUSCLES && MC_MUSCLES.classify) {
+        var g = MC_MUSCLES.classify(exName);
+        if (g && g.label) return g.label;
+      }
+    } catch (e) {}
+    // Not an empty catch this time: a missing classifier is a real regression
+    // and the console is where it should show up.
+    if (!window.MC_MUSCLES) console.warn('mc-setlog: MC_MUSCLES absent — workout_logs.muscle will be null');
+    return null;
+  }
+
+  // The active program is a persisted store (mc_active_prog), the same one
+  // mc-theme.js reads for the page accent, not a dashboard-only variable.
+  function activeProgramId() {
+    try {
+      var p = JSON.parse(localStorage.getItem('mc_active_prog') || 'null');
+      return (p && p.id) ? String(p.id) : null;
+    } catch (e) { return null; }
+  }
+
+  // ---- FIX-02 (audit L-02): rehydrate today's sets from the cloud ---------
+  // A signed-in athlete's sets are already inserted one row per set, and
+  // until now nothing ever read them back: only two functions in the tree
+  // write this store and neither restores from the server. A device that
+  // died mid-session, was wiped, or was restored from a backup lost the local
+  // record while a perfect copy sat in the database.
+  //
+  // Gap-filling only, and deliberately so — a local value ALWAYS wins. This
+  // is recovery, not a second sync path: mc-sync.js owns cross-device merge,
+  // and overwriting a local entry here would silently undo a correction the
+  // athlete made on this device.
+  //
+  // Rows are matched to cards by exercise NAME, which is the identity the
+  // cloud table actually carries. That is the weakest link and it is the
+  // roadmap's Phase 2 step 1 to fix properly; until a stable catalog id
+  // exists, a row whose name matches no card on this page is skipped rather
+  // than written under a guessed key.
+  var REHYDRATE_WINDOW_MS = 12 * 3600 * 1000;
+  var _rehydrated = false;
+
+  function cardsByName() {
+    var map = {};
+    document.querySelectorAll('.ex-card, .ss-ex, .ex-item, .lift-card').forEach(function (card) {
+      var nmEl = card.querySelector('.ex-name, .ss-name, .lift-name, .var-name');
+      if (!nmEl) return;
+      var name = origNameOf(nmEl).trim().toLowerCase();
+      if (!name || map[name]) return;          // first card wins, as history does
+      map[name] = exIdOf(card);
+    });
+    return map;
+  }
+
+  function rehydrateFromCloud() {
+    if (_rehydrated) return;
+    if (!window.MC_SB || !MC_SB.configured || !MC_SB.getSessionSets) return;
+    var byName = cardsByName();
+    if (!Object.keys(byName).length) return;   // nothing rendered yet
+    _rehydrated = true;
+    var since = new Date(Date.now() - REHYDRATE_WINDOW_MS).toISOString();
+    MC_SB.getSessionSets(since).then(function (rows) {
+      if (!rows || !rows.length) return;
+      var d = dayStamp(), added = [];
+      withStore(function (s) {
+        rows.forEach(function (row) {
+          var exId = byName[String(row.exercise || '').trim().toLowerCase()];
+          if (!exId) return;
+          var sn = row.set_number;
+          if (sn == null) return;
+          var k = ek(exId);
+          if (!s[k]) s[k] = [];
+          var sess = s[k][0];
+          if (!sess || sess.d !== d) {
+            sess = { d: d, sets: {}, ts: Date.now() };   // EN-10, see above
+            s[k].unshift(sess);
+            s[k] = s[k].slice(0, 5);
+          }
+          if (sess.sets[sn] != null) return;   // local always wins
+          sess.sets[sn] = {
+            w: row.weight_lbs != null ? String(row.weight_lbs) : '',
+            r: row.reps != null ? String(row.reps) : '',
+            rpe: row.rpe || undefined
+          };
+          added.push({ exId: exId, sn: sn, w: sess.sets[sn].w, r: sess.sets[sn].r });
+        });
+      }).then(function () {
+        if (!added.length) return;
+        _stCache = null;
+        if (window.MC_SCAN && MC_SCAN.schedule) MC_SCAN.schedule();
+        else run();
+        // Restoring the STORE is only half of it. The ticked state of a row
+        // lives in mc_session_v1, a different store that the same crash also
+        // lost, and restoreSets() reads row ids from there — so without this
+        // the weights come back while every row reads unchecked and the
+        // finish counter reads zero. Paint the rows here; mc-session.js's own
+        // save() snapshots `.mcl-ck.done` from the DOM, so the restored
+        // session persists itself from that point on.
+        setTimeout(function () { paintRestored(added); }, 60);
+      });
+    }).catch(function () { _rehydrated = false; });
+  }
+
+  // Mark rehydrated sets as done in the DOM, exactly as a reload from a
+  // surviving local session would have. Never clicks the checkbox: a click
+  // would re-run onCheck() and insert a duplicate row into the very cloud
+  // table these values came from.
+  function paintRestored(entries) {
+    var cards = [];
+    entries.forEach(function (e) {
+      var card = document.querySelector('[data-id="' + e.exId + '"]');
+      if (!card) {
+        // EN-1: exIds are name-derived now, so a card is found by rebuilding
+        // the id rather than by matching a data-id attribute that no longer
+        // has anything to do with the history key.
+        var all = document.querySelectorAll('.ex-card, .ss-ex, .ex-item, .lift-card');
+        for (var i = 0; i < all.length; i++) {
+          if (exIdOf(all[i]) === e.exId) { card = all[i]; break; }
+        }
+      }
+      if (!card) return;
+      if (window.MCSetlogUtil && MCSetlogUtil.ensureRowsBuilt) MCSetlogUtil.ensureRowsBuilt(card);
+      var row = document.getElementById('mclr-' + cssId(e.exId) + '-' + e.sn);
+      if (!row) return;
+      var w = row.querySelector('.mcl-w'), r = row.querySelector('.mcl-r:not(.mcl-rmini)');
+      if (w && e.w) { w.value = e.w; w.classList.remove('mcl-ghost'); delete w.dataset.ghost; }
+      if (r && e.r) { r.value = e.r; r.classList.remove('mcl-ghost'); delete r.dataset.ghost; }
+      var ck = row.querySelector('.mcl-ck');
+      if (ck && !ck.classList.contains('done')) {
+        ck.classList.add('done');
+        ck.textContent = '✓';
+        ck.setAttribute('aria-checked', 'true');
+        row.classList.add('done-row');
+        if (cards.indexOf(card) === -1) cards.push(card);
+      }
+    });
+    if (window.MCSetlogUtil && MCSetlogUtil.updateCountByCard) {
+      cards.forEach(function (c) { MCSetlogUtil.updateCountByCard(c); });
+    }
+  }
+
+  function trySupabasePrefill() {
+    if (!window.MC_SB || !MC_SB.configured || !MC_SB.getLastWeight) return;
+    document.querySelectorAll('.mcl-wrap').forEach(function (wrap) {
+      var wInputs = wrap.querySelectorAll('.mcl-row:not(.mcl-row-amrap) .mcl-w');
+      if (!wInputs.length) return;
+      // Only fetch from Supabase when localStorage has no fill for this exercise
+      var firstInput = wInputs[0];
+      if (firstInput.dataset.fill) return;
+      var card = wrap.closest('.ex-card, .ss-ex, .ex-item') || wrap.parentNode;
+      var nmEl = card && card.querySelector('.ex-name, .ss-name, .lift-name, .var-name');
+      if (!nmEl) return;
+      var name = origNameOf(nmEl);
+      MC_SB.getLastWeight(name).then(function (w) {
+        if (!w) return;
+        Array.prototype.forEach.call(wInputs, function (inp) {
+          if (!inp.dataset.fill && !inp.value) {
+            inp.dataset.fill = String(w);
+            inp.placeholder = w + ' lb';
+          }
+        });
+      }).catch(function () {});
+    });
+  }
+
+  // ---- init (A-13) --------------------------------------------------------
+  // Was: run(), then a [250,700,1500,2600] retry ladder, then a PRIVATE
+  // body-scoped MutationObserver. Nine modules each carried their own copy of
+  // that belt-and-braces pair, because nothing told them when a page's cards
+  // were actually rendered — ~31 speculative whole-page passes at boot across
+  // the fleet, and nine observers waking on every DOM change forever after.
+  //
+  // program-overrides.js already publishes exactly the signal that was
+  // missing: MC_SCAN, ONE shared, debounced body observer with subscribe() /
+  // schedule() / withoutObserver(). Subscribing to it replaces both the
+  // ladder and the private observer, and MC_SCAN.schedule() is the explicit
+  // "cards just rendered" announcement a lazy build (A-14) makes rather than
+  // waiting on an observer round-trip.
+  //
+  // The fallback branch is real, not defensive boilerplate: run-program.html
+  // renders exercise cards but does not load program-overrides.js, so MC_SCAN
+  // genuinely is absent there. One deferred pass replaces the four-step
+  // ladder in that branch too.
+  function init() {
+    if (window.MC_SCAN && MC_SCAN.subscribe) {
+      MC_SCAN.subscribe(run); MC_SCAN.start(); MC_SCAN.schedule();
+    } else {
+      var mo = new MutationObserver(function () { clearTimeout(init._t); init._t = setTimeout(run, 120); });
+      mo.observe(document.body, { childList: true, subtree: true });
+      setTimeout(run, 600);
+    }
+    run();
+    // FIX-02: recover today's sets from the durable cloud copy before the
+    // pre-fill runs, so a restored set is a real logged set rather than a
+    // ghosted suggestion the athlete has to re-check.
+    setTimeout(rehydrateFromCloud, 1200);
+    // Supabase pre-fill: after initial render settles
+    setTimeout(trySupabasePrefill, 2000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+// Tier 4 Phase 5 — guided linear workout mode (mc-guided.js) is a separate
+// opt-in script that attaches wherever this file's .ex-card/.ss-card +
+// mcl-count contract exists. Loading it here, rather than hand-adding a
+// <script> tag to every program page, gives every page that already does
+// set-logging guided-mode capability for free. This file's own behavior is
+// unchanged by the addition.
+if (typeof document !== 'undefined' && !document.querySelector('script[src="mc-guided.js"]')) {
+  var _mcGuidedLoader = document.createElement('script');
+  _mcGuidedLoader.src = 'mc-guided.js';
+  document.head.appendChild(_mcGuidedLoader);
+}
