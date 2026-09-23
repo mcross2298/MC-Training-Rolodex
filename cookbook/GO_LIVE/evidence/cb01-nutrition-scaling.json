@@ -1,0 +1,256 @@
+[
+ {
+  "id": "C-00",
+  "label": "the catalog loads",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "318 recipes"
+ },
+ {
+  "id": "C-01",
+  "label": "every recipe's stated calories agree with its own macros (Atwater)",
+  "ok": false,
+  "got": 8,
+  "want": 0,
+  "note": "chicken-enchilada-quinoa/serving_6: stated 484 kcal, Atwater 411 (48p/7f/39c)\n          crockpot-pizza-chicken-bowls/serving_6: stated 452 kcal, Atwater 353 (50p/5f/27c)\n          creamy-cajun-chicken-potatoes/serving_5: stated 489 kcal, Atwater 376 (51p/4f/34c)\n          honey-garlic-chicken-rice/serving_6: stated 478 kcal, Atwater 387 (49p/3f/41c)\n          buffalo-chicken-tender-salad/serving_3: stated 549 kcal, Atwater 459 (59p/6.5f/41c)\n          bbq-beef-short-ribs-corn-succotash-rotini-salad/serving_3: stated 750 kcal, Atwater 637 (48p/29f/46c)\n          shrimp-baked-mac-and-cheese-sauteed-spinach/serving_3: stated 720 kcal, Atwater 630 (40p/30f/50c)\n          mixed-grill-skillet-peppers-onions-mashed-potatoes/serving_3: stated 680 kcal, Atwater 597 (50p/25f/43c)"
+ },
+ {
+  "id": "C-02",
+  "label": "no macro is missing, negative or non-finite",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ },
+ {
+  "id": "C-03",
+  "label": "per-serving macros do not change when the recipe is scaled",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": "cooking twice as much does not change what ONE serving contains\n          "
+ },
+ {
+  "id": "C-04",
+  "label": "every offered serving size has an ingredient list behind it",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ },
+ {
+  "id": "C-05",
+  "label": "every offered serving size has a macro profile behind it",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ },
+ {
+  "id": "C-06",
+  "label": "the native serving size is one of the offered options",
+  "ok": true,
+  "got": [],
+  "want": [],
+  "note": ""
+ },
+ {
+  "id": "C-07",
+  "label": "scaling up never reduces an ingredient, once units are normalised",
+  "ok": false,
+  "got": 10,
+  "want": 0,
+  "note": "1520 comparable pairs; 44 cross-dimension pairs skipped\n          lemon-herb-pork-tenderloins-broccoli \"Extra-virgin olive oil\": 6 -> 48 vol, more than 2x the linear 12\n          shepherds-pie \"Garlic cloves\": 3  at 2 servings but 2  at 4 (3 -> 2 count:)\n          cheesy-beef-taco-potato-bowls \"Paprika\": 0.125 -> 1 vol, more than 2x the linear 0.25\n          korean-beef-fried-rice \"Rice vinegar\": 0.5 -> 3 vol, more than 2x the linear 1\n          korean-beef-fried-rice \"Soy sauce\": 1.5 -> 12 vol, more than 2x the linear 3\n          garlic-shrimp-fried-rice \"Soy sauce\": 1 1/2 tbsp at 2 servings but 1 tbsp at 4 (4.5 -> 3 vol)\n          honey-buffalo-chicken-rice-bowls \"Salt\": 0.25 -> 2 vol, more than 2x the linear 0.5\n          honey-buffalo-chicken-rice-bowls \"Black pepper\": 0.25 -> 2 vol, more than 2x the linear 0.5\n          blackened-chicken-tenders-cane-sauce \"Garlic powder\": 1/6 tsp at 2 servings but 1/8 tsp at 4 (0.16666666666666666 -> 0.125 vol)\n          one-pan-cheesy-taco-rice \"Taco seasoning\": 0.14108 -> 0.88175 wt, more than 2x the linear 0.28216"
+ },
+ {
+  "id": "C-07b",
+  "label": "the comparison actually compared something",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "1520 pairs"
+ },
+ {
+  "id": "C-08",
+  "label": "a protein target resolves to the scale that reaches it",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "jalapeno-chicken-bake: 70g/serving, target 105g -> scale 1.5"
+ },
+ {
+  "id": "C-09",
+  "label": "and the achieved macros are that scale applied to the per-serving profile",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "{\"calories\":964.5,\"protein_g\":105,\"fat_g\":52.5,\"carbs_g\":18}"
+ },
+ {
+  "id": "C-10",
+  "label": "a zero target does not produce an infinite or negative scale",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "{\"scale\":null,\"achieved\":null,\"exact\":false,\"driver\":\"protein_g\",\"wanted\":[\"protein_g\"]}"
+ },
+ {
+  "id": "C-11",
+  "label": "no target at all returns null rather than guessing",
+  "ok": true,
+  "got": null,
+  "want": null,
+  "note": ""
+ },
+ {
+  "id": "C-12@1",
+  "label": "total for 1 servings is per-serving x 1",
+  "ok": true,
+  "got": {
+   "c": 643,
+   "p": 70
+  },
+  "want": {
+   "c": 643,
+   "p": 70
+  },
+  "note": "jalapeno-chicken-bake: 643 kcal/serving"
+ },
+ {
+  "id": "C-12@2",
+  "label": "total for 2 servings is per-serving x 2",
+  "ok": true,
+  "got": {
+   "c": 1286,
+   "p": 140
+  },
+  "want": {
+   "c": 1286,
+   "p": 140
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@3",
+  "label": "total for 3 servings is per-serving x 3",
+  "ok": true,
+  "got": {
+   "c": 1929,
+   "p": 210
+  },
+  "want": {
+   "c": 1929,
+   "p": 210
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@4",
+  "label": "total for 4 servings is per-serving x 4",
+  "ok": true,
+  "got": {
+   "c": 2572,
+   "p": 280
+  },
+  "want": {
+   "c": 2572,
+   "p": 280
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@5",
+  "label": "total for 5 servings is per-serving x 5",
+  "ok": true,
+  "got": {
+   "c": 3215,
+   "p": 350
+  },
+  "want": {
+   "c": 3215,
+   "p": 350
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@6",
+  "label": "total for 6 servings is per-serving x 6",
+  "ok": true,
+  "got": {
+   "c": 3858,
+   "p": 420
+  },
+  "want": {
+   "c": 3858,
+   "p": 420
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@8",
+  "label": "total for 8 servings is per-serving x 8",
+  "ok": true,
+  "got": {
+   "c": 5144,
+   "p": 560
+  },
+  "want": {
+   "c": 5144,
+   "p": 560
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@10",
+  "label": "total for 10 servings is per-serving x 10",
+  "ok": true,
+  "got": {
+   "c": 6430,
+   "p": 700
+  },
+  "want": {
+   "c": 6430,
+   "p": 700
+  },
+  "note": ""
+ },
+ {
+  "id": "C-12@12",
+  "label": "total for 12 servings is per-serving x 12",
+  "ok": true,
+  "got": {
+   "c": 7716,
+   "p": 840
+  },
+  "want": {
+   "c": 7716,
+   "p": 840
+  },
+  "note": ""
+ },
+ {
+  "id": "C-13",
+  "label": "every recipe id is unique",
+  "ok": true,
+  "got": [],
+  "want": [],
+  "note": ""
+ },
+ {
+  "id": "C-14",
+  "label": "every recipe has a title",
+  "ok": true,
+  "got": [],
+  "want": [],
+  "note": ""
+ },
+ {
+  "id": "C-15",
+  "label": "the catalog loads with no runtime error",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ }
+]

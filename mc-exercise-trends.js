@@ -1,0 +1,258 @@
+/* ==========================================================================
+   mc-exercise-trends.js — per-exercise progress sheet (Phase 3.2)
+   --------------------------------------------------------------------------
+   window.MCTrends.open(exerciseName) renders a bottom sheet charting that
+   exercise across every finished workout in mc_workout_log_v1 (matched by
+   name app-wide, so a lift's history follows it across programs):
+
+     • Top weight   — heaviest logged set per session
+     • Est. 1RM     — mc-log-read.js's e1rm() on the best set per session
+                       (one estimator app-wide; see that file for the rep cap
+                       and the leverage-assisted equipment coefficient)
+     • Total reps   — volume per session
+
+   Opened from the ⋮ menu ("Exercise progress", wired in mc-card-actions.js)
+   and by tapping the "Last: …" history cue on any Log Sets toggle.
+   Requires mc-chart.js.
+   ========================================================================== */
+(function () {
+
+  // ---- cluster reps: one implementation, in mc-log-read.js (audit P2-08) ---
+  // Resolved LAZILY, never captured at parse time: <script> order across ~140
+  // pages does not guarantee mc-log-read.js has run when this file parses.
+  // These are thin delegators, not a second copy of the arithmetic — the same
+  // shape this file already uses for logs()/setsOf(), and the reason
+  // check-single-impl.js is not the right tool for them.
+  function _mcLog() {
+    if (typeof window !== 'undefined' && window.MC_LOG) return window.MC_LOG;
+    try { return require('./mc-log-read.js'); } catch (e) { return null; }
+  }
+  function repsTotal(v) { var L = _mcLog(); return L ? L.repsTotal(v) : 0; }
+  function repsTop(v)   { var L = _mcLog(); return L ? L.repsTop(v) : 0; }
+  // Roadmap Phase 4 step 2: the estimate is mc-log-read.js's now. This file
+  // used bare Epley with no rep cap and no equipment coefficient, while
+  // max-out.html applied both, so the same logged set reported two maxes
+  // 26-52% apart on a machine or a high-rep set — a cable pushdown at 60x20
+  // read 100 here and 71 there. One estimator, one answer.
+  function e1rmOf(w, r, name) { var L = _mcLog(); return L ? L.e1rm(w, r, name) : 0; }
+
+  // FIX-04 (audit L-03): `(e.sets || [])` guards a MISSING set list and
+  // nothing else — an object where an array belongs throws
+  // `.forEach is not a function`, and a null member throws one level in.
+  // One-line delegation to the single implementation in mc-log-read.js
+  // rather than a seventh private copy of the filtering itself.
+  function setsOf(e) {
+    return (typeof window !== 'undefined' && window.MC_LOG && window.MC_LOG.readSets)
+      ? window.MC_LOG.readSets(e) : [];
+  }
+  if (window.MCTrends) return;
+
+  var overlay = null, mode = 'weight', curName = '';
+
+  // FIX-04 (audit L-03): one shared, TOTAL reader. The local copy this
+  // replaced caught malformed text and nothing else, so valid JSON of the
+  // wrong shape threw straight through it. See mc-log-read.js.
+  function logs() {
+    // typeof-guarded: mc-maxout.js and this file's siblings are require()'d
+    // from tools/ in Node, where a bare `window` is a ReferenceError.
+    return (typeof window !== 'undefined' && window.MC_LOG && window.MC_LOG.readWorkoutLog)
+      ? window.MC_LOG.readWorkoutLog()
+      : [];
+  }
+
+  function norm(s) { return String(s || '').trim().toLowerCase(); }
+
+  // one point per finished session that contains this exercise
+  function seriesFor(name) {
+    var key = norm(name);
+    var out = [];
+    logs().slice().reverse().forEach(function (e) {       // oldest → newest
+      var best = null, reps = 0, prHere = false;
+      setsOf(e).forEach(function (s) {
+        if (norm(s.name) !== key && norm(s.name).indexOf(key) !== 0) return;
+        if (s.pr) prHere = true;
+        // P2-08: the two readings a cluster set needs. Total reps is the
+        // VOLUME answer for the "Total reps" series; the e1RM below is a
+        // STRENGTH claim, and Epley off a rested 5+5+6 as though it were one
+        // 16-rep set would invent a max the athlete never lifted.
+        var w = parseFloat(s.weight) || 0, r = repsTotal(s.reps);
+        reps += r;
+        if (!best || w > best.w) best = { w: w, r: repsTop(s.reps) };
+      });
+      if (!best) return;
+      var d = new Date(e.date || 0);
+      out.push({
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        weight: best.w,
+        e1rm: e1rmOf(best.w, best.r, name),
+        reps: reps,
+        // The app's own record flag, written by mc-finish.js when a set beats
+        // a real historical max. Carried through so the curve can show where
+        // the records actually fell rather than re-deriving a second notion
+        // of "record" that would disagree with the PR timeline on Stats.
+        pr: prHere
+      });
+    });
+    return out;
+  }
+
+  function build() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.className = 'mct-overlay';
+    overlay.innerHTML =
+      '<div class="mct-sheet">' +
+        '<div class="mct-handle"></div>' +
+        '<div class="mct-title" id="mctTitle"></div>' +
+        '<div class="mct-tabs">' +
+          '<button class="mct-tab on" data-mode="weight">Top weight</button>' +
+          '<button class="mct-tab" data-mode="e1rm">Est. 1RM</button>' +
+          '<button class="mct-tab" data-mode="reps">Total reps</button>' +
+        '</div>' +
+        '<div class="mct-chart" id="mctChart"></div>' +
+        '<div class="mct-meta" id="mctMeta"></div>' +
+        '<div class="mct-cap" id="mctCap"></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) close();
+      var tab = e.target.closest('.mct-tab');
+      if (tab) {
+        mode = tab.dataset.mode;
+        overlay.querySelectorAll('.mct-tab').forEach(function (t) {
+          t.classList.toggle('on', t === tab);
+        });
+        draw();
+      }
+    });
+
+    var st = document.createElement('style');
+    st.textContent =
+      '.mct-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;' +
+        'align-items:flex-end;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}' +
+      '.mct-overlay.open{display:flex;}' +
+      '.mct-sheet{width:100%;max-width:680px;margin:0 auto;background:#101010;border-radius:18px 18px 0 0;' +
+        'border:1px solid rgba(255,255,255,0.1);border-bottom:0;padding:10px 18px calc(20px + env(safe-area-inset-bottom));}' +
+      '.mct-handle{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,0.18);margin:2px auto 12px;}' +
+      '.mct-title{font-size:15px;font-weight:900;color:#e2e8f0;margin-bottom:12px;}' +
+      '.mct-tabs{display:flex;gap:6px;margin-bottom:14px;}' +
+      '.mct-tab{flex:1;padding:7px 0;border-radius:9px;border:1px solid rgba(255,255,255,0.1);' +
+        'background:rgba(255,255,255,0.04);color:#94a3b8;font-size:11px;font-weight:800;cursor:pointer;' +
+        '-webkit-tap-highlight-color:transparent;}' +
+      '.mct-tab.on{color:#fbbf24;border-color:rgba(212,175,55,0.45);background:rgba(212,175,55,0.12);}' +
+      '.mct-chart{min-height:120px;}' +
+      '.mct-meta{margin-top:10px;font-size:11px;font-weight:700;color:#64748b;text-align:center;}' +
+      '.mct-cap{margin-top:10px;font-size:11px;font-weight:400;line-height:1.6;color:#94a3b8;' +
+        'border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;}' +
+      '.mct-empty{padding:28px 0;text-align:center;color:#64748b;font-size:13px;font-weight:700;}';
+    document.head.appendChild(st);
+  }
+
+  // ---- roadmap Phase 5.2 (audit L-07): the two ceilings, once they are real
+  // Both of this app's history stores drop data at a fixed depth and neither
+  // ever said so: mc_workout_log_v1 keeps 200 finished workouts (so it bounds
+  // the curve above), and mc_setlog_v1 keeps 5 sessions PER EXERCISE (so it
+  // bounds the "Last: …" cue and the weight the progression suggests). This
+  // is the screen an athlete reaches when asking where their history went, so
+  // it is where both belong — but only once a cap is actually hit. Below it,
+  // a permanent disclaimer is noise about a limit nobody is near.
+  var WL_CAP = 200, SESS_CAP = 5;
+
+  // The per-exercise depth is keyed by mc-setlog.js's own identity derivation,
+  // never by re-slugging the name here — a second copy of that derivation is
+  // exactly what EN-1/EN-8 and check-single-impl.js exist to prevent. It needs
+  // a rendered card, so on a page with none (stats.html opens this sheet from
+  // its muscle legend) the per-exercise half is simply not claimed.
+  function sessionDepth(name) {
+    var U = window.MCSetlogUtil;
+    if (!U || !U.histKey || !U.exIdOf) return -1;
+    var want = String(name || '').trim().toLowerCase(), card = null;
+    var cards = document.querySelectorAll('.ex-card, .ss-ex, .ex-item, .lift-card');
+    for (var i = 0; i < cards.length; i++) {
+      var nm = cards[i].querySelector('.ex-name, .ss-name, .lift-name');
+      if (nm && nm.textContent.trim().toLowerCase() === want) { card = cards[i]; break; }
+    }
+    if (!card) return -1;
+    var store;
+    try { store = JSON.parse(localStorage.getItem('mc_setlog_v1') || '{}'); } catch (e) { return -1; }
+    var list = store && store[U.histKey(U.exIdOf(card))];
+    return Array.isArray(list) ? list.length : -1;
+  }
+
+  function capNote() {
+    var out = [];
+    if (logs().length >= WL_CAP) {
+      out.push('This device keeps your last ' + WL_CAP + ' finished workouts, and you are ' +
+        'at that limit — each new one now replaces the oldest, so this curve stops there.');
+    }
+    if (sessionDepth(curName) >= SESS_CAP) {
+      out.push('Set-by-set history for this exercise keeps the last ' + SESS_CAP +
+        ' sessions. Older ones are gone from this device, though finished workouts ' +
+        'stay in the chart above.');
+    }
+    if (!out.length) return '';
+    return out.join(' ') + ' Export a backup from your account panel to keep everything.';
+  }
+
+  function draw() {
+    var series = seriesFor(curName);
+    var chart = document.getElementById('mctChart');
+    var meta = document.getElementById('mctMeta');
+    var cap = document.getElementById('mctCap');
+    if (cap) { cap.textContent = capNote(); cap.hidden = !cap.textContent; }
+    if (!series.length) {
+      chart.innerHTML = '<div class="mct-empty">No finished workouts with this exercise yet.<br>' +
+        'Log sets and tap Finish Workout — the trend builds from there.</div>';
+      meta.textContent = '';
+      return;
+    }
+    // Records on the curve (roadmap Phase 4 step 2): a point is marked when it
+    // is a new all-time best IN THE SERIES BEING SHOWN, so the mark always
+    // means the same thing whichever tab is open. The first session is not
+    // marked — it is trivially the best and marking it makes every one-session
+    // curve look like a record. The app's own PR flag (mc-finish.js, and the
+    // PR timeline on Stats) is reported separately in the meta line below
+    // rather than folded in here, so the two never disagree.
+    var runningBest = -Infinity;
+    var pts = series.map(function (p, i) {
+      var y = p[mode === 'weight' ? 'weight' : mode];
+      var isBest = i > 0 && y > runningBest;
+      if (y > runningBest) runningBest = y;
+      return { x: p.date, y: y, best: isBest };
+    });
+    var unit = mode === 'reps' ? ' reps' : ' lb';
+    chart.innerHTML = (window.MC_CHART && series.length > 1)
+      ? MC_CHART.line(pts, { height: 140 })
+      : '<div class="mct-empty">' + pts[0].y + unit + ' · ' + series[0].date +
+        '<br>One session logged — two make a trend.</div>';
+    var first = pts[0].y, last = pts[pts.length - 1].y;
+    var bestPt = pts.reduce(function (a, b) { return b.y > a.y ? b : a; }, pts[0]);
+    var prs = series.filter(function (p) { return p.pr; }).length;
+    meta.textContent = series.length + ' sessions · ' + first + unit + ' → ' + last + unit +
+      (first ? ' (' + (last >= first ? '+' : '') + Math.round(((last - first) / first) * 100) + '%)' : '') +
+      ' · best ' + bestPt.y + unit + ' on ' + bestPt.x +
+      (prs ? ' · 🏆 ' + prs + ' PR' + (prs === 1 ? '' : 's') : '');
+  }
+
+  function open(name) {
+    if (!name) return;
+    build();
+    curName = name;
+    document.getElementById('mctTitle').textContent = '📈 ' + name;
+    overlay.classList.add('open');
+    draw();
+  }
+  function close() { if (overlay) overlay.classList.remove('open'); }
+
+  window.MCTrends = { open: open, close: close };
+
+  // the "Last: …" cue on every Log Sets toggle doubles as a trend shortcut
+  document.addEventListener('click', function (e) {
+    var hist = e.target.closest('.mcl-hist');
+    if (!hist || !hist.textContent) return;
+    var card = hist.closest('.ex-card, .ss-ex, .ex-item, .lift-card');
+    var nm = card && card.querySelector('.ex-name, .ss-name, .lift-name');
+    if (nm) { e.stopPropagation(); e.preventDefault(); open(nm.textContent.trim()); }
+  }, true);
+})();

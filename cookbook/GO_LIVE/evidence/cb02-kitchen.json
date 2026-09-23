@@ -1,0 +1,310 @@
+[
+ {
+  "id": "K-01",
+  "label": "an exact title search puts that recipe first",
+  "ok": true,
+  "got": "jalapeno-chicken-bake",
+  "want": "jalapeno-chicken-bake",
+  "note": "[\"Jalapeño Chicken Bake\"]"
+ },
+ {
+  "id": "K-02",
+  "label": "a partial word returns many matches",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "128 results"
+ },
+ {
+  "id": "K-03",
+  "label": "an ingredient search finds recipes that use it",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "10 results"
+ },
+ {
+  "id": "K-04",
+  "label": "two ingredients narrow rather than widen",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "chicken 128, bacon 10, both 5"
+ },
+ {
+  "id": "K-05",
+  "label": "search is case-insensitive",
+  "ok": true,
+  "got": 128,
+  "want": 128,
+  "note": ""
+ },
+ {
+  "id": "K-06",
+  "label": "an unaccented query still finds the accented title",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "24 results"
+ },
+ {
+  "id": "K-07",
+  "label": "a transposed-letter typo still finds something (fuzzy)",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "126 results, top: [\"Air Fryer Garlic Parmesan Chicken Bites\",\"Alabama White BBQ Chicken Marinade\",\"Avocado Lime Chicken Salad\"]"
+ },
+ {
+  "id": "K-08",
+  "label": "a nonsense query returns nothing rather than everything",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ },
+ {
+  "id": "K-09",
+  "label": "an empty query returns the whole catalog, not an error",
+  "ok": true,
+  "got": 318,
+  "want": 318,
+  "note": ""
+ },
+ {
+  "id": "K-10:\"   \"",
+  "label": "an unusual query does not throw",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "318 results"
+ },
+ {
+  "id": "K-10:\"!!!\"",
+  "label": "an unusual query does not throw",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "318 results"
+ },
+ {
+  "id": "K-10:\"🌶️\"",
+  "label": "an unusual query does not throw",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "318 results"
+ },
+ {
+  "id": "K-10:\"\\\"; DROP TABL",
+  "label": "an unusual query does not throw",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "0 results"
+ },
+ {
+  "id": "K-10:\"aaaaaaaaaaaaa",
+  "label": "an unusual query does not throw",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "0 results"
+ },
+ {
+  "id": "K-11",
+  "label": "the two planned recipes do share at least one ingredient",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "jalapeno-chicken-bake + broccoli-bacon-slaw: shared [\"uncured bacon\",\"salt\",\"pepper\"]"
+ },
+ {
+  "id": "K-12",
+  "label": "a shared ingredient is merged, not listed twice",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "6 grocery rows for 18 distinct ingredient names across both recipes"
+ },
+ {
+  "id": "K-13",
+  "label": "the grocery list is non-empty and well formed",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "[{\"aisle\":\"Produce\",\"rows\":[{\"key\":\"Produce|fresh spinach leave\",\"item\":\"Fresh spinach leaves\",\"qty\":\"2 cups\",\"mealUids\":[null],\"derived\":null,\"need\":{\"qty\":96,\"unit\":\"tsp\"}},{\"key\":\"Produce|fresh mushroom\",\"item\":\"Fresh"
+ },
+ {
+  "id": "K-14",
+  "label": "quantities parse fractions, mixed numbers and plain integers",
+  "ok": true,
+  "got": {
+   "half": 0.5,
+   "mixed": 1.5,
+   "plain": 3
+  },
+  "want": {
+   "half": 0.5,
+   "mixed": 1.5,
+   "plain": 3
+  },
+  "note": "{\"half\":0.5,\"mixed\":1.5,\"plain\":3,\"junk\":null}"
+ },
+ {
+  "id": "K-15",
+  "label": "an unparseable quantity (\"to taste\") does not become a number",
+  "ok": true,
+  "got": "not a number",
+  "want": "not a number",
+  "note": ""
+ },
+ {
+  "id": "K-16",
+  "label": "two timers can run at once",
+  "ok": true,
+  "got": 2,
+  "want": 2,
+  "note": "MAX_TIMERS = 8"
+ },
+ {
+  "id": "K-17",
+  "label": "each timer keeps its own label and duration",
+  "ok": true,
+  "got": [
+   "Chicken",
+   "Rice"
+  ],
+  "want": [
+   "Chicken",
+   "Rice"
+  ],
+  "note": ""
+ },
+ {
+  "id": "K-18",
+  "label": "a zero-second timer is refused rather than ringing instantly",
+  "ok": true,
+  "got": null,
+  "want": null,
+  "note": ""
+ },
+ {
+  "id": "K-19",
+  "label": "a negative timer is refused",
+  "ok": true,
+  "got": null,
+  "want": null,
+  "note": ""
+ },
+ {
+  "id": "K-20",
+  "label": "a NaN timer is refused",
+  "ok": true,
+  "got": null,
+  "want": null,
+  "note": ""
+ },
+ {
+  "id": "K-21",
+  "label": "an absurd duration is clamped rather than accepted whole",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "86400"
+ },
+ {
+  "id": "K-22",
+  "label": "rapid creation never exceeds the declared cap",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "8 of max 8"
+ },
+ {
+  "id": "K-23",
+  "label": "a timer pauses, resumes and cancels",
+  "ok": true,
+  "got": {
+   "afterStart": 1,
+   "pausedFlag": true,
+   "resumedFlag": true,
+   "afterCancel": 0
+  },
+  "want": {
+   "afterStart": 1,
+   "pausedFlag": true,
+   "resumedFlag": true,
+   "afterCancel": 0
+  },
+  "note": ""
+ },
+ {
+  "id": "K-24",
+  "label": "a running timer survives a reload (the phone locked mid-cook)",
+  "ok": true,
+  "got": [
+   "Braise"
+  ],
+  "want": [
+   "Braise"
+  ],
+  "note": ""
+ },
+ {
+  "id": "K-25",
+  "label": "and it counts down in wall-clock time, not from zero again",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "899s left of 900"
+ },
+ {
+  "id": "K-26",
+  "label": "the clock formatter renders sensibly",
+  "ok": true,
+  "got": [
+   "0:01",
+   "0:04",
+   "0:00"
+  ],
+  "want": [
+   "0:01",
+   "0:04",
+   "0:00"
+  ],
+  "note": "shape check only — the exact format is a product choice"
+ },
+ {
+  "id": "K-27",
+  "label": "every cross-app bridge read answers on an empty device rather than throwing",
+  "ok": true,
+  "got": [],
+  "want": [],
+  "note": "{\"todaysMeals\":{\"ok\":true,\"v\":\"[]\"},\"macroTargets\":{\"ok\":true,\"v\":\"null\"},\"recentActivity\":{\"ok\":true,\"v\":\"{\\\"trainedToday\\\":false,\\\"streak\\\":0,\\\"workoutsThisWeek\\\":0,\\\"recentWorkouts\\\":[]}\"},\"today\":"
+ },
+ {
+  "id": "K-28a",
+  "label": "the fixture workout could actually be seeded",
+  "ok": true,
+  "got": null,
+  "want": null,
+  "note": "a silent seed failure would misreport itself as a bridge defect"
+ },
+ {
+  "id": "K-28",
+  "label": "a workout logged by MC Training is visible to the cookbook",
+  "ok": true,
+  "got": true,
+  "want": true,
+  "note": "{\"seedError\":null,\"activity\":{\"trainedToday\":false,\"streak\":0,\"workoutsThisWeek\":1,\"recentWorkouts\":[{\"id\":\"w1\",\"name\":\"Push day\",\"date\":\"2026-09-17\",\"prs\":0,\"duration\":\"60 min\"}]},\"workouts\":[{\"id\":\""
+ },
+ {
+  "id": "K-29",
+  "label": "no runtime error across the whole kitchen campaign",
+  "ok": true,
+  "got": 0,
+  "want": 0,
+  "note": ""
+ }
+]

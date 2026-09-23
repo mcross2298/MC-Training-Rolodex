@@ -1,0 +1,436 @@
+/* ks-engine.js — shared render engine for the Kitchen Sink program family
+   (audit LS-5, W-09). Consolidates the near-duplicate inline engines that had
+   drifted across kitchen-sink*.html. Each page defines window.DATA and
+   window.KS_CFG ({sched, eyebrow}) BEFORE loading this file; the engine renders
+   into #app, exactly as the old inline copies did. Runs at top-level global
+   scope (NOT an IIFE) on purpose: TMR/buildTimerFloat are referenced by inline
+   onclick handlers in the rendered HTML.
+
+   TMR / buildTimerFloat come from the shared mc-timer.js (loaded before this
+   file on every Kitchen Sink page, same as every other program) — this file
+   used to carry its own stripped-down duplicate of both, which had drifted
+   behind mc-timer.js's feature set (no Up Next cue, no sound/haptics prefs,
+   no 10s warning cue). makeRestTimer stays per-page/per-engine by convention
+   (see mc-timer.js's own header comment). */
+
+buildTimerFloat();
+
+// ── PROGRAM DATA + CONFIG (per page, via window.DATA / window.KS_CFG) ──
+const CFG = window.KS_CFG || {};
+const SCHED = CFG.sched || '';
+const DATA = window.DATA;
+
+
+
+
+// ── HELPERS ──
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return r+','+g+','+b;}
+
+let activeWeek = "w1";
+
+function tagClass(tag){
+  if(!tag)return'';
+  const t=tag.toLowerCase().replace(/\s+/g,'');
+  if(t==='tri-set')return'triset';
+  if(t==='superset')return'superset';
+  if(t==='cluster')return'cluster';
+  if(t==='drop set'||t==='dropset')return'dropset';
+  if(t==='finisher')return'finisher';
+  return'grp';
+}
+
+function cardClass(tag){
+  if(!tag)return'';
+  const t=tag.toLowerCase().replace(/\s+/g,'');
+  if(t==='tri-set')return' is-triset is-ss';
+  if(t==='superset')return' is-superset is-ss';
+  if(t==='cluster')return' is-cluster';
+  if(t==='drop set'||t==='dropset')return' is-drop';
+  if(t==='finisher')return' is-finisher';
+  return'';
+}
+
+// A drop set's AMRAP target renders as a bare "∞" (one per AMRAP set) —
+// never a "2×∞" shorthand. Only swaps the word itself; numeric drop targets
+// (e.g. "drop 15") and standalone AMRAP prescriptions (no drop) are untouched.
+function amrapToInfinity(s){ return String(s).replace(/\bamrap\b/gi,'∞'); }
+
+function renderReps(sets){
+  if(!sets||sets==='—')return'<span style="color:#9ca3af;font-style:italic">—</span>';
+  if(sets.includes('→')){
+    const parts=sets.split('→');
+    const baseHtml=renderChips(parts[0].trim(),'#fbbf24');
+    const extHtml=`<span style="font-size:11px;font-weight:900;color:#94a3b8;margin:0 4px">→</span>`+renderChips(amrapToInfinity(parts[1].trim()),'#f87171');
+    return`<div class="a-leg">${baseHtml}${extHtml}</div>`;
+  }
+  const lower=sets.toLowerCase();
+  if(lower.includes('amrap')){
+    return`<div style="font-size:13px;color:#c084fc;font-weight:800">${escapeHtml(sets)}</div>`;
+  }
+  const chips=sets.split(',').map((rep,i)=>{
+    const r=rep.trim();
+    const special=r.toUpperCase().includes('AMRAP')||r.includes('×');
+    const cls=special?'a-rep special':(i===0?'a-rep live':'a-rep');
+    const sep=i<sets.split(',').length-1?'<span class="a-sep">·</span>':'';
+    return`<span class="${cls}">${escapeHtml(r)}</span>${sep}`;
+  }).join('');
+  return`<div class="a-leg">${chips}</div>`;
+}
+
+function renderChips(str,color){
+  return str.split(',').map((r,i)=>{
+    const t=r.trim();
+    const sep=i<str.split(',').length-1?'<span class="a-sep">·</span>':'';
+    return`<span class="a-rep" style="color:${color}">${escapeHtml(t)}</span>${sep}`;
+  }).join('');
+}
+
+function renderExercise(ex,dIdx,eIdx){
+  const tc=tagClass(ex.tag);
+  const cc=cardClass(ex.tag);
+  const badges=[];
+  if(ex.tag)badges.push(`<span class="a-pill ${tc}">${escapeHtml(ex.tag)}</span>`);
+  if(ex.tempo)badges.push(`<span class="a-pill tempo">⏱ ${escapeHtml(ex.tempo)}</span>`);
+  if(ex.note&&ex.note.includes('REVERSE PYRAMID'))badges.push(`<span class="a-pill rp">▼ REV PYRAMID</span>`);
+  if(ex.note&&ex.note.includes('MECHANICAL DROP'))badges.push(`<span class="a-pill rp">⚡ MECH DROP</span>`);
+  const badgeHtml=badges.length?`<div class="a-badges">${badges.join('')}</div>`:'';
+  const notesHtml=ex.note?`<div class="a-notes">📝 ${escapeHtml(ex.note)}</div>`:'';
+  const repsHtml=renderReps(ex.sets);
+  const infoHtml=ex.note?`<button type="button" class="a-info" aria-expanded="false" aria-label="Show coaching note">ⓘ</button>`:'';
+  return`<div class="ex-card a-card a-hdr-card${cc}"><div class="ex-body">
+    <div class="a-hdr">
+      <div class="a-idx">${eIdx+1}</div>
+      <div class="a-head">
+        <div class="ex-name a-name"><span class="editable" data-field="name" data-d="${dIdx}" data-e="${eIdx}">${escapeHtml(ex.name)}</span></div>
+      </div>
+      ${infoHtml}
+      <div class="a-hdr-meta">${badgeHtml}<div class="a-reps">${repsHtml}</div></div>
+    </div>
+    <div class="a-strip">
+      <div class="a-cell"><span class="k">Sets</span><span class="v"><span class="editable" data-field="sets" data-d="${dIdx}" data-e="${eIdx}">${escapeHtml(ex.sets)}</span></span></div>
+      <div class="a-cell"><span class="k">Rest</span><span class="v"><span class="editable" data-field="rest" data-d="${dIdx}" data-e="${eIdx}">${escapeHtml(ex.rest)}</span></span></div>
+    </div>
+    <div class="a-timerbar">${makeRestTimer(ex.rest||'90 sec',ex.name)}</div>
+    ${notesHtml}
+  </div></div>`;
+}
+
+function groupBanner(tag){
+  const labels={
+    'TRI-SET':['triset','TRI-SET · Complete all 3 exercises before resting · Rest 2-3 min after each full round'],
+    'SUPERSET':['superset','SUPERSET · No rest between A & B · Rest 60 sec after both'],
+    'CLUSTER':['cluster','CLUSTER SET · Base pyramid sets, then 3 micro-sets with 15 sec intra-rest'],
+    'DROP SET':['dropset','DROP SET · Base pyramid sets, then 2 immediate drops to AMRAP'],
+    'FINISHER':['finisher','FINISHER · 3×AMRAP · 45 sec rest between rounds · Leave nothing behind']
+  };
+  if(!labels[tag])return'';
+  const[cls,text]=labels[tag];
+  return`<div class="group-banner ${cls}">${escapeHtml(text)}</div>`;
+}
+
+// ── TRI-SET / SUPERSET station grouping ──
+// TRI-SET (3 members) and SUPERSET (2 members) exercises used to render as
+// flat, independent .ex-cards with only a text banner above them — so none of
+// the app's grouped-exercise tooling (mc-superset-hop.js's A→B→A→B hop,
+// mc-guided.js treating the whole block as one step, mc-setlog.js's rest-timer
+// consolidation onto the final member) ever engaged, even though the banner
+// text promised "no rest between, rest after the full round." This wraps a
+// same-tag run in the same .ss-card/.ss-ex structure every other program's
+// grouped exercises use (Concept-A styling via .a-ss, per base.css) so that
+// tooling actually applies. The per-exercise DATA is unchanged — only the
+// rendered markup shape changes, same as mc-group-split.js does for its
+// combined-name cards.
+const GROUP_SIZE = { 'TRI-SET': 3, 'SUPERSET': 2 };
+function letter(i){ return String.fromCharCode(65+i); }
+
+function renderSSMember(ex,dIdx,eIdx,idx,isLast){
+  const badges=[];
+  if(ex.tempo)badges.push(`<span class="a-pill tempo">⏱ ${escapeHtml(ex.tempo)}</span>`);
+  if(ex.note&&ex.note.includes('REVERSE PYRAMID'))badges.push(`<span class="a-pill rp">▼ REV PYRAMID</span>`);
+  if(ex.note&&ex.note.includes('MECHANICAL DROP'))badges.push(`<span class="a-pill rp">⚡ MECH DROP</span>`);
+  const badgeHtml=badges.length?`<div class="a-badges">${badges.join('')}</div>`:'';
+  const notesHtml=ex.note?`<div class="a-notes">📝 ${escapeHtml(ex.note)}</div>`:'';
+  // One rest timer, on the final member only — carries the real "after the
+  // full round" rest (the DATA already puts '—' on every member but the
+  // last, so this just doesn't render a badge for the '—' members at all,
+  // same as makeRestTimer already does for a non-interactive '—' string).
+  const restHtml=isLast?`<div class="ex-rest">${makeRestTimer(ex.rest||'90 sec',ex.name)}</div>`:'';
+  // mc-superset-hop.js keys every trigger on '.ss-ex[data-type="ssex"]' —
+  // every other .ss-ex emitter in the tree (mc-engine.js, mc-pmc-engine.js,
+  // mc-group-split.js, run-workout.html, run-program.html) carries it, and
+  // this was the one that did not. Proven by A/B: as shipped, checking a set
+  // here never creates a buffer element at all, so the hop this file's own
+  // comment says it exists to enable has never fired on any of the five
+  // Kitchen Sink pages.
+  return`<div class="ss-ex" data-id="ssex-${dIdx}-${eIdx}" data-type="ssex">
+    <div class="ss-num">${letter(idx)}</div>
+    <div class="ss-content">
+      <div class="ss-name"><span class="editable" data-field="name" data-d="${dIdx}" data-e="${eIdx}">${escapeHtml(ex.name)}</span></div>
+      ${badgeHtml}
+      <div class="a-ss-reps">${renderReps(ex.sets)}</div>
+      <div class="a-ss-sets-hidden"><span class="ex-sets"><span class="editable" data-field="sets" data-d="${dIdx}" data-e="${eIdx}">${escapeHtml(ex.sets)}</span></span></div>
+      ${notesHtml}
+      ${restHtml}
+    </div>
+  </div>`;
+}
+
+function renderSSCard(members,dIdx,startEIdx,tag){
+  const tri=tag==='TRI-SET';
+  const label=tri?'⚡ Tri-Set':'⚡ Superset';
+  const rowsHtml=members.map((ex,i)=>{
+    const eIdx=startEIdx+i;
+    const isLast=i===members.length-1;
+    const divider=isLast?'':`<div class="ss-divider"><span class="ss-x">${tri?'× TRI-SET ×':'× SUPERSET ×'}</span></div>`;
+    return renderSSMember(ex,dIdx,eIdx,i,isLast)+divider;
+  }).join('');
+  return`<div class="ss-card a-ss${tri?' is-tri':''}">
+    <div class="ss-header"><span class="ss-label">${label}</span></div>
+    ${rowsHtml}
+  </div>`;
+}
+
+// Walks a day's exercises, grouping consecutive same-tag TRI-SET/SUPERSET
+// runs into a single .ss-card block; everything else (compounds, CLUSTER,
+// DROP SET, FINISHER — all single-station, single-exercise intensifiers, not
+// multi-exercise groups) stays a flat .ex-card exactly as before. A run
+// shorter than its tag's group size (irregular data) falls through to flat
+// rendering rather than forcing a broken group.
+function renderExerciseBlocks(exercises,dIdx){
+  const blocks=[];
+  let lastBannerTag=null;
+  let i=0;
+  while(i<exercises.length){
+    const tag=exercises[i].tag;
+    const size=GROUP_SIZE[tag];
+    const run=size && exercises.slice(i,i+size).every(e=>e.tag===tag) && (exercises.length-i)>=size;
+    const banner=tag!==lastBannerTag?groupBanner(tag):'';
+    lastBannerTag=tag;
+    if(run){
+      blocks.push(banner+renderSSCard(exercises.slice(i,i+size),dIdx,i,tag));
+      i+=size;
+    }else{
+      blocks.push(banner+renderExercise(exercises[i],dIdx,i));
+      i+=1;
+    }
+  }
+  return blocks.join('');
+}
+
+// ── F3: DAY LIST vs ONE DAY ──
+// null = the day LIST, a number = that day on its own screen. The Kitchen Sink
+// pages used to render all 5-7 days of the week at once as an accordion; now a
+// day is its own screen.
+let openDayIdx = null;
+
+// The four day types' header chrome, in ONE place. renderDay()'s branches and
+// renderDayRow() both read it, so a row and the card it opens cannot disagree
+// about a day's name, icon or colour -- they were separate literals per branch
+// before, which is exactly how a list and its destination drift apart.
+function dayChrome(day){
+  if(day.type==='conditioning') return {session:'Conditioning Day', sub:'Select Workout',  icon:'\u26A1', color:'#d97706', rgb:'217,119,6'};
+  if(day.type==='activerest')   return {session:'Active Rest Day',  sub:'Recovery Plan',   icon:'\uD83D\uDEB6', color:'#0d9488', rgb:'13,148,136'};
+  if(day.type==='rest')         return {session:'Rest Day',         sub:'Full Rest',       icon:'\uD83D\uDE34', color:'#334155', rgb:'51,65,85'};
+  return {session:day.session, sub:'10 exercises', icon:day.icon, color:day.color, rgb:hexToRgb(day.color)};
+}
+
+// A day ROW -- the list level. Reuses .day-card/.day-header/.day-icon/.day-info/
+// .day-toggle so this page's existing per-day-colour CSS styles it unchanged;
+// the row and Back affordances come from the shared .mc-day-row / .mc-day-back
+// in base.css that every F3-converted family uses.
+//
+// EVERY day type is a destination here, unlike the Modality Matrix trio where a
+// rest day is a list-only card. That is a difference in the DATA, not a change
+// of mind: these rest and active-rest days carry three authored recovery rows
+// each (the Weekly Layout Standard's info-card panels), so there is something
+// to open. A day with nothing behind it should not be tappable.
+function renderDayRow(day,dIdx){
+  const c=dayChrome(day);
+  return`<div class="day-card mc-day-row" data-d="${dIdx}" style="--day-rgb:${c.rgb}">
+    <div class="day-header">
+      <div class="day-icon" style="background:${c.color};box-shadow:0 2px 10px ${c.color}66">${c.icon}</div>
+      <div class="day-info">
+        <div class="day-session">${escapeHtml(c.session)}</div>
+        <div class="day-meta">${escapeHtml(day.label)} \u00B7 ${escapeHtml(c.sub)}</div>
+      </div>
+      <div class="day-toggle">\u203A</div>
+    </div>
+  </div>`;
+}
+
+function backBtn(){
+  return`<button type="button" class="mc-day-back" data-mc-day-back>\u2190 All days</button>`;
+}
+
+function renderDay(day,dIdx){
+  if(openDayIdx===null) return renderDayRow(day,dIdx);
+  if(openDayIdx!==dIdx) return "";          // one workout, one screen
+  if(day.type==='conditioning'){
+    const c=dayChrome(day);
+    return backBtn()+`<div class="day-card open" data-d="${dIdx}" style="--day-rgb:${c.rgb}">
+      <div class="day-header">
+        <div class="day-icon" style="background:${c.color};box-shadow:0 2px 10px ${c.color}66">${c.icon}</div>
+        <div class="day-info">
+          <div class="day-session">${escapeHtml(c.session)}</div>
+          <div class="day-meta">${escapeHtml(day.label)} · ${escapeHtml(c.sub)} · ${SCHED}</div>
+        </div>
+        <div class="day-toggle">▲</div>
+      </div>
+      <div class="exercises" style="border-top-color:#d9770633">
+        <div style="padding:10px 4px 4px;font-size:10.5px;color:#fbbf24;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;opacity:0.65">Select a conditioning session</div>
+        <a href="dashboard.html?tab=conditioning" style="display:flex;align-items:center;justify-content:space-between;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.3);border-radius:12px;padding:14px 16px;margin:6px 0 12px;text-decoration:none;">
+          <div>
+            <div style="font-weight:800;font-size:14px;color:#fbbf24;">Browse Conditioning Corner →</div>
+            <div style="font-size:11px;color:#92400e;margin-top:3px;">HIIT · Cardio · Circuits · Lactate Threshold</div>
+          </div>
+          <div style="font-size:18px;color:#fbbf24;">⚡</div>
+        </a>
+      </div>
+    </div>`;
+  }
+  if(day.type==='activerest'){
+    const acts=[
+      {icon:'🚶',name:'Low Intensity Cardio',desc:'20–30 min easy walk, light bike, or swim'},
+      {icon:'🧘',name:'Stretching',desc:'Full-body static stretch — hold 30–60 sec per position'},
+      {icon:'🔄',name:'Mobility Work',desc:'Hip circles, thoracic rotations, ankle CARs'},
+    ];
+    const actsHtml=acts.map(a=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(13,148,136,0.1);">
+      <span style="font-size:18px;flex-shrink:0">${a.icon}</span>
+      <div><div style="font-weight:800;font-size:13px;color:#2dd4bf">${a.name}</div><div style="font-size:11px;color:#0d9488;margin-top:2px">${a.desc}</div></div>
+    </div>`).join('');
+    const c=dayChrome(day);
+    return backBtn()+`<div class="day-card open" data-d="${dIdx}" style="--day-rgb:${c.rgb}">
+      <div class="day-header">
+        <div class="day-icon" style="background:${c.color};box-shadow:0 2px 10px ${c.color}66">${c.icon}</div>
+        <div class="day-info">
+          <div class="day-session">${escapeHtml(c.session)}</div>
+          <div class="day-meta">${escapeHtml(day.label)} · ${escapeHtml(c.sub)} · ${SCHED}</div>
+        </div>
+        <div class="day-toggle">▲</div>
+      </div>
+      <div class="exercises" style="border-top-color:#0d948833">
+        <div style="padding:4px 4px 4px 4px">${actsHtml}</div>
+      </div>
+    </div>`;
+  }
+  if(day.type==='rest'){
+    const acts=[
+      {icon:'😴',name:'Full Rest',desc:'No training, no structured activity — complete physical recovery'},
+      {icon:'🌙',name:'Deep Sleep & Active Recovery',desc:'Prioritize 8–9 hrs sleep; light foam roll only if needed'},
+      {icon:'🥗',name:'Optimized Nutrition / Fueling',desc:'Hit protein targets; emphasize micronutrient-dense whole foods'},
+    ];
+    const actsHtml=acts.map(a=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(51,65,85,0.2);">
+      <span style="font-size:18px;flex-shrink:0">${a.icon}</span>
+      <div><div style="font-weight:800;font-size:13px;color:#94a3b8">${a.name}</div><div style="font-size:11px;color:#475569;margin-top:2px">${a.desc}</div></div>
+    </div>`).join('');
+    const c=dayChrome(day);
+    return backBtn()+`<div class="day-card open" data-d="${dIdx}" style="--day-rgb:${c.rgb}">
+      <div class="day-header">
+        <div class="day-icon" style="background:${c.color};box-shadow:0 2px 10px ${c.color}66">${c.icon}</div>
+        <div class="day-info">
+          <div class="day-session">${escapeHtml(c.session)}</div>
+          <div class="day-meta">${escapeHtml(day.label)} · ${escapeHtml(c.sub)} · ${SCHED}</div>
+        </div>
+        <div class="day-toggle">▲</div>
+      </div>
+      <div class="exercises" style="border-top-color:#33415533">
+        <div style="padding:4px 4px 4px 4px">${actsHtml}</div>
+      </div>
+    </div>`;
+  }
+  const exHtml=renderExerciseBlocks(day.exercises,dIdx);
+  const c=dayChrome(day);
+  return backBtn()+`<div class="day-card open" data-d="${dIdx}" style="--day-rgb:${c.rgb}">
+    <div class="day-header">
+      <div class="day-icon" style="background:${c.color};box-shadow:0 2px 10px ${c.color}66">${c.icon}</div>
+      <div class="day-info">
+        <div class="day-session">${escapeHtml(c.session)}</div>
+        <div class="day-meta">${escapeHtml(day.label)} · ${escapeHtml(c.sub)} · ${SCHED}</div>
+      </div>
+      <div class="day-toggle">▲</div>
+    </div>
+    <div class="exercises" style="border-top-color:${day.color}33">${exHtml}</div>
+  </div>`;
+}
+
+function render(){
+  const week=DATA.weeks.find(w=>w.id===activeWeek);
+  const tabs=DATA.weeks.map(w=>`<button class="tab ${w.id===activeWeek?'active':''}" data-week="${w.id}">${w.label}</button>`).join('');
+  const days=week.days.map((d,i)=>renderDay(d,i)).join('');
+  document.getElementById('app').innerHTML=`
+    <div class="header">
+      <a href="cat-ks.html" class="back-link">← Everything Under the Kitchen Sink</a>
+      <div class="header-inner">
+        <div class="eyebrow">${CFG.eyebrow || ''}</div>
+        <div class="title">${escapeHtml(DATA.name)}</div>
+        <div><span class="schedule">${escapeHtml(DATA.schedule)}</span></div>
+      </div>
+    </div>
+    <div class="tabs-bar"><div class="tabs">${tabs}</div></div>
+    <div class="content">
+      <div class="phase-note"><strong>${week.label}:</strong> ${week.note}</div>
+      ${openDayIdx===null?'':`<div class="structure-legend">
+        <span class="sl-item">①② <b>Compounds</b> — 90 sec rest</span>
+        <span class="sl-item">③–⑤ <b>Tri-Set</b> — no rest between, 2-3 min after</span>
+        <span class="sl-item">⑥⑦ <b>Superset</b> — 60 sec after</span>
+        <span class="sl-item">⑧ <b>Cluster</b> — base sets + 3×micro (15 sec intra)</span>
+        <span class="sl-item">⑨ <b>Drop Set</b> — base + 2×AMRAP drops</span>
+        <span class="sl-item">⑩ <b>Finisher</b> — 3×AMRAP</span>
+      </div>`}
+      <div class="hint">${openDayIdx===null?'Pick a session to start training':'Tap field to edit · Back returns to the session list'}</div>
+      ${days}
+    </div>`;
+  bindEvents(week);
+}
+
+function bindEvents(week){
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.addEventListener('click',()=>{activeWeek=b.dataset.week;render();});
+  });
+  // F3: a header no longer shows/hides a panel in place -- it moves between the
+  // two screens, so the day's cards are BUILT on open and gone on close. That
+  // is what makes the DOM win real rather than cosmetic. The header stays the
+  // control, which keeps mc-session.js's "reopen the athlete's day by
+  // synthesising a real .day-header click" (S3) working here unchanged.
+  document.querySelectorAll('.day-card').forEach(card=>{
+    const header=card.querySelector('.day-header');
+    header.addEventListener('click',e=>{
+      if(e.target.classList.contains('editable'))return;
+      const dIdx=parseInt(card.dataset.d,10);
+      openDayIdx = (openDayIdx===dIdx) ? null : dIdx;
+      render();
+      window.scrollTo(0,0);
+    });
+  });
+  const back=document.querySelector('[data-mc-day-back]');
+  if(back) back.addEventListener('click',()=>{ openDayIdx=null; render(); window.scrollTo(0,0); });
+  document.querySelectorAll('.editable').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const field=el.dataset.field;const dIdx=el.dataset.d;const eIdx=el.dataset.e;
+      const day=week.days[dIdx];const ex=day.exercises[eIdx];
+      const input=document.createElement('input');
+      input.value=ex[field];input.className='edit-input';
+      el.replaceWith(input);input.focus();
+      const save=()=>{ex[field]=input.value;render();};
+      input.addEventListener('blur',save);
+      input.addEventListener('keydown',ev=>{if(ev.key==='Enter')input.blur();});
+    });
+  });
+}
+
+// `?day=N` (1-based, matching the rows) opens straight into a day; `?week=N`
+// picks the block week. Both are CLAMPED to what the program actually has -- an
+// unclamped index renders every day as "" and leaves a blank screen with no way
+// back, which is what F3-1's first draft shipped and only driving the URL caught.
+(function applyDeepLink(){
+  let q; try { q = new URLSearchParams(location.search); } catch(e){ return; }
+  const w = parseInt(q.get('week'),10);
+  if(!isNaN(w) && w>=1 && w<=DATA.weeks.length) activeWeek = DATA.weeks[w-1].id;
+  const wk = DATA.weeks.find(x=>x.id===activeWeek);
+  const d = parseInt(q.get('day'),10);
+  if(wk && !isNaN(d) && d>=1 && d<=wk.days.length) openDayIdx = d-1;
+})();
+
+render();
