@@ -1,0 +1,143 @@
+/* ==========================================================================
+   mc-rep-progress.js  —  live rep-glow tracker (Phase 3)
+   --------------------------------------------------------------------------
+   Advances the premier card's glowing rep marker (.a-rep.live) to the set the
+   lifter is actually ON, reading the per-set logger that mc-setlog.js renders.
+   It is a pure VIEW layer: it never writes state, never touches the logger or
+   checkoff — it only moves the .live / .rep-done classes among the .a-rep spans
+   in response to .set-check toggles.
+
+   Mapping per card (a "logging unit" = one .ex-card or .ss-ex):
+   • working reps = the card's .a-rep spans, minus .special (AMRAP/drop chips).
+   • completed   = count of checked .set-check boxes in that unit.
+   • When the rep spans line up 1:1 with the working sets, the glow advances:
+     finished sets → .rep-done, the next set → .live. When the reps are
+     collapsed ("3× 8") or span multiple superset legs, the spans share one
+     state: they glow until every set is logged, then settle to .rep-done.
+
+   Harmless on any page with no .a-rep (it simply no-ops), so it is safe to
+   include alongside mc-setlog.js anywhere. Self-contained IIFE.
+   ========================================================================== */
+(function () {
+  if (window.__mcRepProgress) return;          // guard against double-include
+  window.__mcRepProgress = true;
+
+  var UNIT_SEL = '.ex-card, .ss-ex';
+
+  function closestUnit(el) {
+    return el.closest ? el.closest(UNIT_SEL) : null;
+  }
+
+  // Put one rep marker into its target state WITHOUT writing when it is already
+  // there. classList.add()/remove() queue a mutation record on every call, even
+  // when the value does not change — and this runs across every rep span of
+  // every card on each observer pass. The old "clear the slate, then re-apply"
+  // form below was therefore the app's single largest source of DOM churn: with
+  // a rest timer ticking, ~372 of every 399 mutation records per 3 s were these
+  // no-op class writes, each one waking all eleven body-scoped observers again,
+  // which scheduled the next pass, which wrote them again. Same output, same
+  // idempotence, no write when nothing moved.
+  function setRepState(r, state) {
+    var isLive = r.classList.contains('live');
+    var isDone = r.classList.contains('rep-done');
+    if (state === 'live') {
+      if (isDone) r.classList.remove('rep-done');
+      if (!isLive) r.classList.add('live');
+    } else if (state === 'rep-done') {
+      if (isLive) r.classList.remove('live');
+      if (!isDone) r.classList.add('rep-done');
+    } else {
+      if (isLive) r.classList.remove('live');
+      if (isDone) r.classList.remove('rep-done');
+    }
+  }
+
+  // Set the live/done classes for a single logging unit from its checkbox state.
+  function update(unit) {
+    var repsAll = unit.querySelectorAll('.a-rep');
+    if (!repsAll.length) return;               // not a premier rep card — skip
+
+    // Working-set markers: drop the special (AMRAP/drop) chips from the sequence.
+    var seq = [];
+    Array.prototype.forEach.call(repsAll, function (r) {
+      if (!r.classList.contains('special')) seq.push(r);
+    });
+    if (!seq.length) seq = Array.prototype.slice.call(repsAll);
+
+    var allChecks = unit.querySelectorAll('.set-check');
+    if (!allChecks.length) {                    // logger not built yet → static default
+      seq.forEach(function (r, i) { setRepState(r, i === 0 ? 'live' : ''); });
+      return;
+    }
+
+    // Working checks exclude the appended drop/cluster rows (.mcl-row-amrap),
+    // so the 1:1 advance maps to prescribed working sets; completion still
+    // requires every logged row (working + extras) to be checked.
+    var workChecks = Array.prototype.filter.call(allChecks, function (ck) {
+      var row = ck.closest ? ck.closest('.mcl-row') : null;
+      return !row || !row.classList.contains('mcl-row-amrap');
+    });
+    var doneWork = workChecks.filter(function (ck) { return ck.classList.contains('done'); }).length;
+    var doneAll = Array.prototype.filter.call(allChecks, function (ck) {
+      return ck.classList.contains('done');
+    }).length;
+    var allDone = doneAll >= allChecks.length;
+
+    if (seq.length >= workChecks.length && workChecks.length > 0) {
+      // 1:1 — advance the glow set by set.
+      seq.forEach(function (r, i) {
+        setRepState(r, (allDone || i < doneWork) ? 'rep-done'
+                     : (i === doneWork ? 'live' : ''));
+      });
+    } else {
+      // Collapsed "N× reps" chip, or reps spanning multiple superset legs:
+      // the spans share one state — lit while sets remain, done when finished.
+      seq.forEach(function (r) { setRepState(r, allDone ? 'rep-done' : 'live'); });
+    }
+  }
+
+  function run() {
+    document.querySelectorAll(UNIT_SEL).forEach(update);
+  }
+
+  // ---- wiring (A-13) ------------------------------------------------------
+  // This module's observer was doing two unrelated jobs through one
+  // subscription: "a .set-check toggled, re-evaluate THAT card instantly" and
+  // "new cards appeared, rebuild everything". Only the second is the render
+  // signal, and MC_SCAN already publishes it — so the childList half moves to
+  // MC_SCAN (shared, debounced) and the retry ladder goes with it.
+  //
+  // The attribute half stays local and deliberately so: it must fire on the
+  // same frame the athlete taps a checkbox, and it is what makes the glow
+  // advance instantly. Narrowing it to attributes-only (no childList) is the
+  // point — it now watches one thing instead of two.
+  function init() {
+    if (window.MC_SCAN && MC_SCAN.subscribe) {
+      MC_SCAN.subscribe(run); MC_SCAN.start(); MC_SCAN.schedule();
+    } else {
+      var ct;
+      new MutationObserver(function () { clearTimeout(ct); ct = setTimeout(run, 120); })
+        .observe(document.body, { childList: true, subtree: true });
+      setTimeout(run, 600);
+    }
+
+    var mo = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var t = muts[i].target;
+        // A checkbox toggled .done → re-evaluate just its card (cheap, instant).
+        if (t.classList && t.classList.contains('set-check')) {
+          var unit = closestUnit(t);
+          if (unit) update(unit);
+        }
+      }
+    });
+    mo.observe(document.body, {
+      subtree: true, attributes: true, attributeFilter: ['class']
+    });
+
+    run();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();

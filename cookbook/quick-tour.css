@@ -1,0 +1,140 @@
+/* Quick Tour — shared by quick-tour.html (one step at a time) and
+   quick-tour-full.html (all of it as one document). It lived inline in the
+   tour until the second page existed; two copies of 117 lines of layout is
+   how the two views start looking like different products. */
+/* ── Quick Tour — uses the cookbook design system (cream cards on slate,
+      terracotta accent, serif headings). Mirrors the MC Training tour
+      structure for cross-app continuity; restyled to the cookbook palette. ── */
+*{box-sizing:border-box;}
+body{background:var(--bg);min-height:100vh;color:var(--on-dark);padding-bottom:92px;overflow-x:hidden;}
+
+/* TOP BAR */
+.qt-top{display:flex;align-items:center;gap:12px;padding:18px 16px 12px;position:sticky;top:0;z-index:20;
+  background:linear-gradient(to bottom,var(--bg) 80%,transparent);}
+/* 44px floor (end-to-end audit, A-05) — was 38x38, same as the Executive
+   Summary's .es-back it mirrors. */
+.qt-back{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;flex-shrink:0;
+  background:var(--bg-elev);border:1px solid var(--line-dark);color:var(--accent);font-size:17px;text-decoration:none;}
+.qt-top-info{flex:1;min-width:0;}
+.qt-top-title{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:-0.01em;color:var(--on-dark);}
+.qt-top-sub{font-size:12px;color:var(--on-dark-dim);margin-top:1px;}
+/* 44px floor (end-to-end audit, A-05) — was 34x43, one pixel short on height
+   and well short on width. A top-bar text link with no horizontal neighbour
+   inside 44px, so it takes a real box rather than an invisible floor. */
+.qt-skip{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;box-sizing:border-box;
+  font-size:12px;font-weight:700;color:var(--on-dark-dim);text-decoration:none;letter-spacing:0.04em;padding:8px;}
+
+/* PROGRESS */
+.qt-prog-wrap{padding:2px 16px 14px;}
+.qt-prog-track{height:5px;border-radius:3px;background:var(--line-dark);overflow:hidden;}
+.qt-prog-fill{height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--sage),var(--accent));transition:width 0.35s var(--ease-out);}
+.qt-prog-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--on-dark-dim);}
+.qt-prog-meta .pm-step{color:var(--accent);}
+
+/* EXEC SUMMARY DRILL-IN */
+.qt-exec-wrap{padding:0 16px;}
+.qt-exec{display:flex;align-items:center;gap:11px;text-decoration:none;max-width:560px;margin:0 auto 16px;padding:12px 14px;
+  background:var(--bg-elev);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:14px;}
+.qt-exec:active{background:rgba(var(--accent-rgb),0.12);}
+.qt-exec-ico{font-size:20px;flex-shrink:0;}
+.qt-exec-body{flex:1;min-width:0;}
+.qt-exec-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+.qt-exec-nm{font-size:13px;font-weight:600;color:var(--on-dark);margin-top:1px;line-height:1.35;}
+.qt-exec-arrow{color:var(--accent);font-size:16px;flex-shrink:0;}
+
+/* DECK / SLIDE */
+.qt-deck{max-width:560px;margin:0 auto;padding:0 16px;}
+.qt-slide{display:none;animation:qtIn 0.34s var(--ease-out);}
+.qt-slide.active{display:block;}
+@keyframes qtIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){.qt-slide{animation:none;}.qt-prog-fill{transition:none;}}
+
+.qt-eyebrow{font-size:11px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.qt-title{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:-0.01em;line-height:1.15;margin-bottom:6px;color:var(--on-dark);}
+.qt-tagline{font-size:13.5px;color:var(--on-dark-dim);line-height:1.55;margin-bottom:18px;}
+
+/* SCENE */
+.qt-scene{position:relative;border-radius:18px;overflow:hidden;margin-bottom:18px;
+  background:linear-gradient(135deg,var(--surface),var(--surface-2));
+  border:1px solid rgba(var(--accent-rgb),0.25);box-shadow:0 10px 30px rgba(0,0,0,0.35);
+  aspect-ratio:16/10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+.qt-scene-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 30% 28%,var(--scene-glow,rgba(var(--accent-rgb),0.16)) 0%,transparent 62%);}
+.qt-scene-glyph{font-size:54px;line-height:1;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.25));}
+.qt-scene-cap{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:0.01em;max-width:84%;line-height:1.45;font-family:var(--sans);}
+.qt-scene-clip{position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;
+  font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-dim);
+  background:rgba(255,255,255,0.6);border:1px solid var(--line);border-radius:20px;padding:4px 10px;}
+.qt-scene-clip .dot{width:7px;height:7px;border-radius:50%;background:#d1495b;box-shadow:0 0 8px #d1495b;animation:qtRec 1.6s ease-in-out infinite;}
+@keyframes qtRec{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.qt-scene-play{position:absolute;right:12px;bottom:12px;width:40px;height:40px;border-radius:50%;
+  background:rgba(var(--accent-rgb),0.16);border:1.5px solid rgba(var(--accent-rgb),0.5);
+  display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--accent);}
+
+/* NARRATION (cream card) */
+.qt-narr{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;margin-bottom:16px;position:relative;}
+.qt-narr::before{content:'👩‍🍳 IN THE KITCHEN';position:absolute;top:-9px;left:14px;font-size:9px;font-weight:800;letter-spacing:0.1em;color:var(--accent);background:var(--bg);padding:0 7px;}
+.qt-narr p{font-size:14px;line-height:1.6;color:var(--ink);margin:0;}
+
+/* STEPS */
+.qt-steps-lbl{font-size:11px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--on-dark-dim);margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+.qt-steps-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line-dark),transparent);}
+.qt-steps{list-style:none;display:flex;flex-direction:column;gap:8px;margin:0 0 18px;padding:0;}
+.qt-step{display:flex;gap:11px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 13px;}
+.qt-step-n{flex-shrink:0;width:22px;height:22px;border-radius:7px;background:rgba(var(--accent-rgb),0.12);border:1px solid rgba(var(--accent-rgb),0.3);
+  color:var(--accent);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.qt-step-tx{font-size:13px;line-height:1.5;color:var(--ink);}
+.qt-step-tx b{color:var(--ink);font-weight:700;}
+.qt-step-tx .tap{color:var(--accent);font-weight:700;}
+
+/* PRO TIP (sage) */
+.qt-tip{display:flex;gap:10px;align-items:flex-start;background:rgba(var(--sage-rgb),0.14);border:1px solid rgba(var(--sage-rgb),0.4);border-radius:12px;padding:12px 13px;margin-bottom:18px;}
+.qt-tip-ico{font-size:16px;flex-shrink:0;line-height:1.4;}
+.qt-tip-tx{font-size:12.5px;line-height:1.55;color:var(--on-dark);}
+.qt-tip-tx b{color:var(--sage);font-weight:700;}
+
+/* INLINE CTA */
+.qt-try{display:flex;align-items:center;gap:10px;text-decoration:none;background:var(--bg-elev);border:1px solid rgba(var(--accent-rgb),0.35);border-radius:14px;padding:13px 15px;margin-bottom:8px;}
+.qt-try:active{background:rgba(var(--accent-rgb),0.14);}
+.qt-try-ico{font-size:19px;}
+.qt-try-body{flex:1;min-width:0;}
+.qt-try-lbl{font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+.qt-try-nm{font-size:13.5px;font-weight:600;color:var(--on-dark);margin-top:1px;}
+.qt-try-arrow{color:var(--accent);font-size:16px;flex-shrink:0;}
+
+/* FINISH */
+.qt-finish-list{list-style:none;display:flex;flex-direction:column;gap:9px;margin:0 0 18px;padding:0;}
+.qt-finish-list li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.5;color:var(--on-dark);}
+.qt-finish-list .chk{color:var(--accent);font-weight:800;flex-shrink:0;}
+.qt-finish-cta{display:block;width:100%;text-align:center;text-decoration:none;padding:15px;border-radius:14px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;letter-spacing:0.02em;margin-top:6px;}
+.qt-finish-cta:active{opacity:0.88;}
+
+/* CONTROLS */
+.qt-controls{position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(30,32,34,0.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--line-dark);display:flex;align-items:center;gap:12px;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+.qt-nav-btn{flex:1;height:50px;border-radius:13px;border:1px solid var(--line-dark);background:var(--bg-elev);color:var(--on-dark);
+  font-size:14px;font-weight:700;letter-spacing:0.02em;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;}
+.qt-nav-btn:active{transform:scale(0.98);}
+.qt-nav-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);flex:1.4;}
+.qt-nav-btn:disabled{opacity:0.34;cursor:not-allowed;}
+
+/* DOTS */
+/* Kitchen-ergonomics pass (end-to-end audit, anomaly A-05): twelve 8x8px dots
+   were the smallest tap targets anywhere in the app. The visible dot is
+   unchanged — the hit area comes from cookbook.css's own invisible-::before
+   floor pattern, sized to TILE rather than to 44x44.
+   Why not 44x44: twelve 44px-wide targets need 528px and the gate measures at
+   390px, so they cannot all be 44 wide at phone width — that is arithmetic,
+   not an oversight. Instead the gap goes to 20px so each dot's centre is 28px
+   from its neighbour's, and the floor is exactly 28px wide: adjacent floors
+   touch without overlapping (an overlap would steal the neighbour's edge taps,
+   the same trap cookbook.css's own comment warns about) and there is no dead
+   space between dots at all. Height takes the full 44. Net effective target
+   per dot: 64px^2 -> 1232px^2. tools/check-a11y.mjs carries the matching
+   reasoned exemption for the width. */
+.qt-dots{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;padding:4px 0 22px;}
+.qt-dot{width:8px;height:8px;border-radius:50%;background:var(--line-dark);cursor:pointer;transition:all 0.2s;border:none;padding:0;position:relative;}
+.qt-dot::before{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:44px;}
+.qt-dot.active{background:var(--accent);width:22px;border-radius:4px;}
+.qt-dot.seen{background:rgba(var(--accent-rgb),0.5);}
